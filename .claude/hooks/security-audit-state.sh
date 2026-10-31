@@ -13,7 +13,17 @@ STATE="$ROOT/.claude/.security-audit-state"
 # Paths never worth auditing: docs, planning artifacts, lock files, images, and tests.
 # Tests are excluded deliberately: a defect in a test is not an exploitable defect in the
 # product, and test fixtures are full of patterns that look alarming and are not.
-SKIP_RE='(^|/)(docs|openspec|\.openspec|node_modules|\.venv|dist|build)/|\.(md|txt|lock|png|jpe?g|svg|gif|ico|snap)$|(^|/)__screenshots__/|(^|/)(tests?|__tests__|__mocks__|fixtures|cassettes|e2e)/|(^|/)conftest\.py$|(^|/)test_[^/]*\.py$|_test\.py$|\.(test|spec|visual)\.[jt]sx?$'
+SKIP_RE='(^|/)\.security-audit-state$|(^|/)(docs|openspec|\.openspec|node_modules|\.venv|dist|build)/|\.(md|txt|lock|png|jpe?g|svg|gif|ico|snap)$|(^|/)__screenshots__/|(^|/)(tests?|__tests__|__mocks__|fixtures|cassettes|e2e)/|(^|/)conftest\.py$|(^|/)test_[^/]*\.py$|_test\.py$|\.(test|spec|visual)\.[jt]sx?$'
+
+# Hashing, portably: macOS has shasum, most Linux images have sha1sum, Git Bash on Windows may
+# have either. cksum is the last resort and exists everywhere.
+hash_stdin() {
+  if command -v shasum >/dev/null 2>&1; then shasum
+  elif command -v sha1sum >/dev/null 2>&1; then sha1sum
+  elif command -v md5sum >/dev/null 2>&1; then md5sum
+  else cksum
+  fi | cut -d' ' -f1
+}
 
 # Changed tracked files and brand-new untracked ones: a new module is the commonest way new
 # code arrives, and it has no diff against HEAD, so it must be listed separately.
@@ -34,7 +44,7 @@ digest() {
       else
         cat "$ROOT/$file" 2>/dev/null
       fi
-    done | shasum | cut -d' ' -f1
+    done | hash_stdin
 }
 
 case "${1:-digest}" in
@@ -47,7 +57,7 @@ case "${1:-digest}" in
   check)
     now="$(digest)"
     # An empty source diff is nothing to audit.
-    [ "$now" = "$(printf '' | shasum | cut -d' ' -f1)" ] && exit 0
+    [ "$now" = "$(printf '' | hash_stdin)" ] && exit 0
     [ -f "$STATE" ] && [ "$now" = "$(cat "$STATE")" ] && exit 0
     exit 1
     ;;
