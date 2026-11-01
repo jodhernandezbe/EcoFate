@@ -5,9 +5,13 @@ import { useReportDownload } from "./useReportDownload";
 const DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 function report(): Response {
-  return new Response(new Blob(["docx"], { type: DOCX }), {
+  // Raw bytes, not a jsdom Blob: jsdom's Blob has no stream(), which Response.blob() needs.
+  return new Response(new TextEncoder().encode("docx"), {
     status: 200,
-    headers: { "content-disposition": 'attachment; filename="exposure-screening-11-11-1-2026-01-02.docx"' },
+    headers: {
+      "content-type": DOCX,
+      "content-disposition": 'attachment; filename="exposure-screening-11-11-1-2026-01-02.docx"',
+    },
   });
 }
 

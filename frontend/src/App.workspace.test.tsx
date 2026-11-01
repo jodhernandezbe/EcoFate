@@ -37,7 +37,8 @@ function stub(options: { never?: boolean } = {}): Stub {
     calls: [],
     reset: () => new Response(null, { status: 204 }),
     report: () =>
-      new Response(new Blob(["docx"]), {
+      // Raw bytes, not a jsdom Blob: jsdom's Blob has no stream(), which Response.blob() needs.
+      new Response(new TextEncoder().encode("docx"), {
         status: 200,
         headers: { "content-disposition": 'attachment; filename="exposure-screening-chemical-2026-01-02.docx"' },
       }),
