@@ -1,4 +1,4 @@
-# Exposure Assessor
+# EcoFate
 
 LangChain/LangGraph agent that produces screening-level chemical exposure and risk
 assessments. Python 3.13, managed with uv.

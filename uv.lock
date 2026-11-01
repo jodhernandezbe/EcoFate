@@ -948,7 +948,7 @@ wheels = [
 ]
 
 [[package]]
-name = "exposure-assessor"
+name = "ecofate"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

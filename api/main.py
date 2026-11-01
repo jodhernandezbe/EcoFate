@@ -55,9 +55,11 @@ def _mount_frontend(app: FastAPI, dist: Path) -> None:
 def create_app(settings: UiSettings | None = None) -> FastAPI:
     """Build the API for ``settings`` (the shipped ``[ui]`` settings by default)."""
     ui = settings if settings is not None else ui_settings()
-    app = FastAPI(title="Exposure Assessor API", lifespan=_lifespan, docs_url=None, redoc_url=None)
+    app = FastAPI(title="EcoFate API", lifespan=_lifespan, docs_url=None, redoc_url=None)
     app.add_middleware(
-        CORSMiddleware, allow_origins=[ui.origin], allow_methods=["GET", "POST", "DELETE"]
+        CORSMiddleware,
+        allow_origins=[ui.origin],
+        allow_methods=["GET", "POST", "DELETE"],
     )
     app.add_middleware(OriginGuard, origin=ui.origin)  # outermost: runs before CORS and routes
     app.state.threads = ThreadStore(max_threads=ui.max_threads)

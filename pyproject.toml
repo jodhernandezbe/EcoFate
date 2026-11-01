@@ -1,5 +1,5 @@
 [project]
-name = "exposure-assessor"
+name = "ecofate"
 version = "0.1.0"
 description = "Screening-level chemical exposure risk assessments from unified TRI data and transport models"
 readme = "README.md"
