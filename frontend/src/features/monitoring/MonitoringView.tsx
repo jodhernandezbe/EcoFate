@@ -114,7 +114,7 @@ export function MonitoringView() {
             />
             {selected ? (
               <section aria-label="Session timeline" className="flex flex-col gap-2">
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-fg2">Session timeline</h3>
+                <h3 className="text-sm font-semibold text-fg2">Session timeline</h3>
                 <Detail detail={detail} onRetry={() => void select(selected)} />
               </section>
             ) : null}

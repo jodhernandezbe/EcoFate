@@ -37,15 +37,15 @@ describe("risk card", () => {
 });
 
 describe("ribbon layout", () => {
-  it("gives an empty worst-case section its content height so the cards follow at first load", () => {
+  it("gives every row its content height without scenarios, so empty cards are not padded", () => {
     render(<EpaOverviewRibbon workspace={EMPTY_WORKSPACE} digits={2} />);
-    expect(screen.getByRole("group", { name: "Executive summary" })).toHaveClass("grid-rows-[auto]");
+    expect(screen.getByRole("group", { name: "Executive summary" })).toHaveClass("auto-rows-auto", "content-start");
   });
 
   it("lets every row share the panel once there are scenarios", () => {
     const driver = { facility_name: "Plant F1", frs_id: "F1", pathway_key: "community", quantity: "hq", stack_number: 1, value: 2 };
     render(<EpaOverviewRibbon workspace={workspace({ scenario_drivers: [driver] })} digits={2} />);
-    expect(screen.getByRole("group", { name: "Executive summary" })).not.toHaveClass("grid-rows-[auto]");
+    expect(screen.getByRole("group", { name: "Executive summary" })).not.toHaveClass("auto-rows-auto", "content-start");
   });
 });
 

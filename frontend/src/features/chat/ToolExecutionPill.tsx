@@ -15,18 +15,18 @@ const STATE_LABEL = { running: "running", done: "done", error: "failed" } as con
 function Pill({ step }: { step: ToolStep }) {
   return (
     <li
-      className="glass inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs text-fg2"
+      className="glass flex w-fit max-w-full items-start gap-1.5 rounded-xl px-2.5 py-1 text-xs text-fg2"
       aria-label={`${step.label}, ${STATE_LABEL[step.state]}`}
     >
-      {ICON[step.state]}
-      {step.label}
+      <span className="mt-0.5 shrink-0">{ICON[step.state]}</span>
+      <span className="min-w-0">{step.label}</span>
     </li>
   );
 }
 
-/** A turn's tool steps as compact pills in one row; click to expand them all. */
+/** A turn's tool steps, one per row from top to bottom as they happen; the header hides or shows them. */
 export function ToolExecutionPills({ steps }: { steps: ToolStep[] }) {
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(true);
   const listId = useId();
   if (steps.length === 0) return null;
   const running = steps.filter((step) => step.state === "running").length;
@@ -48,10 +48,7 @@ export function ToolExecutionPills({ steps }: { steps: ToolStep[] }) {
         />
         {summary}
       </button>
-      <ul
-        id={listId}
-        className={`flex gap-1.5 ${expanded ? "flex-wrap" : "flex-nowrap overflow-hidden"}`}
-      >
+      <ul id={listId} hidden={!expanded} className="m-0 flex list-none flex-col items-start gap-1 p-0">
         {steps.map((step) => (
           <Pill key={step.callId} step={step} />
         ))}

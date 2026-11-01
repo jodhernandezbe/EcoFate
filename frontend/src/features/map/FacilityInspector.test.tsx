@@ -403,7 +403,7 @@ describe("community and worker badges", () => {
     show(facility());
     await user.hover(marker(/Plant F1/));
     const badges = screen.getByRole("group", { name: "Community and worker risk" });
-    expect(badges).toHaveTextContent("Worker Not reported");
+    expect(badges).toHaveTextContent("Worker Not computed");
     expect(badges).toHaveTextContent("Community HQ not reported");
   });
 });

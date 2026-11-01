@@ -3,6 +3,7 @@ import type { ChatMessage, UsageView } from "../../hooks/chatState";
 import type { ConfirmationAnswers, ConfirmationPrompt } from "../../types/workspace";
 import { ChatComposer } from "./ChatComposer";
 import { ClearChatButton } from "./ClearChatButton";
+import { clearBlockedReason } from "./clearBlockedReason";
 import { ConfirmationCard } from "./ConfirmationCard";
 import { MessageStream } from "./MessageStream";
 import { UsageMeter } from "./UsageMeter";
@@ -50,13 +51,13 @@ export function ChatDock({
   return (
     <div className="flex h-full flex-col">
       <TopHeaderBar
-        title="EcoFate"
+        title="Assistant"
         subtitle={model}
         status={statusOf(messages, busy)}
         onCollapse={onCollapse}
       >
         <UsageMeter usage={usage} />
-        <ClearChatButton disabled={busy || messages.length === 0} onClear={onClear} />
+        <ClearChatButton blocked={clearBlockedReason(busy, messages.length)} onClear={onClear} />
       </TopHeaderBar>
       <MessageStream
         messages={messages}

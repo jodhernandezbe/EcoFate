@@ -25,6 +25,9 @@ const COLUMNS: readonly { name: string; tier: Tier; width?: string }[] = [
   { name: "Status", tier: "always", width: "w-30" },
 ];
 
+/** The summary carries no reason for a failure; the timeline marks the step that failed. */
+const FAILED_HINT = "Reason not reported here. Open this session to see which step failed.";
+
 const cell = (tier: Tier) => `truncate px-3 py-2 ${SHOWN_FROM[tier]}`.trim();
 
 interface SessionsTableProps {
@@ -44,7 +47,7 @@ export function SessionsTable({ sessions, selectedId, onSelect }: SessionsTableP
       <div className="overflow-hidden rounded-2xl border border-hairline">
         <table className="w-full table-fixed text-left text-sm">
           <caption className="sr-only">Recorded sessions, newest first</caption>
-          <thead className="text-xs uppercase tracking-wider text-fg2">
+          <thead className="text-xs text-fg2">
             <tr>
               {COLUMNS.map((column) => (
                 <th
@@ -70,7 +73,7 @@ export function SessionsTable({ sessions, selectedId, onSelect }: SessionsTableP
                       type="button"
                       aria-pressed={selected}
                       onClick={() => onSelect(session.session_id)}
-                      className="spring rounded-md text-accent underline-offset-2 hover:underline"
+                      className="spring rounded-lg text-accent underline-offset-2 hover:underline"
                     >
                       {formatStarted(session.started_at)}
                     </button>
@@ -85,7 +88,10 @@ export function SessionsTable({ sessions, selectedId, onSelect }: SessionsTableP
                   <td className={cell("wide")}>{formatTokens(session.input_tokens, session.output_tokens)}</td>
                   <td className={cell("always")}>{formatCost(session)}</td>
                   <td className={cell("wide")}>{formatDuration(session.duration_ms)}</td>
-                  <td className="px-3 py-2">
+                  <td
+                    className="px-3 py-2"
+                    title={session.outcome === "error" ? FAILED_HINT : undefined}
+                  >
                     <OutcomePill outcome={session.outcome} />
                   </td>
                 </tr>

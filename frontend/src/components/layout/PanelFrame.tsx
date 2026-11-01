@@ -32,7 +32,7 @@ export function PanelFrame({ id, title, fullscreen, onToggle, scroll, actions, c
       <PanelHeader title={title} fullscreen={mine} onToggleFullscreen={() => onToggle(id)}>
         {actions}
       </PanelHeader>
-      <div className={`min-h-0 flex-1 ${scroll ? "overflow-y-auto" : "overflow-hidden"}`}>{children}</div>
+      <div className={`min-h-0 flex-1 ${scroll ? "scroll-edges overflow-y-auto" : "overflow-hidden"}`}>{children}</div>
     </section>
   );
 }

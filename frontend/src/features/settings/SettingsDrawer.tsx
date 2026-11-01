@@ -218,7 +218,7 @@ interface SettingsDrawerProps extends ContentProps {
 /** The API keys, kept in the OS keychain, in a bottom drawer. No key is kept in the browser. */
 export function SettingsDrawer({ open, onClose, ...content }: SettingsDrawerProps) {
   return (
-    <BottomDrawer open={open} title="Settings" onClose={onClose}>
+    <BottomDrawer open={open} title="Settings" onClose={onClose} fitContent>
       <DrawerContent {...content} />
     </BottomDrawer>
   );

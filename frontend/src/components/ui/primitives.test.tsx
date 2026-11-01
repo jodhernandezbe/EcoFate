@@ -100,6 +100,21 @@ describe("BottomDrawer", () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  it("takes the height of its content when asked, and a fixed height otherwise", () => {
+    const { rerender } = render(
+      <BottomDrawer open title="Settings" onClose={() => undefined} fitContent>
+        body
+      </BottomDrawer>,
+    );
+    expect(screen.getByRole("dialog").style.height).toBe("");
+    rerender(
+      <BottomDrawer open title="Settings" onClose={() => undefined}>
+        body
+      </BottomDrawer>,
+    );
+    expect(screen.getByRole("dialog").style.height).not.toBe("");
+  });
+
   it("maximizes and restores", async () => {
     const user = userEvent.setup();
     render(

@@ -17,20 +17,29 @@ describe("ToolExecutionPills", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("groups a turn's steps into one collapsed row of pills", () => {
+  it("lists every step on its own row, open by default", () => {
     render(<ToolExecutionPills steps={steps} />);
     expect(screen.getAllByRole("listitem")).toHaveLength(4);
     const toggle = screen.getByRole("button", { name: /1 running/ });
-    expect(toggle).toHaveAttribute("aria-expanded", "false");
-    expect(screen.getByRole("list").className).toContain("flex-nowrap");
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("list")).toBeVisible();
   });
 
-  it("expands to show every pill on click", async () => {
+  it("is always a vertical stack, never a row that wraps or clips", () => {
+    render(<ToolExecutionPills steps={steps} />);
+    const list = screen.getByRole("list");
+    expect(list).toHaveClass("flex-col");
+    expect(list.className).not.toMatch(/flex-wrap|flex-nowrap|overflow-hidden/);
+  });
+
+  it("hides and shows the steps from the header, still vertical when shown again", async () => {
     const user = userEvent.setup();
     render(<ToolExecutionPills steps={steps} />);
     await user.click(screen.getByRole("button"));
-    expect(screen.getByRole("button")).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("list").className).toContain("flex-wrap");
+    expect(screen.getByRole("button")).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("list")).toBeNull();
+    await user.click(screen.getByRole("button"));
+    expect(screen.getByRole("list")).toHaveClass("flex-col");
   });
 
   it("names each pill's label and state for assistive technology", () => {

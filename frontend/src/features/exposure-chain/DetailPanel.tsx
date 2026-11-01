@@ -25,7 +25,7 @@ export function DetailPanel({ node, laneLabel, digits, id, onClose }: Props) {
           {node.title}
           <span className="ml-2 font-normal text-fg2">{[KINDS[node.kind].badge, laneLabel].filter(Boolean).join(" · ")}</span>
         </h4>
-        <button type="button" onClick={onClose} className="spring rounded-md px-2 py-0.5 text-accent hover:underline">
+        <button type="button" onClick={onClose} className="spring rounded-lg px-2 py-0.5 text-accent hover:underline">
           Close
         </button>
       </div>

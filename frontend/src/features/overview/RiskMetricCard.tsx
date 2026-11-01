@@ -27,8 +27,8 @@ function Row({
         <StatusPill status={worst?.status ?? null} />
       </div>
       <dl className="m-0 grid grid-cols-2 gap-2">
-        <Metric label="Worst case">
-          <span className="text-xl">{formatNumber(worst?.value, digits)}</span>
+        <Metric label="Worst case" large>
+          {formatNumber(worst?.value, digits)}
         </Metric>
         <Metric label="Representative weather">{formatNumber(representative?.value, digits)}</Metric>
       </dl>

@@ -113,9 +113,34 @@ body {
   }
 }
 
-:focus-visible {
+/* A field inside a composite control hands its ring to the container (`data-ring-on-parent`). */
+:focus-visible:not([data-ring-on-parent]) {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* The map's attribution chip on the tokens, so it follows light and dark. */
+.maplibregl-ctrl.maplibregl-ctrl-attrib {
+  background: var(--surface-solid);
+  color: var(--fg-2);
+}
+.maplibregl-ctrl-attrib a {
+  color: inherit;
+}
+/* The info icon is fixed black artwork, so it is inverted on the dark chip. */
+@media (prefers-color-scheme: dark) {
+  .maplibregl-ctrl-attrib-button {
+    filter: invert(1);
+  }
+}
+
+/* Edge shadows that appear only where a scrolling panel has more content beyond that edge. */
+.scroll-edges {
+  background:
+    linear-gradient(var(--bg) 30%, transparent) top / 100% 2rem no-repeat local,
+    linear-gradient(transparent, var(--bg) 70%) bottom / 100% 2rem no-repeat local,
+    linear-gradient(color-mix(in srgb, var(--fg-2) 30%, transparent), transparent) top / 100% 0.75rem no-repeat scroll,
+    linear-gradient(transparent, color-mix(in srgb, var(--fg-2) 30%, transparent)) bottom / 100% 0.75rem no-repeat scroll;
 }
 
 /* React Flow on the design tokens (light and dark follow the variables above). */

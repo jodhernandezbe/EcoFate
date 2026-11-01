@@ -25,7 +25,7 @@ const MARKDOWN: Components = {
   thead: ({ children }) => <thead className="bg-hairline">{children}</thead>,
   tr: ({ children }) => <tr className="border-t border-hairline first:border-t-0 even:bg-hairline/40">{children}</tr>,
   th: ({ children }) => (
-    <th scope="col" className={`${CELL} text-left text-xs font-semibold uppercase tracking-wider`}>
+    <th scope="col" className={`${CELL} text-left text-xs font-semibold`}>
       {children}
     </th>
   ),

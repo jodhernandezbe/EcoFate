@@ -1,11 +1,18 @@
 import type { ReactNode } from "react";
 
-/** A labelled value of a card: small caption above, tabular figures below. */
-export function Metric({ label, children }: { label: string; children: ReactNode }) {
+import { NOT_REPORTED } from "../../lib/format";
+
+/**
+ * A labelled value of a card: small caption above, tabular figures below. `large` sets the
+ * headline size, but an absent value always stays at body size in the secondary colour.
+ */
+export function Metric({ label, children, large = false }: { label: string; children: ReactNode; large?: boolean }) {
+  const absent = children === NOT_REPORTED;
+  const look = absent ? "text-sm text-fg2" : `${large ? "text-xl" : "text-sm"} text-fg`;
   return (
     <div className="min-w-0">
       <dt className="text-xs text-fg2">{label}</dt>
-      <dd className="m-0 text-sm font-medium text-fg tabular-nums">{children}</dd>
+      <dd className={`m-0 font-medium tabular-nums ${look}`}>{children}</dd>
     </div>
   );
 }

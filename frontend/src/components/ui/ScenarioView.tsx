@@ -52,7 +52,7 @@ function ReceptorRow({ receptor, digits }: { receptor: ScenarioReceptor; digits:
 function Receptors({ scenario, digits }: { scenario: WorstCaseScenario; digits: number }) {
   return (
     <section aria-label="Most affected receptors">
-      <h4 className="m-0 mb-1 text-xs font-semibold uppercase tracking-wide text-fg2">Most affected receptors</h4>
+      <h4 className="m-0 mb-1 text-xs font-semibold text-fg2">Most affected receptors</h4>
       {scenario.receptors.length > 0 && (
         <ul className="m-0 grid list-none gap-1 p-0">
           {scenario.receptors.map((receptor) => (
@@ -86,7 +86,7 @@ export function ScenarioView({ scenario, digits }: { scenario: WorstCaseScenario
       </p>
       {groupFactors(scenario.factors).map((group) => (
         <section key={group.key} aria-label={group.title}>
-          <h4 className="m-0 mb-1 text-xs font-semibold uppercase tracking-wide text-fg2">{group.title}</h4>
+          <h4 className="m-0 mb-1 text-xs font-semibold text-fg2">{group.title}</h4>
           <dl className="m-0 grid grid-cols-2 gap-x-3 gap-y-1">
             {group.factors.map((factor) => (
               <div key={factor.key} className="min-w-0">

@@ -48,13 +48,13 @@ export function ChainNode({ data }: NodeProps<ChainFlowNode>) {
           {node.status !== null ? (
             <StatusPill status={node.status} label={node.status_label ?? undefined} />
           ) : (
-            <span className="text-[10px] font-medium uppercase tracking-wider text-fg2">{badge}</span>
+            <span className="text-[11px] font-medium text-fg2">{badge}</span>
           )}
         </span>
         <span className="line-clamp-2 text-[12px] font-medium leading-tight text-fg">{node.title}</span>
         <span className="flex min-h-5 items-end justify-between gap-1">
           <span className="min-w-0">
-            {value && <span className="line-clamp-2 block text-[10px] leading-tight text-fg2">{value.label}</span>}
+            {value && <span className="line-clamp-2 block text-[11px] leading-tight text-fg2">{value.label}</span>}
             <span className={`block truncate text-[13px] font-semibold tabular-nums ${value?.value === null ? "text-fg2" : "text-fg"}`}>
               {shown ?? "\u00a0"}
             </span>

@@ -72,7 +72,7 @@ function Conditions({ facility }: { facility: Facility }) {
   }
   return (
     <>
-      <p className="m-0 text-[11px] font-medium uppercase tracking-wide text-fg2">Life cycle stages</p>
+      <p className="m-0 text-[11px] font-medium text-fg2">Life cycle stages</p>
       <ul aria-label="Life cycle stages" className="m-0 mb-2 mt-1 flex list-none flex-wrap gap-1 p-0">
         {stages.map((stage) => (
           <li key={stage} className="rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-accent">
@@ -80,7 +80,7 @@ function Conditions({ facility }: { facility: Facility }) {
           </li>
         ))}
       </ul>
-      <p className="m-0 text-[11px] font-medium uppercase tracking-wide text-fg2">
+      <p className="m-0 text-[11px] font-medium text-fg2">
         Conditions of use
       </p>
       <ul aria-label="Conditions of use" className="m-0 mt-1 grid list-none gap-1 p-0">
@@ -177,13 +177,13 @@ function Section({ title, aside, initiallyOpen, children }: SectionProps) {
   return (
     <section className="mt-2">
       <div className="flex items-center justify-between gap-2">
-        <h4 className="m-0 text-xs font-semibold uppercase tracking-wide text-fg2">
+        <h4 className="m-0 text-xs font-semibold text-fg2">
           <button
             type="button"
             aria-expanded={open}
             aria-controls={bodyId}
             onClick={() => setOpen((value) => !value)}
-            className="flex items-center gap-1 rounded uppercase tracking-wide hover:text-fg"
+            className="flex items-center gap-1 rounded-lg hover:text-fg"
           >
             <ChevronRight
               size={12}

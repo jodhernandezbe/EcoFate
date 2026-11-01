@@ -14,14 +14,16 @@ function selectedDose(workspace: WorkspaceState) {
 
 /** The four summary cards, filled only from what the tools reported. */
 export function EpaOverviewRibbon({ workspace, digits }: { workspace: WorkspaceState; digits: number }) {
-  // An empty worst-case section takes only its content height (the first explicit row is
-  // `auto`), so the summary cards are visible at first load; with data every row shares the panel.
-  const firstRow = workspace.scenario_drivers.length === 0 ? "grid-rows-[auto]" : "";
+  // Without scenarios every row takes its content height (`content-start` stops the free space
+  // from stretching them), so empty cards are not padded and the summary shows at first load;
+  // with scenarios the rows share the panel.
+  const rows =
+    workspace.scenario_drivers.length === 0 ? "auto-rows-auto content-start" : "auto-rows-[minmax(max-content,1fr)]";
   return (
     <div
       // Columns follow the panel's width (a container query), and the rows grow to fill its
       // height, so a fullscreen overview is four large cards rather than a strip at the top.
-      className={`grid flex-1 auto-rows-[minmax(max-content,1fr)] grid-cols-1 gap-3 @2xl:grid-cols-2 ${firstRow}`}
+      className={`grid flex-1 grid-cols-1 gap-3 @2xl:grid-cols-2 ${rows}`}
       aria-label="Executive summary"
       role="group"
     >

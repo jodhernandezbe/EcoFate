@@ -73,7 +73,7 @@ function Item({ icon: Icon, label, collapsed, onClick, page, blocked, busy, badg
       <Shown size={18} aria-hidden="true" className={`shrink-0 ${busy ? "motion-safe:animate-spin" : ""}`} />
       {collapsed ? null : <span className="min-w-0 flex-1 truncate">{label}</span>}
       {collapsed || !badge ? null : (
-        <span className="shrink-0 rounded-md bg-hairline px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-fg2">
+        <span className="shrink-0 rounded-full bg-hairline px-1.5 py-0.5 text-[11px] font-medium text-fg2">
           {badge}
         </span>
       )}

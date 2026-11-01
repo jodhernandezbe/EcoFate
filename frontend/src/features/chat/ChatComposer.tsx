@@ -35,7 +35,7 @@ export function ChatComposer({ busy, hasKey, onSend, onOpenSettings }: ChatCompo
           </button>
         </p>
       ) : null}
-      <div className="glass flex items-end gap-2 rounded-3xl p-2 pl-4">
+      <div className="glass flex items-end gap-2 rounded-2xl p-2 pl-4 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent">
         <textarea
           aria-label="Message"
           rows={1}
@@ -45,6 +45,7 @@ export function ChatComposer({ busy, hasKey, onSend, onOpenSettings }: ChatCompo
           onChange={(event) => setText(event.target.value)}
           onKeyDown={onKeyDown}
           className="max-h-40 min-h-9 flex-1 resize-none bg-transparent py-2 text-[15px] outline-none placeholder:text-fg2"
+          data-ring-on-parent
         />
         <button
           type="button"

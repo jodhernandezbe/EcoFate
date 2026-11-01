@@ -30,6 +30,6 @@ describe("WorkerRiskCard", () => {
     render(<WorkerRiskCard risk={EMPTY_WORKSPACE.worker_risk} digits={2} />);
     expect(screen.getByText(/Not shown: not yet computed/)).toBeInTheDocument();
     expect(screen.queryByText("0")).toBeNull();
-    expect(screen.getAllByText("Not reported").length).toBe(3);
+    expect(screen.getAllByText("Not computed").length).toBe(3);
   });
 });

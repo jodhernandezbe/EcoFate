@@ -8,7 +8,7 @@ const LOOK: Record<OccupationalTier, { label: string; tone: string }> = {
 
 /** Tier of the worker screening as a coloured pill that also says it in words. */
 export function TierPill({ tier, prefix }: { tier: OccupationalTier | null; prefix?: string }) {
-  const { label, tone } = tier ? LOOK[tier] : { label: "Not reported", tone: "bg-fg2/10 text-fg2" };
+  const { label, tone } = tier ? LOOK[tier] : { label: "Not computed", tone: "bg-fg2/10 text-fg2" };
   return (
     <span
       className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${tone}`}

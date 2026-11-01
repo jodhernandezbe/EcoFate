@@ -7,17 +7,19 @@ describe("ClearChatButton", () => {
   it("clears the chat when clicked", async () => {
     const user = userEvent.setup();
     const onClear = vi.fn();
-    render(<ClearChatButton disabled={false} onClear={onClear} />);
+    render(<ClearChatButton blocked={null} onClear={onClear} />);
     await user.click(screen.getByRole("button", { name: "Clear chat" }));
     expect(onClear).toHaveBeenCalledTimes(1);
   });
 
-  it("does nothing while disabled", async () => {
+  it("does nothing while blocked, and says why", async () => {
     const user = userEvent.setup();
     const onClear = vi.fn();
-    render(<ClearChatButton disabled onClear={onClear} />);
+    render(<ClearChatButton blocked="nothing to clear yet" onClear={onClear} />);
     const button = screen.getByRole("button", { name: "Clear chat" });
     expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("title", "Clear chat: nothing to clear yet");
+    expect(button).toHaveAttribute("aria-description", "nothing to clear yet");
     await user.click(button);
     expect(onClear).not.toHaveBeenCalled();
   });

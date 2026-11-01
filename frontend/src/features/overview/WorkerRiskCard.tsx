@@ -26,8 +26,8 @@ function Row({
         <TierPill tier={baseline?.risk_tier ?? null} />
       </div>
       <dl className="m-0 grid grid-cols-2 gap-2">
-        <Metric label="Baseline ventilation">
-          <span className="text-xl">{formatNumber(baseline?.value, digits)}</span>
+        <Metric label="Baseline ventilation" large>
+          {formatNumber(baseline?.value, digits)}
         </Metric>
         <Metric label="Enclosed zone, worst case">{formatNumber(worst?.value, digits)}</Metric>
       </dl>

@@ -57,3 +57,21 @@ describe("SessionsTable", () => {
     expect(new Set(names).size).toBe(names.length);
   });
 });
+
+describe("SessionsTable failed rows", () => {
+  it("says where to find the reason for a failed session, and only for failed ones", () => {
+    render(
+      <SessionsTable
+        sessions={[
+          { ...SESSION, session_id: "bad", outcome: "error" },
+          { ...SESSION, session_id: "good", outcome: "ok" },
+        ]}
+        selectedId={null}
+        onSelect={() => {}}
+      />,
+    );
+    const failed = screen.getByText("Failed").closest("td");
+    expect(failed).toHaveAttribute("title", expect.stringContaining("which step failed"));
+    expect(screen.getByText("Completed").closest("td")).not.toHaveAttribute("title");
+  });
+});

@@ -12,6 +12,8 @@ interface BottomDrawerProps {
   initialShare?: number;
   /** Smallest height, px. */
   minPx?: number;
+  /** Open at the height of the content (up to the window) until the user resizes it. */
+  fitContent?: boolean;
 }
 
 const KEY_STEP_PX = 24;
@@ -37,6 +39,7 @@ export function BottomDrawer({
   children,
   initialShare = 0.6,
   minPx = 360,
+  fitContent = false,
 }: BottomDrawerProps) {
   const titleId = useId();
   const panel = useRef<HTMLElement>(null);
@@ -46,7 +49,10 @@ export function BottomDrawer({
   if (!open) return null;
 
   const ceiling = () => window.innerHeight - 2 * INSET_PX;
+  const fitting = fitContent && height === null && !maximized;
   const current = () => height ?? Math.round(window.innerHeight * initialShare);
+  // Event handlers only: the auto-sized height is read from the DOM, which render must not do.
+  const measured = () => (fitting && panel.current ? panel.current.offsetHeight : current());
   const resizeTo = (next: number) => setHeight(clamp(next, minPx, ceiling()));
   const onPointerDown = (event: PointerEvent<HTMLDivElement>) => {
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -58,12 +64,12 @@ export function BottomDrawer({
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
     event.preventDefault();
-    resizeTo(current() + (event.key === "ArrowUp" ? KEY_STEP_PX : -KEY_STEP_PX));
+    resizeTo(measured() + (event.key === "ArrowUp" ? KEY_STEP_PX : -KEY_STEP_PX));
   };
-  const shown = maximized ? window.innerHeight : clamp(current(), minPx, ceiling());
-  const frame = maximized
-    ? { height: shown, width: "100%" }
-    : { height: shown, width: `min(100%, max(${MIN_WIDTH_PX}px, ${WIDTH_SHARE * 100}%))` };
+  // While auto-sized there is no height to read in render (the ref is only read in handlers).
+  const shown = maximized ? window.innerHeight : fitting ? null : clamp(current(), minPx, ceiling());
+  const width = `min(100%, max(${MIN_WIDTH_PX}px, ${WIDTH_SHARE * 100}%))`;
+  const frame = shown === null ? { width } : { height: shown, width: maximized ? "100%" : width };
 
   return (
     <div
@@ -109,7 +115,7 @@ export function BottomDrawer({
             role="separator"
             aria-orientation="horizontal"
             aria-label="Resize settings"
-            aria-valuenow={shown}
+            aria-valuenow={shown ?? undefined}
             aria-valuemin={minPx}
             aria-valuemax={ceiling()}
             tabIndex={0}
