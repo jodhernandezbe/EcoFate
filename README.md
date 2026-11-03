@@ -97,11 +97,14 @@ uv run python -m evals run                     # all unblocked scenarios: PASS/F
 uv run python -m evals run chemical-name-only  # one scenario
 uv run python -m evals record full-assessment-with-nei-stacks  # re-record from live services
 uv run python -m evals catalogue                # every question in evals/catalogue/scenarios.csv, live
+uv run python -m evals judge evals/reports/<timestamp>  # LLM-judge that run against its labels.json
 ```
 
 Recording runs the scenario once against the live services (it needs the CompTox and Census keys too) and saves every network tool output; never edit a cassette by hand. Reports land in `evals/reports/<timestamp>/<scenario>.html`.
 
 `catalogue` sends every question of `evals/catalogue/scenarios.csv` (50 reviewed questions: happy paths, varied phrasing, edge cases, out-of-scope and breaking) to the live agent, one turn each, by the same path as `python -m app` (stored keys, step limit, metered usage). It needs the OpenAI key and, for complete answers, the Census and CompTox keys, and it costs tokens for every row. Each answer is saved with its execution time, token counts and estimated cost (from `[ui.pricing]`) to `evals/reports/<timestamp>/catalogue.json`; a row that fails on the step limit or a service error is recorded with the error and the run continues.
+
+`judge` is the automatic reviewer of such a run. Once the answers have been labelled by hand (a `labels.json` next to `catalogue.json`, one object per row with `index`, `question`, `label` good/bad and optionally `failure` and `bad_votes`), the LLM judge (`[evaluation].judge_model`, criteria in `prompts/catalogue_judge.md`) labels every answer from the question and the answer alone and the command prints accuracy, precision and recall against the human labels (`bad` is the positive class), the confusion matrix and every disagreement with the judge's reasoning, and writes the verdicts to `judged.json`. The loop is: run the catalogue, label it, judge it, read the disagreements, edit the judge prompt, judge again.
 
 ## Architecture
 

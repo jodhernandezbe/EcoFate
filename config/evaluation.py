@@ -11,7 +11,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from config.agent import chat_provider
-from config.parsing import names, project_path, read_toml, require_str, section
+from config.parsing import names, project_path, read_toml, require_number, require_str, section
 
 _NAME = "evaluation"
 
@@ -29,6 +29,11 @@ class EvaluationSettings:
         report_dir: Directory evaluation reports are written to.
         catalogue: The reviewed question catalogue (CSV: question, category, type).
         catalogue_results: File name of a catalogue run's results, inside its run folder.
+        catalogue_labels: File name of the human labels of a run, inside its run folder.
+        catalogue_judged: File name the LLM judge writes its verdicts to, inside the run folder.
+        judge_timeout_seconds: Per-request timeout of the judge model, in seconds.
+        judge_temperature: Sampling temperature of the judge (0 to 2), or None for the
+            provider's default.
     """
 
     judge_provider: str
@@ -39,6 +44,20 @@ class EvaluationSettings:
     report_dir: Path
     catalogue: Path
     catalogue_results: str
+    catalogue_labels: str
+    catalogue_judged: str
+    judge_timeout_seconds: float
+    judge_temperature: float | None
+
+
+def _judge_temperature(table: dict[str, object]) -> float | None:
+    """The judge's sampling temperature, 0 to 2; None when the key is absent."""
+    if "judge_temperature" not in table:
+        return None
+    value = require_number(table, "judge_temperature", minimum=0, name=_NAME)
+    if value > 2:
+        raise ValueError(f"{_NAME}.judge_temperature must be at most 2")
+    return value
 
 
 def _file_name(table: dict[str, object], key: str) -> str:
@@ -72,7 +91,16 @@ def load_evaluation_settings(path: Path | None = None) -> EvaluationSettings:
         report_dir=project_path(table, "report_dir", _NAME),
         catalogue=project_path(table, "catalogue", _NAME),
         catalogue_results=_file_name(table, "catalogue_results"),
+        catalogue_labels=_file_name(table, "catalogue_labels"),
+        catalogue_judged=_file_name(table, "catalogue_judged"),
+        judge_timeout_seconds=_judge_timeout(table),
+        judge_temperature=_judge_temperature(table),
     )
+
+
+def _judge_timeout(table: dict[str, object]) -> float:
+    """The judge model's per-request timeout, in seconds (positive)."""
+    return require_number(table, "judge_timeout_seconds", minimum=1e-9, name=_NAME)
 
 
 @lru_cache(maxsize=1)

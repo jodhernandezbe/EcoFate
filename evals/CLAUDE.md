@@ -18,6 +18,12 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   and writes answers, time, tokens and cost to `report_dir/<timestamp>/catalogue.json`).
   Paths come from `[evaluation]`. A scripted `Scenario` in `scenarios.py` takes its query from
   a row, or adds the row in the same change; the CSV holds no expected answers.
+  `judge.py` is the LLM judge of a run's answers (structured verdict: reasoning, label,
+  failure; sees only question and answer; model from `[evaluation]`, criteria in
+  `prompts/catalogue_judge.md`), `metrics.py` the pure agreement metrics (`bad` positive) and
+  `judging.py` the flow: `uv run python -m evals judge <run-dir>` scores the judge against the
+  run's `labels.json`, writes `judged.json` and prints every disagreement. Improve the judge
+  by editing the prompt file and re-running; a failed judge call is an error, never a label.
 - Cassettes in `evals/cassettes/` are recorded from live tools with
   `uv run python -m evals record <scenario>`; never write or edit tool outputs by hand.
   A scenario lists `extra_calls` for routes the agent may take instead of the one it took (the

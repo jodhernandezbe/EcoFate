@@ -20,6 +20,10 @@ def _settings(tmp_path: Path) -> EvaluationSettings:
         tmp_path,
         tmp_path / "scenarios.csv",
         "catalogue.json",
+        "labels.json",
+        "judged.json",
+        30.0,
+        None,
     )
 
 

@@ -4,17 +4,20 @@ uv run python -m evals record <scenario>   # run live, save the cassette
 uv run python -m evals record-extra <scenario>  # only its extra calls, added to the cassette
 uv run python -m evals run [<scenario> ...]  # replay, score, write reports
 uv run python -m evals catalogue  # every catalogue question live; answers, time, tokens, cost
+uv run python -m evals judge <run-dir>  # LLM-judge a run's answers; score against labels.json
 """
 
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 
 from dotenv import load_dotenv
 
 from app.telemetry import configure_telemetry
 from config.evaluation import get_evaluation_settings
 from config.telemetry import get_telemetry_settings
+from evals.catalogue.judging import judge_run
 from evals.catalogue.run import run_from_settings
 from evals.scenarios import CATALOGUE, scenario
 from evals.scoring import new_run_dir
@@ -57,8 +60,12 @@ def _catalogue() -> int:
     return 0
 
 
-def main() -> int:
-    """Parse the command and run it; returns the process exit code."""
+def _judge(run_dir: str) -> int:
+    judge_run(Path(run_dir))
+    return 0
+
+
+def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="python -m evals", description="Agent evaluations")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("record", help="run live and save the cassette").add_argument("scenario")
@@ -67,7 +74,14 @@ def main() -> int:
     run = commands.add_parser("run", help="replay, score and report")
     run.add_argument("scenarios", nargs="*", help="scenario ids (default: all unblocked)")
     commands.add_parser("catalogue", help="run every catalogue question through the live agent")
-    args = parser.parse_args()
+    judge = commands.add_parser("judge", help="LLM-judge a catalogue run against its labels")
+    judge.add_argument("run_dir", help="run folder holding catalogue.json and labels.json")
+    return parser
+
+
+def main() -> int:
+    """Parse the command and run it; returns the process exit code."""
+    args = _parser().parse_args()
     load_dotenv()
     if args.command == "record":
         return _record(args.scenario)
@@ -75,6 +89,8 @@ def main() -> int:
         return _record_extra(args.scenario)
     if args.command == "catalogue":
         return _catalogue()
+    if args.command == "judge":
+        return _judge(args.run_dir)
     return _run(args.scenarios)
 
 

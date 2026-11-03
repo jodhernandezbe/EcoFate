@@ -38,7 +38,7 @@ before work is done; pre-commit enforces them (`uv run pre-commit run --all-file
 - `tests/`   pytest suite mirroring the package layout (`tests/tools/emissions/test_stack.py` tests `tools/emissions/stack.py`). Every test directory needs an `__init__.py`.
 
 Dependency direction: `agent` -> `tools` -> `models`; `agent` -> `prompts`;
-`agent`/`tools`/`models` -> `commons`; `agent`/`tools` -> `config`; `app` -> `agent`/`config`/`tools.credentials`; `evals` -> `app`/`agent`/`tools`/`config`. `api` -> `app`/`agent`/`config`/`prompts`/`commons`/`tools.schemas`/`tools.user_values`; `frontend` -> `api` (HTTP only).
+`agent`/`tools`/`models` -> `commons`; `agent`/`tools` -> `config`; `app` -> `agent`/`config`/`tools.credentials`; `evals` -> `app`/`agent`/`tools`/`config`/`prompts`. `api` -> `app`/`agent`/`config`/`prompts`/`commons`/`tools.schemas`/`tools.user_values`; `frontend` -> `api` (HTTP only).
 `commons` and `config` import nothing from the project; nothing imports `evals` or `api`.
 
 ## Folder-specific rules

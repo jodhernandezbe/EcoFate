@@ -19,6 +19,10 @@ cassette_dir = "evals/test_cassettes"
 report_dir = "/tmp/test_reports"
 catalogue = "evals/test_catalogue.csv"
 catalogue_results = "results.json"
+catalogue_labels = "human.json"
+catalogue_judged = "verdicts.json"
+judge_timeout_seconds = 45
+judge_temperature = 0.0
 """
 
 
@@ -53,10 +57,24 @@ def test_catalogue_results_is_a_bare_file_name(tmp_path: Path) -> None:
     assert settings.catalogue_results == "results.json"
 
 
+def test_judge_files_and_timeout(tmp_path: Path) -> None:
+    settings = load_evaluation_settings(_write(tmp_path, EVALUATION))
+    assert (settings.catalogue_labels, settings.catalogue_judged) == ("human.json", "verdicts.json")
+    assert settings.judge_timeout_seconds == 45
+    assert settings.judge_temperature == 0.0
+
+
+def test_judge_temperature_absent_means_provider_default(tmp_path: Path) -> None:
+    text = "\n".join(ln for ln in EVALUATION.splitlines() if not ln.startswith("judge_temperature"))
+    assert load_evaluation_settings(_write(tmp_path, text)).judge_temperature is None
+
+
 def test_shipped_catalogue_exists() -> None:
     settings = get_evaluation_settings()
     assert settings.catalogue.is_file()
     assert settings.catalogue_results == "catalogue.json"
+    assert (settings.catalogue_labels, settings.catalogue_judged) == ("labels.json", "judged.json")
+    assert settings.judge_timeout_seconds > 0
 
 
 def test_empty_live_tools_allowed(tmp_path: Path) -> None:
@@ -84,6 +102,13 @@ def test_shipped_settings_load() -> None:
         ("catalogue_results", 'catalogue_results = ""', "evaluation.catalogue_results"),
         ("catalogue_results", 'catalogue_results = "a/b.json"', "evaluation.catalogue_results"),
         ("catalogue_results", 'catalogue_results = ".."', "evaluation.catalogue_results"),
+        ("catalogue_labels", 'catalogue_labels = "a/b.json"', "evaluation.catalogue_labels"),
+        ("catalogue_judged", 'catalogue_judged = ""', "evaluation.catalogue_judged"),
+        ("judge_timeout_seconds", "judge_timeout_seconds = 0", "evaluation.judge_timeout"),
+        ("judge_timeout_seconds", 'judge_timeout_seconds = "x"', "evaluation.judge_timeout"),
+        ("judge_temperature", "judge_temperature = -0.1", "evaluation.judge_temperature"),
+        ("judge_temperature", "judge_temperature = 2.5", "evaluation.judge_temperature"),
+        ("judge_temperature", 'judge_temperature = "0"', "evaluation.judge_temperature"),
     ],
 )
 def test_invalid_entry_names_key(tmp_path: Path, line_start: str, new_line: str, key: str) -> None:

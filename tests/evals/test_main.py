@@ -30,3 +30,22 @@ def test_catalogue_subcommand_takes_no_arguments(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr("sys.argv", ["evals", "catalogue", "extra"])
     with pytest.raises(SystemExit):
         cli.main()
+
+
+def test_judge_subcommand_passes_the_run_folder(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[Path] = []
+
+    def judge(run_dir: Path) -> Path:
+        seen.append(run_dir)
+        return run_dir / "judged.json"
+
+    monkeypatch.setattr(cli, "judge_run", judge)
+    monkeypatch.setattr("sys.argv", ["evals", "judge", "evals/reports/x"])
+    assert cli.main() == 0
+    assert seen == [Path("evals/reports/x")]
+
+
+def test_judge_subcommand_requires_the_run_folder(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("sys.argv", ["evals", "judge"])
+    with pytest.raises(SystemExit):
+        cli.main()

@@ -956,6 +956,16 @@ report_dir = "evals/reports"
 # runs through the live agent, and the name of the results file it writes under `report_dir`.
 catalogue = "evals/catalogue/scenarios.csv"
 catalogue_results = "catalogue.json"
+# Human labels of a catalogue run (`labels.json`, next to its results) and the file the LLM
+# judge writes its verdicts to; `python -m evals judge <run-dir>` scores the judge against the
+# labels. The judge answers one long prompt per row, so it has its own request timeout.
+catalogue_labels = "labels.json"
+catalogue_judged = "judged.json"
+judge_timeout_seconds = 120
+# Sampling temperature of the LLM judge (0 to 2). 0 keeps a verdict repeatable from run to
+# run, so a changed metric reflects the prompt edit, not the draw. Remove the key to leave the
+# provider's default (some models accept no other value).
+judge_temperature = 0.0
 
 # Local web interface (api/ + frontend/). The backend binds only to a loopback host and
 # serves the built frontend from `frontend_dist` (`npm --prefix frontend run build`).
