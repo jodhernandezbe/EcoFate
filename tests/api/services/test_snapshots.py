@@ -17,7 +17,7 @@ def test_only_user_and_assistant_text_is_kept() -> None:
             AIMessage(content="", tool_calls=[{"name": "t", "args": {}, "id": "1"}]),
             ToolMessage(content="{}", tool_call_id="1"),
             AIMessage(content="Here it is."),
-        ]
+        ],
     )
     assert [(m.role, m.text) for m in shown] == [
         ("user", "map hexane"),
@@ -27,7 +27,7 @@ def test_only_user_and_assistant_text_is_kept() -> None:
 
 def test_assistant_text_around_tool_calls_is_one_message() -> None:
     shown = thread_messages(
-        [HumanMessage(content="q"), AIMessage(content="Looking."), AIMessage(content="Done.")]
+        [HumanMessage(content="q"), AIMessage(content="Looking."), AIMessage(content="Done.")],
     )
     assert [m.text for m in shown] == ["q", "Looking.\n\nDone."]
 
@@ -61,7 +61,7 @@ def test_a_completion_nudge_is_not_shown_and_the_text_after_it_joins_the_reply()
             AIMessage(content="I will now gather the data."),
             HumanMessage(content="Continue now.", name=NUDGE_NAME),
             AIMessage(content="Here it is."),
-        ]
+        ],
     )
     assert [(m.role, m.text) for m in shown] == [
         ("user", "map hexane"),

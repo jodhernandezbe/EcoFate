@@ -180,7 +180,8 @@ def test_a_missing_band_is_named(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    "table", ["[exposure.factors]", "[exposure.wind_exponent]", "[exposure.wind_speeds]"]
+    "table",
+    ["[exposure.factors]", "[exposure.wind_exponent]", "[exposure.wind_speeds]"],
 )
 def test_a_missing_subtable_is_named(tmp_path: Path, table: str) -> None:
     head, tail = TEXT.split(table, 1)

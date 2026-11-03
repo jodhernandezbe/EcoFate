@@ -76,12 +76,19 @@ def _empty_tier(tier: Ventilation) -> VentilationTier:
 def _chronic(twa: float, days: float, years: float, s: OccupationalSettings) -> float:
     worker_days = min(s.worker_days_per_year, days)
     return model.worker_average_concentration(
-        twa, s.shift_inhalation_m3, s.daily_inhalation_m3, worker_days, s.tenure_years, years
+        twa,
+        s.shift_inhalation_m3,
+        s.daily_inhalation_m3,
+        worker_days,
+        s.tenure_years,
+        years,
     )
 
 
 def _risks(
-    twa: float, inputs: _Inputs, s: OccupationalSettings
+    twa: float,
+    inputs: _Inputs,
+    s: OccupationalSettings,
 ) -> tuple[float | None, float | None, float | None]:
     """Limit ratio, worker hazard quotient and worker cancer risk (None without the benchmark)."""
     adc = _chronic(twa, inputs.days, s.tenure_years, s)
@@ -93,7 +100,10 @@ def _risks(
 
 
 def _classify(
-    ratio: float | None, hq: float | None, risk: float | None, s: OccupationalSettings
+    ratio: float | None,
+    hq: float | None,
+    risk: float | None,
+    s: OccupationalSettings,
 ) -> str | None:
     t = s.thresholds
     return model.risk_tier(
@@ -109,7 +119,9 @@ def _tier(tier: Ventilation, inputs: _Inputs, s: OccupationalSettings) -> Ventil
     result = _empty_tier(tier)
     generation = model.generation_rate(inputs.release_kg, inputs.days, inputs.hours)
     concentration = model.workplace_concentration(
-        generation, result["ventilation_m3_per_s"], tier.mixing_factor
+        generation,
+        result["ventilation_m3_per_s"],
+        tier.mixing_factor,
     )
     twa = model.twa_concentration(concentration, inputs.hours, s.twa_hours)
     ratio, hq, risk = _risks(twa, inputs, s)
@@ -134,12 +146,15 @@ def _missing(record: EmissionRecord, profile: OperationalProfile) -> list[str]:
 
 
 def _warnings(
-    reasons: list[str], workplace: Workplace, toxicity: Toxicity, limits: OccupationalLimits
+    reasons: list[str],
+    workplace: Workplace,
+    toxicity: Toxicity,
+    limits: OccupationalLimits,
 ) -> list[str]:
     notes = [f"worker exposure not computed: {reason}" for reason in reasons]
     if limits["oel_twa_mg_m3"] is None:
         notes.append(
-            "no 8-hour occupational limit is available, so the limit ratio is not computed"
+            "no 8-hour occupational limit is available, so the limit ratio is not computed",
         )
     if toxicity.get("rfc") is None:
         notes.append("no RfC, so the worker hazard quotient is not computed")
@@ -149,13 +164,14 @@ def _warnings(
     if pressure is not None and pressure <= workplace.settings.low_volatility_mmhg:
         notes.append(
             f"vapor pressure is only {pressure:g} mmHg, so a large fugitive release into "
-            "workplace air is less plausible for this chemical"
+            "workplace air is less plausible for this chemical",
         )
     return notes
 
 
 def _tiers(
-    inputs: _Inputs | None, s: OccupationalSettings
+    inputs: _Inputs | None,
+    s: OccupationalSettings,
 ) -> tuple[VentilationTier, VentilationTier]:
     if inputs is None:
         return _empty_tier(s.baseline), _empty_tier(s.worst_case)
@@ -207,7 +223,10 @@ class _Facts(TypedDict):
 
 
 def _facts(
-    record: EmissionRecord, profile: OperationalProfile, toxicity: Toxicity, workplace: Workplace
+    record: EmissionRecord,
+    profile: OperationalProfile,
+    toxicity: Toxicity,
+    workplace: Workplace,
 ) -> _Facts:
     limits = workplace.limits
     return _Facts(
@@ -235,7 +254,12 @@ def _inputs(
     if release is None or days is None or hours is None:
         return None
     return _Inputs(
-        release, days, hours, limits["oel_twa_mg_m3"], toxicity.get("rfc"), toxicity.get("iur")
+        release,
+        days,
+        hours,
+        limits["oel_twa_mg_m3"],
+        toxicity.get("rfc"),
+        toxicity.get("iur"),
     )
 
 
@@ -264,5 +288,9 @@ def unavailable(settings: OccupationalSettings, reason: str) -> OccupationalExpo
 def no_limits(reason: str) -> OccupationalLimits:
     """Occupational limits with nothing in them, for a chemical that was not looked up."""
     return OccupationalLimits(
-        oel_twa_mg_m3=None, oel_source=None, limits={}, reasons={}, warnings=[reason]
+        oel_twa_mg_m3=None,
+        oel_source=None,
+        limits={},
+        reasons={},
+        warnings=[reason],
     )

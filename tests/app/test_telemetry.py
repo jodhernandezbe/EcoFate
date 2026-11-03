@@ -57,7 +57,9 @@ def _agent_run(settings: TelemetrySettings, tool_result_key: bool = False) -> No
     )
     done = AIMessage(content="done", usage_metadata=_usage(20, 2))  # pyright: ignore[reportArgumentType]
     agent = build_agent(
-        FakeToolModel(messages=iter([ask, done])), tools=[lookup], system_prompt="s"
+        FakeToolModel(messages=iter([ask, done])),
+        tools=[lookup],
+        system_prompt="s",
     )
     client = Client(tracing_mode="otel")
     config = {"callbacks": [run_tracer(settings, client)]}

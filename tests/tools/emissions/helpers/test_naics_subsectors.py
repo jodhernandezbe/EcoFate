@@ -32,8 +32,10 @@ def _record(code: str | None) -> EmissionRecord:
 
 @pytest.mark.parametrize(
     ("code", "expected"),
-    [("325211", "325"), ("3252", "325"), ("325", "325"), ("32", None), ("", None), (None, None),
-     ("a25211", None), ("32 5211", None)],
+    [
+        ("325211", "325"), ("3252", "325"), ("325", "325"), ("32", None), ("", None), (None, None),
+        ("a25211", None), ("32 5211", None),
+    ],
 )  # fmt: skip
 def test_subsector_of(code: str | None, expected: str | None) -> None:
     assert subsector_of(code) == expected

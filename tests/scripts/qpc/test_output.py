@@ -47,7 +47,8 @@ def test_rerun_gives_identical_rows(tmp_path: Path) -> None:
 
 
 def test_failed_write_keeps_the_previous_file(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     out = tmp_path / "q.parquet"
     write_baseline(EXTRACTION, RELEASE, INFO, out)

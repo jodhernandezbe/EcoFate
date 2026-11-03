@@ -41,7 +41,10 @@ INVENTORY = StructuredTool.from_function(
     response_format="content_and_artifact",
 )
 BROKEN = StructuredTool.from_function(
-    _broken, name="get_population_receptors", description="Fails.", handle_tool_error=True
+    _broken,
+    name="get_population_receptors",
+    description="Fails.",
+    handle_tool_error=True,
 )
 
 
@@ -110,7 +113,10 @@ async def test_a_failed_tool_changes_nothing_and_sends_no_update(
 
 async def test_without_workspace_rules_no_update_is_sent(monkeypatch: pytest.MonkeyPatch) -> None:
     events = await _turn(
-        monkeypatch, _model("query_emissions_inventory"), ThreadStore(), with_rules=False
+        monkeypatch,
+        _model("query_emissions_inventory"),
+        ThreadStore(),
+        with_rules=False,
     )
     assert _updates(events) == []
 

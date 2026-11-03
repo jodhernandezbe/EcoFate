@@ -29,7 +29,10 @@ class TractList:
 
 
 def _receptor(
-    tract: Tract, counts: Counts, origin: tuple[float, float], point: tuple[float, float]
+    tract: Tract,
+    counts: Counts,
+    origin: tuple[float, float],
+    point: tuple[float, float],
 ) -> TractReceptor:
     return TractReceptor(
         geoid=tract.state + tract.county + tract.tract,
@@ -44,7 +47,10 @@ def _receptor(
 
 
 def tract_list(
-    found: list[tuple[Tract, Counts]], latitude: float, longitude: float, limit: int
+    found: list[tuple[Tract, Counts]],
+    latitude: float,
+    longitude: float,
+    limit: int,
 ) -> TractList:
     """List the tracts that have residents, nearest first.
 

@@ -52,7 +52,9 @@ def _value(hq: float | None, risk: float | None) -> str:
 
 
 def _out_at_bound(
-    record: EmissionRecord, bound: ScreeningBound, t: ScreeningSettings
+    record: EmissionRecord,
+    bound: ScreeningBound,
+    t: ScreeningSettings,
 ) -> ScreenedOut:
     return ScreenedOut(
         record=record,
@@ -75,7 +77,9 @@ def _over(kept: Sequence[Candidate], cap: int) -> list[NotAssessed]:
 
 
 def screen(
-    records: Sequence[EmissionRecord], unit: Worst | None, settings: AssessmentSettings
+    records: Sequence[EmissionRecord],
+    unit: Worst | None,
+    settings: AssessmentSettings,
 ) -> Screen:
     """Tier 1: the bound of every facility; the ones reaching a threshold all go on, largest first.
 

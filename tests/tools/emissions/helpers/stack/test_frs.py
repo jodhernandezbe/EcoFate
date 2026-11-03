@@ -18,18 +18,25 @@ from tools.emissions.helpers.stack.frs import EisLookup, eis_ids_for_frs
 FRS = "999999999999"
 SETTINGS = replace(load_frs_settings(), eis_path="/f/{frs_id}/EIS/JSON")
 EFSERVICE = replace(
-    load_efservice_settings(), base_url="https://frs.test", delay_seconds=0.0, max_retries=0
+    load_efservice_settings(),
+    base_url="https://frs.test",
+    delay_seconds=0.0,
+    max_retries=0,
 )
 
 
 def _row(
-    eis: object = "1234567", registry: object = FRS, program: object = "EIS"
+    eis: object = "1234567",
+    registry: object = FRS,
+    program: object = "EIS",
 ) -> dict[str, object]:
     return {"registry_id": registry, "pgm_sys_acrnm": program, "pgm_sys_id": eis}
 
 
 def _lookup(
-    body: object, frs: str | int = FRS, status: int = 200
+    body: object,
+    frs: str | int = FRS,
+    status: int = 200,
 ) -> tuple[EisLookup, list[httpx.Request]]:
     seen: list[httpx.Request] = []
 
@@ -38,7 +45,9 @@ def _lookup(
         return httpx.Response(status, json=body)
 
     client = EfserviceClient(
-        EFSERVICE, httpx.Client(transport=httpx.MockTransport(handler)), lambda _s: None
+        EFSERVICE,
+        httpx.Client(transport=httpx.MockTransport(handler)),
+        lambda _s: None,
     )
     return eis_ids_for_frs(frs, client, SETTINGS), seen
 
@@ -101,7 +110,8 @@ def test_invalid_frs_id_makes_no_request(frs: str | int) -> None:
 
 @pytest.mark.parametrize("status", [404, 500])
 def test_http_failure_is_a_warning_not_an_exception(
-    status: int, caplog: pytest.LogCaptureFixture
+    status: int,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     with caplog.at_level(logging.WARNING):
         result, _ = _lookup([], status=status)

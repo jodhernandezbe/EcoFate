@@ -40,7 +40,7 @@ def _facility(facility: Facility) -> list[str]:
             *(receptors.warnings if receptors else []),
             *(met.warnings if met else []),
             *_defaults(receptors, met),
-        ]
+        ],
     )
 
 
@@ -62,7 +62,7 @@ def warning_groups(state: WorkspaceState) -> list[Group]:
             *((facility_label(f), _facility(f)) for f in state.facilities),
             ("Meteorology not attached to a facility", _unattached(state)),
             ("Unattributed results", _unique(f"{u.tool}: {u.reason}" for u in state.unattributed)),
-        ]
+        ],
     )
     return [(title, items) for title, items in groups if items]
 

@@ -10,7 +10,7 @@ from collections.abc import Sequence
 _VALUE = re.compile(
     r"(?P<number>\d+(?:\.\d+)?)"
     r"(?:\s*[x×]\s*10\s*\^?\s*(?P<exponent>[+-]?\d+))?"
-    r"\s+(?P<unit>\S+)"
+    r"\s+(?P<unit>\S+)",
 )
 
 

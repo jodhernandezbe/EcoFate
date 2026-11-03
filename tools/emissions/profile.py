@@ -27,5 +27,8 @@ def operational_profile(record: EmissionRecord) -> OperationalProfile:
     """
     sector_settings = get_cdr_sector_settings()
     return build_profile(
-        record, get_plant_hours_settings(), sector_settings, get_sector_table(sector_settings)
+        record,
+        get_plant_hours_settings(),
+        sector_settings,
+        get_sector_table(sector_settings),
     )

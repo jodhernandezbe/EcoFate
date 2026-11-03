@@ -71,7 +71,9 @@ def test_meteorology_carries_what_the_tool_reported() -> None:
 
 def test_screening_defaults_are_flagged() -> None:
     state = build(
-        weather(source="screening default"), inventory(record()), people(source="screening default")
+        weather(source="screening default"),
+        inventory(record()),
+        people(source="screening default"),
     )
     assert state.meteorology is not None and state.meteorology.screening_default
     assert state.receptors is not None and state.receptors.screening_default
@@ -82,11 +84,11 @@ def test_screening_defaults_are_flagged() -> None:
 
 def test_a_result_that_is_not_json_is_skipped_with_a_warning() -> None:
     state = build(
-        exchange("get_meteorological_boundary", {"latitude": 1.0, "longitude": 2.0}, "oops")
+        exchange("get_meteorological_boundary", {"latitude": 1.0, "longitude": 2.0}, "oops"),
     )
     assert state.meteorology is None
     assert state.warnings == [
-        "Left out a get_meteorological_boundary result: its result was not valid."
+        "Left out a get_meteorological_boundary result: its result was not valid.",
     ]
 
 
@@ -198,14 +200,16 @@ def test_industry_is_attached_by_document_control_number() -> None:
 def test_an_industry_for_an_unknown_document_is_unattributed() -> None:
     body = {"naics_code": None, "naics_title": None, "code_origin": None, "source": None}
     state = build(
-        inventory(record()), exchange("fetch_facility_industry", {"doc_ctrl_num": "NOPE"}, body)
+        inventory(record()),
+        exchange("fetch_facility_industry", {"doc_ctrl_num": "NOPE"}, body),
     )
     assert [u.tool for u in state.unattributed] == ["fetch_facility_industry"]
 
 
 def test_receptors_are_matched_by_coordinates_within_the_tolerance() -> None:
     state = build(
-        inventory(record("A", lat=10.0), record("B", lat=40.0)), people(lat=10.0005, radius=3.0)
+        inventory(record("A", lat=10.0), record("B", lat=40.0)),
+        people(lat=10.0005, radius=3.0),
     )
     assert state.facilities[0].receptors is not None
     assert state.facilities[0].receptors.radius_km == 3.0
@@ -283,7 +287,9 @@ def test_a_pstk_stack_shows_the_scc_description_and_score_of_the_lookup() -> Non
         exchange("lookup_scc_process_description", {"naics_description": "x"}, lookup),
         exchange("fetch_stack_parameters_from_scc", {"scc_code": "30600101"}, base),
         exposure(
-            1.0, [stack_result(1, base, scenario(0.1, None), scenario(0.1, None))], entry(0.1, 0.1)
+            1.0,
+            [stack_result(1, base, scenario(0.1, None), scenario(0.1, None))],
+            entry(0.1, 0.1),
         ),
     )
     shown = state.facilities[0].stacks[0]
@@ -301,7 +307,9 @@ def test_a_pstk_stack_without_a_lookup_has_no_description() -> None:
         inventory(record()),
         exchange("fetch_stack_parameters_from_scc", {"scc_code": "30600101"}, base),
         exposure(
-            1.0, [stack_result(1, base, scenario(0.1, None), scenario(0.1, None))], entry(0.1, 0.1)
+            1.0,
+            [stack_result(1, base, scenario(0.1, None), scenario(0.1, None))],
+            entry(0.1, 0.1),
         ),
     )
     shown = state.facilities[0].stacks[0]
@@ -329,7 +337,10 @@ def test_nei_stacks_get_their_results_when_evaluated() -> None:
 
 
 def evaluated(
-    rate: float, hq: float, risk: float | None = None, number: int = 1
+    rate: float,
+    hq: float,
+    risk: float | None = None,
+    number: int = 1,
 ) -> list[BaseMessage]:
     base = stack(10.0)
     result = stack_result(number, base, scenario(hq, risk), scenario(hq / 2, None))
@@ -439,7 +450,10 @@ def properties(cas: str = "1-1-1") -> list[BaseMessage]:
 
 
 def surrogate(
-    *, direct: bool = False, in_domain: bool = True, cas: str = "1-1-1"
+    *,
+    direct: bool = False,
+    in_domain: bool = True,
+    cas: str = "1-1-1",
 ) -> list[BaseMessage]:
     body: dict[str, object] = {
         "query_cas": cas,
@@ -595,7 +609,7 @@ def test_the_bounds_cover_the_buffer() -> None:
 
 def test_every_facility_is_placed_even_when_the_model_was_shown_only_the_largest() -> None:
     state = build(
-        capped_inventory(record("A"), record("B", lat=20.0), record("C", lat=30.0), shown=1)
+        capped_inventory(record("A"), record("B", lat=20.0), record("C", lat=30.0), shown=1),
     )
     assert [f.frs_id for f in state.facilities] == ["A", "B", "C"]
 
@@ -614,14 +628,17 @@ def test_a_capped_result_without_its_artifact_still_places_what_was_listed() -> 
 
 def test_a_dict_without_facilities_is_left_out() -> None:
     state = build(
-        exchange("query_emissions_inventory", {"cas_number": "1-1-1"}, {"total_found": 0})
+        exchange("query_emissions_inventory", {"cas_number": "1-1-1"}, {"total_found": 0}),
     )
     assert state.facilities == [] and len(state.warnings) == 1
 
 
 def test_an_artifact_that_is_not_a_list_falls_back_to_the_text() -> None:
     messages = exchange(
-        "query_emissions_inventory", {"cas_number": "1-1-1"}, [record("A")], artifact="junk"
+        "query_emissions_inventory",
+        {"cas_number": "1-1-1"},
+        [record("A")],
+        artifact="junk",
     )
     assert [f.frs_id for f in build(messages).facilities] == ["A"]
 
@@ -763,7 +780,9 @@ def test_a_value_a_source_has_is_never_replaced_by_one_the_user_entered() -> Non
     limits = {"oel_twa_mg_m3": 3.2, "oel_source": "OSHA PEL-TWA (PubChem)"}
     supplied = {"oel_twa:1-1-1": 9.0, "density:1-1-1": 5.0}
     chemical = build_workspace(
-        _props(density=0.88, occupational_limits=limits), RULES, supplied=supplied
+        _props(density=0.88, occupational_limits=limits),
+        RULES,
+        supplied=supplied,
     ).chemical
     assert chemical.oel_twa_mg_m3 == 3.2 and chemical.density_g_cm3 == 0.88
     assert chemical.sources["oel_twa"] == "OSHA PEL-TWA (PubChem)"

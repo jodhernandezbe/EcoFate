@@ -41,13 +41,13 @@ def test_conditions_of_use_sorted_by_stage_and_unknown_last() -> None:
     processing = cou.model_copy(update={"lifecycle_stage": "Processing", "cou_category": "P"})
     later = facility("110000000002").model_copy(update={"conditions_of_use": [processing, cou]})
     bare = facility("110000000003").model_copy(
-        update={"conditions_of_use": [], "conditions_note": "no activity reported"}
+        update={"conditions_of_use": [], "conditions_note": "no activity reported"},
     )
     write_risk(doc, WorkspaceState(facilities=[bare, later, plant]), context())
     text = lines(doc)
     start = text.index(
         "Life cycle stage | Condition of use | TRI activity | Facility | "
-        "Hazard quotient, worst case | Cancer risk, worst case | Status"
+        "Hazard quotient, worst case | Cancer risk, worst case | Status",
     )
     rows = [t.split(" | ")[:2] for t in text[start + 1 : start + 5]]
     assert rows == [

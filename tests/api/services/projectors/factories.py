@@ -13,7 +13,10 @@ from config.ui import RiskThresholds, get_ui_settings
 
 RULES = WorkspaceRules(
     thresholds=RiskThresholds(
-        hq_concern=1.0, hq_near_lower=0.5, cancer_lower=1e-6, cancer_upper=1e-4
+        hq_concern=1.0,
+        hq_near_lower=0.5,
+        cancer_lower=1e-6,
+        cancer_upper=1e-4,
     ),
     coordinate_tolerance_deg=1e-3,
     default_radius_km=2.0,
@@ -48,7 +51,11 @@ def exchange(
 
 
 def record(
-    frs_id: str = "F1", lat: float = 10.0, lon: float = -20.0, rate: float = 1.0, **extra: object
+    frs_id: str = "F1",
+    lat: float = 10.0,
+    lon: float = -20.0,
+    rate: float = 1.0,
+    **extra: object,
 ) -> dict[str, object]:
     """One inventory record."""
     return {
@@ -80,7 +87,9 @@ def inventory(*records: dict[str, object], cas: str = "1-1-1") -> list[BaseMessa
 
 
 def capped_inventory(
-    *records: dict[str, object], shown: int, cas: str = "1-1-1"
+    *records: dict[str, object],
+    shown: int,
+    cas: str = "1-1-1",
 ) -> list[BaseMessage]:
     """An inventory as the tool sends it: the model reads ``shown`` records, the program all."""
     listed = {
@@ -91,7 +100,10 @@ def capped_inventory(
         "note": "partial",
     }
     return exchange(
-        "query_emissions_inventory", {"cas_number": cas}, listed, artifact=list(records)
+        "query_emissions_inventory",
+        {"cas_number": cas},
+        listed,
+        artifact=list(records),
     )
 
 
@@ -123,7 +135,10 @@ def scenario(hq: float | None, risk: float | None, conc: float | None = 5.0) -> 
 
 
 def stack_result(
-    number: int, base: dict[str, object], worst: dict[str, object], rep: dict[str, object]
+    number: int,
+    base: dict[str, object],
+    worst: dict[str, object],
+    rep: dict[str, object],
 ) -> dict[str, object]:
     """One per-stack exposure result echoing its stack."""
     return {
@@ -167,7 +182,9 @@ def exposure(
 
 
 def weather(
-    lat: float = 10.0, lon: float = -20.0, source: str = "synthetic 2020"
+    lat: float = 10.0,
+    lon: float = -20.0,
+    source: str = "synthetic 2020",
 ) -> list[BaseMessage]:
     body: dict[str, object] = {
         "wind_speed": 3.0,
@@ -181,7 +198,10 @@ def weather(
 
 
 def people(
-    lat: float = 10.0, lon: float = -20.0, radius: float | None = 3.0, source: str = "synthetic ACS"
+    lat: float = 10.0,
+    lon: float = -20.0,
+    radius: float | None = 3.0,
+    source: str = "synthetic ACS",
 ) -> list[BaseMessage]:
     body: dict[str, object] = {
         "total_population": 1000,

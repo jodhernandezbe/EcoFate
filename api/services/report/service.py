@@ -46,7 +46,10 @@ def _state(threads: ThreadStore, thread_id: str) -> WorkspaceState:
 
 
 def thread_report(
-    threads: ThreadStore, thread_id: str, settings: UiSettings, when: datetime
+    threads: ThreadStore,
+    thread_id: str,
+    settings: UiSettings,
+    when: datetime,
 ) -> ReportFile:
     """Build the report of a held, idle thread with findings; never runs the agent or a tool.
 

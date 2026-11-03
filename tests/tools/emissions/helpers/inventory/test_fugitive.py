@@ -14,7 +14,11 @@ FUGITIVE = "AIR FUG"
 
 
 def _record(
-    frs_id: str, medium: str, release: float, unit: str = "Pounds", year: int = 2020
+    frs_id: str,
+    medium: str,
+    release: float,
+    unit: str = "Pounds",
+    year: int = 2020,
 ) -> EmissionRecord:
     base = emission_record(frs_id, 1.0)
     return {
@@ -50,7 +54,9 @@ def test_fugitive_only_facility_is_not_a_stack_source() -> None:
 
 def test_a_reported_zero_stays_zero() -> None:
     folded = fold_fugitive(
-        [_record("A", "AIR STACK", 1.0), _record("A", FUGITIVE, 0.0)], FUGITIVE, ALIASES
+        [_record("A", "AIR STACK", 1.0), _record("A", FUGITIVE, 0.0)],
+        FUGITIVE,
+        ALIASES,
     )
     assert folded[0]["fugitive_release_kg_per_year"] == 0.0
 

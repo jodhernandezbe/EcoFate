@@ -107,7 +107,10 @@ def read_pstk(pstk: PstkSettings) -> tuple[PstkTable | None, str | None]:
 
 
 def _result(
-    values: Mapping[str, float], source: StackSource, scc: str | None, warnings: list[str]
+    values: Mapping[str, float],
+    source: StackSource,
+    scc: str | None,
+    warnings: list[str],
 ) -> StackParameters:
     return StackParameters(
         stack_height=values["stack_height"],
@@ -133,7 +136,9 @@ def _duplicate_warning(table: PstkTable, scc: str) -> list[str]:
 
 
 def _from_pstk(
-    scc: str, settings: StackSettings, aliases: Mapping[str, str] | None
+    scc: str,
+    settings: StackSettings,
+    aliases: Mapping[str, str] | None,
 ) -> StackParameters:
     table, problem = read_pstk(settings.pstk)
     if table is None:
@@ -149,7 +154,9 @@ def _from_pstk(
 
 
 def scc_stack_parameters(
-    scc_code: str | int | None, settings: StackSettings, aliases: Mapping[str, str] | None
+    scc_code: str | int | None,
+    settings: StackSettings,
+    aliases: Mapping[str, str] | None,
 ) -> StackParameters:
     """Look up default stack parameters for an SCC, falling back to the global default.
 

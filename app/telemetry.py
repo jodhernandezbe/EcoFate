@@ -58,7 +58,8 @@ def scrubbing_options(settings: TelemetrySettings) -> logfire.ScrubbingOptions:
         return key in exact or key.startswith(prefixes)
 
     return logfire.ScrubbingOptions(
-        extra_patterns=list(_KEY_PATTERN_SOURCES), callback=_hide_keys(own)
+        extra_patterns=list(_KEY_PATTERN_SOURCES),
+        callback=_hide_keys(own),
     )
 
 
@@ -99,7 +100,8 @@ def flush_telemetry(settings: TelemetrySettings) -> None:
 
 
 def run_tracer(
-    settings: TelemetrySettings, client: Client | None = None
+    settings: TelemetrySettings,
+    client: Client | None = None,
 ) -> BaseCallbackHandler | None:
     """The callback that records a run's chains, model calls and tool calls as spans, nested in
     the span that is current when the run starts; None when monitoring is disabled.
@@ -118,7 +120,9 @@ class SessionSpan:
     monitoring is disabled."""
 
     def __init__(
-        self, span: logfire.LogfireSpan | None, settings: TelemetrySettings | None
+        self,
+        span: logfire.LogfireSpan | None,
+        settings: TelemetrySettings | None,
     ) -> None:
         self._span = span
         self._settings = settings
@@ -150,7 +154,8 @@ class SessionSpan:
 
 
 def usage_fields(
-    calls: Sequence[CallUsage], pricing: Mapping[str, ModelPrice]
+    calls: Sequence[CallUsage],
+    pricing: Mapping[str, ModelPrice],
 ) -> dict[str, int | float | bool | str]:
     """The usage attributes of ``calls``; an unpriced cost is left out, never recorded as 0."""
     total = summarize_calls(calls, pricing)
@@ -169,7 +174,11 @@ def usage_fields(
 
 @contextmanager
 def session_span(
-    settings: TelemetrySettings, name: str, session_id: str, question: str, model: str
+    settings: TelemetrySettings,
+    name: str,
+    session_id: str,
+    question: str,
+    model: str,
 ) -> Generator[SessionSpan]:
     """Open the span of a command-line run or a web turn.
 

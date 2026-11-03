@@ -42,7 +42,8 @@ def _stack_list(stacks: object) -> list[StackParameters]:
 def _numbered(number: int, stack: StackParameters, result: object) -> StackExposure:
     values = {name: stack.get(name) for name in _STACK_FIELDS}
     return cast(
-        StackExposure, {**cast(dict[str, object], result), "stack_number": number, **values}
+        StackExposure,
+        {**cast(dict[str, object], result), "stack_number": number, **values},
     )
 
 
@@ -75,7 +76,7 @@ def _facility_notes(given: int, evaluated: int) -> list[str]:
     if evaluated < given:
         return [
             f"{given - evaluated} of {given} stacks could not be evaluated; "
-            "their results are null and their warnings say why"
+            "their results are null and their warnings say why",
         ]
     return []
 
@@ -108,7 +109,9 @@ def assess_facility(
     listed = _stack_list(stacks)
     results = [
         _numbered(
-            n, s, assess_exposure(emission_rate, s, meteorology, population, toxicity, settings)
+            n,
+            s,
+            assess_exposure(emission_rate, s, meteorology, population, toxicity, settings),
         )
         for n, s in enumerate(listed, start=1)
     ]

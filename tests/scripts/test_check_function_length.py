@@ -56,7 +56,8 @@ def test_empty_and_docstring_only_functions_are_fine() -> None:
 
 
 def test_main_reports_and_sets_exit_status(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     bad = tmp_path / "bad.py"
     bad.write_text(_function(19))

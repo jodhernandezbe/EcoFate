@@ -31,7 +31,8 @@ def _file(tmp_path: Path, rows: list[list[str]]) -> CdrSectorSettings:
 
 def test_longest_prefix_wins(tmp_path: Path) -> None:
     settings = _file(
-        tmp_path, [["325", "IS1", "General", "2007"], ["3251", "IS2", "Basic", "2007"]]
+        tmp_path,
+        [["325", "IS1", "General", "2007"], ["3251", "IS2", "Basic", "2007"]],
     )
     table = load_sector_table(settings)
     found, why = sector_for("325199", table, settings)

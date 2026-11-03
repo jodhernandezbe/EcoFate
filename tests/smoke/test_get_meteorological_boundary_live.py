@@ -19,7 +19,7 @@ YEAR = 2022
 @pytest.fixture(scope="module")
 def conditions() -> Meteorology:
     return get_meteorological_boundary.invoke(
-        {"latitude": 41.7, "longitude": -71.15, "reporting_year": YEAR}
+        {"latitude": 41.7, "longitude": -71.15, "reporting_year": YEAR},
     )
 
 
@@ -43,7 +43,7 @@ def test_new_england_wind_is_not_from_the_east(conditions: Meteorology) -> None:
 
 def test_future_year_returns_a_labelled_default() -> None:
     result = get_meteorological_boundary.invoke(
-        {"latitude": 41.7, "longitude": -71.15, "reporting_year": 2999}
+        {"latitude": 41.7, "longitude": -71.15, "reporting_year": 2999},
     )
     assert result["source"] == "screening default"
     assert "2999" in result["warnings"][0]

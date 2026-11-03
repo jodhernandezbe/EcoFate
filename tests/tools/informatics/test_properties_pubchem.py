@@ -25,7 +25,9 @@ DENSITY: PropertyValue = {"value": 0.25, "unit": "g/cm^3", "source": "predicted"
 
 
 def _run(
-    comptox: ComptoxLookup, pubchem: PubchemFallback | None, cas: str = CAS
+    comptox: ComptoxLookup,
+    pubchem: PubchemFallback | None,
+    cas: str = CAS,
 ) -> ChemicalProperties:
     return lookup_chemical_properties(cas, comptox, get_comptox_settings(), ALIASES, pubchem)
 
@@ -135,7 +137,9 @@ def test_end_to_end_unclear_statements_are_not_used() -> None:
 def test_pubchem_down_gives_the_comptox_result_and_a_warning() -> None:
     url = SETTINGS.name_url(CAS)
     down = PubchemLookup(
-        FakeJson({url: HttpRequestError("failed after 3 attempts", 503)}), SETTINGS, ALIASES
+        FakeJson({url: HttpRequestError("failed after 3 attempts", 503)}),
+        SETTINGS,
+        ALIASES,
     )
     comptox = StubComptox(weight=50.0, name="x")
     without = _run(comptox, None)

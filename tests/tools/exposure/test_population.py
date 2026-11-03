@@ -33,7 +33,7 @@ FEATURE = {
         F["land_area"]: 2 * AREA,
         F["latitude"]: "+41.5000000",
         F["longitude"]: "-071.2000000",
-    }
+    },
 }
 ROW = ["1000", "100", "300", "200", "99", "001", "000100"]
 
@@ -98,7 +98,8 @@ def test_the_key_is_read_from_the_configured_variable(requests_seen: list[httpx.
 
 
 def test_no_key_returns_the_default_without_a_request(
-    requests_seen: list[httpx.Request], monkeypatch: pytest.MonkeyPatch
+    requests_seen: list[httpx.Request],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv(SETTINGS.api_key_env_var)
     result = get_population_receptors.invoke({"latitude": 41.5, "longitude": -71.2})
@@ -111,7 +112,7 @@ def test_invalid_input_returns_the_default_without_a_request(
     requests_seen: list[httpx.Request],
 ) -> None:
     result = get_population_receptors.invoke(
-        {"latitude": 41.5, "longitude": -71.2, "radius_km": 500.0}
+        {"latitude": 41.5, "longitude": -71.2, "radius_km": 500.0},
     )
     assert result["source"] == "screening default"
     assert "radius" in result["warnings"][0]
@@ -127,7 +128,8 @@ def test_the_request_key_is_preferred_over_the_environment(
 
 
 def test_a_request_key_alone_is_enough(
-    requests_seen: list[httpx.Request], monkeypatch: pytest.MonkeyPatch
+    requests_seen: list[httpx.Request],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv(SETTINGS.api_key_env_var)
     with CENSUS_KEY.provide(SecretStr("turn-census-key")):  # pragma: allowlist secret
@@ -137,7 +139,8 @@ def test_a_request_key_alone_is_enough(
 
 
 def test_the_key_of_one_request_is_not_used_by_the_next(
-    requests_seen: list[httpx.Request], monkeypatch: pytest.MonkeyPatch
+    requests_seen: list[httpx.Request],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv(SETTINGS.api_key_env_var)
     with CENSUS_KEY.provide(SecretStr("first-turn-key")):  # pragma: allowlist secret

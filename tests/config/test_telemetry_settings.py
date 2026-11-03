@@ -113,14 +113,18 @@ def test_shipped_settings_load() -> None:
     ],
 )
 def test_invalid_value_names_the_key(
-    tmp_path: Path, line_start: str, new_line: str, key: str
+    tmp_path: Path,
+    line_start: str,
+    new_line: str,
+    key: str,
 ) -> None:
     with pytest.raises(ValueError, match=key):
         load_telemetry_settings(_replace(tmp_path, line_start, new_line))
 
 
 @pytest.mark.parametrize(
-    "missing", ["[telemetry]", "[telemetry.spans]", "[telemetry.attributes]", "[telemetry.bridge]"]
+    "missing",
+    ["[telemetry]", "[telemetry.spans]", "[telemetry.attributes]", "[telemetry.bridge]"],
 )
 def test_missing_section(tmp_path: Path, missing: str) -> None:
     text = TELEMETRY.replace(missing, "[other]")

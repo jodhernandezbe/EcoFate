@@ -17,7 +17,9 @@ class FakeQuery:
     """Answers every statement with ``rows``, or raises ``failure``; remembers the requests."""
 
     def __init__(
-        self, rows: Sequence[Mapping[str, object]] | None = None, failure: Exception | None = None
+        self,
+        rows: Sequence[Mapping[str, object]] | None = None,
+        failure: Exception | None = None,
     ) -> None:
         self.rows_to_return = list(rows or [])
         self.failure = failure
@@ -41,13 +43,15 @@ def opener(query: FakeQuery) -> QueryOpener:
 
     @asynccontextmanager
     async def open_query(
-        token: SecretStr, settings: TelemetrySettings
+        token: SecretStr,
+        settings: TelemetrySettings,
     ) -> AsyncGenerator[LogfireQuery]:
         query.tokens.append(token.get_secret_value())
         yield query
 
     def opened(
-        token: SecretStr, settings: TelemetrySettings
+        token: SecretStr,
+        settings: TelemetrySettings,
     ) -> AbstractAsyncContextManager[LogfireQuery]:
         return open_query(token, settings)
 

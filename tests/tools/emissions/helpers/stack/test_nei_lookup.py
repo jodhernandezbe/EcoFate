@@ -28,7 +28,10 @@ def _settings(tmp_path: Path, rows: str) -> StackSettings:
 
 
 def _run(
-    tmp_path: Path, body: object, rows: str = "", frs: str | int = FRS
+    tmp_path: Path,
+    body: object,
+    rows: str = "",
+    frs: str | int = FRS,
 ) -> tuple[NeiStackResult, list[httpx.Request]]:
     seen: list[httpx.Request] = []
 
@@ -37,7 +40,9 @@ def _run(
         return httpx.Response(200, json=body)
 
     client = EfserviceClient(
-        EFSERVICE, httpx.Client(transport=httpx.MockTransport(handler)), lambda _s: None
+        EFSERVICE,
+        httpx.Client(transport=httpx.MockTransport(handler)),
+        lambda _s: None,
     )
     result = nei_stack_result(frs, client, FRS_SETTINGS, _settings(tmp_path, rows), None)
     return result, seen
@@ -113,7 +118,9 @@ def test_eis_ids_given_skip_the_frs_lookup(tmp_path: Path) -> None:
         raise AssertionError("no request expected")
 
     client = EfserviceClient(
-        EFSERVICE, httpx.Client(transport=httpx.MockTransport(fail)), lambda _s: None
+        EFSERVICE,
+        httpx.Client(transport=httpx.MockTransport(fail)),
+        lambda _s: None,
     )
     rows = "1000001,10,3,10,200\n"
     result = nei_stack_result(
@@ -132,11 +139,16 @@ def test_an_empty_eis_list_falls_back_to_the_frs_lookup(tmp_path: Path) -> None:
     client = EfserviceClient(
         EFSERVICE,
         httpx.Client(
-            transport=httpx.MockTransport(lambda _r: httpx.Response(200, json=_eis("1000001")))
+            transport=httpx.MockTransport(lambda _r: httpx.Response(200, json=_eis("1000001"))),
         ),
         lambda _s: None,
     )
     result = nei_stack_result(
-        FRS, client, FRS_SETTINGS, _settings(tmp_path, "1000001,10,3,10,200\n"), None, eis_ids=[]
+        FRS,
+        client,
+        FRS_SETTINGS,
+        _settings(tmp_path, "1000001,10,3,10,200\n"),
+        None,
+        eis_ids=[],
     )
     assert result["eis_ids"] == ["1000001"]

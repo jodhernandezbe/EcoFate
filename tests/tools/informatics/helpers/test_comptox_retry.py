@@ -43,7 +43,10 @@ class Service:
         raise AssertionError(f"unscripted {request.url.path}")
 
     def lookup(
-        self, retries: int = 2, backoff: float = 3.0, with_iris: bool = False
+        self,
+        retries: int = 2,
+        backoff: float = 3.0,
+        with_iris: bool = False,
     ) -> ComptoxLookup:
         settings = replace(
             get_comptox_settings(),
@@ -160,7 +163,7 @@ def test_one_flaky_request_does_not_lose_the_others() -> None:
             SEARCH: [_ok(CHEM)],
             "/ctx-api/chemical/detail": [httpx.Response(502), _ok(detail)],
             TOXVAL: [_ok([RFC])],
-        }
+        },
     )
     lookup = service.lookup()
     assert lookup.get_molecular_weight(CAS) == 78.0

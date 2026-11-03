@@ -95,6 +95,7 @@ def load_frs_eis_settings(path: Path | None = None) -> FrsEisSettings:
         ValueError: If a key is missing or invalid; the message names the key.
     """
     table = section(read_toml(path), _NAME)
+    max_twin_km = require_number(table, "max_twin_distance_km", minimum=1e-9, name=_NAME)
     return FrsEisSettings(
         base_url=_text(table, "base_url"),
         eis_path=_template(table, "eis_path", "{frs_ids}"),
@@ -103,9 +104,7 @@ def load_frs_eis_settings(path: Path | None = None) -> FrsEisSettings:
         twin_single_path=_template(table, "twin_single_path", "{name}", "{state}"),
         **_fields(table),
         batch_size=require_int(table, "batch_size", minimum=1, name=_NAME),
-        max_twin_distance_km=require_number(
-            table, "max_twin_distance_km", minimum=1e-9, name=_NAME
-        ),
+        max_twin_distance_km=max_twin_km,
         twin_list_pattern=_pattern(table),
         twin_batch_size=require_int(table, "twin_batch_size", minimum=1, name=_NAME),
         twin_workers=require_int(table, "twin_workers", minimum=1, name=_NAME),

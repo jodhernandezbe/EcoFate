@@ -20,7 +20,10 @@ STATUS_LABELS = {"below": "Below", "near": "Near", "above": "Above"}
 
 
 def _row(
-    label: str, extremum: Extremum | None, reason: str | None, ctx: ReportContext
+    label: str,
+    extremum: Extremum | None,
+    reason: str | None,
+    ctx: ReportContext,
 ) -> list[str]:
     if extremum is None:
         return [label, ctx.fmt.absent(reason), "", "", ""]

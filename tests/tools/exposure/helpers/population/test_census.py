@@ -47,7 +47,10 @@ def _client(handler: Callable[[httpx.Request], httpx.Response]) -> RetryingClien
 
 
 def _feature(
-    state: object = "99", county: object = "001", tract: object = "000100", area: object = 1000
+    state: object = "99",
+    county: object = "001",
+    tract: object = "000100",
+    area: object = 1000,
 ) -> dict[str, object]:
     return {
         "attributes": {
@@ -55,12 +58,13 @@ def _feature(
             F["county"]: county,
             F["tract"]: tract,
             F["land_area"]: area,
-        }
+        },
     }
 
 
 def _tracts(
-    body: object, status: int = 200
+    body: object,
+    status: int = 200,
 ) -> tuple[list[Tract] | CensusError, list[httpx.Request]]:
     seen: list[httpx.Request] = []
 
@@ -90,7 +94,9 @@ def _table(*rows: list[object]) -> list[list[object]]:
 
 
 def _counts(
-    body: object | None, status: int = 200, headers: dict[str, str] | None = None
+    body: object | None,
+    status: int = 200,
+    headers: dict[str, str] | None = None,
 ) -> tuple[dict[str, Counts | None] | CensusError, list[httpx.Request]]:
     seen: list[httpx.Request] = []
 
@@ -179,7 +185,7 @@ def test_counts_by_tract() -> None:
         _table(
             ["1000", "50", "200", "150", "99", "001", "000100"],
             ["2000", "100", "400", "300", "99", "001", "000200"],
-        )
+        ),
     )
     assert result == {
         "000100": Counts(1000.0, 50.0, 200.0, 150.0),
@@ -220,7 +226,8 @@ def test_a_table_with_only_a_header_is_empty() -> None:
 
 
 @pytest.mark.parametrize(
-    "body", [{"a": 1}, [], "text", [HEADER[:3], ["1", "2", "3"]], [["x"], ["1"]]]
+    "body",
+    [{"a": 1}, [], "text", [HEADER[:3], ["1", "2", "3"]], [["x"], ["1"]]],
 )
 def test_bad_acs_answers_are_errors(body: object) -> None:
     result, _ = _counts(body)
@@ -238,7 +245,8 @@ def test_bad_acs_answers_are_errors(body: object) -> None:
     ],
 )
 def test_a_refused_key_is_reported_and_not_retried(
-    status: int, headers: dict[str, str] | None
+    status: int,
+    headers: dict[str, str] | None,
 ) -> None:
     result, seen = _counts(None, status=status, headers=headers)
     assert isinstance(result, CensusError)

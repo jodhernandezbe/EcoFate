@@ -72,7 +72,10 @@ def test_stable_class_needs_a_gradient() -> None:
 
 def test_gradient_is_ignored_for_unstable_classes() -> None:
     assert final_plume_rise(24.515, 5.0, "C", 300.0, 0.02) == final_plume_rise(
-        24.515, 5.0, "C", 300.0
+        24.515,
+        5.0,
+        "C",
+        300.0,
     )
 
 
@@ -85,7 +88,11 @@ def test_zero_flux_has_no_rise() -> None:
 def test_stronger_wind_lowers_the_rise(cls: str) -> None:
     gradient = 0.035 if cls == "F" else None
     assert final_plume_rise(24.515, 6.0, cls, 300.0, gradient) < final_plume_rise(
-        24.515, 3.0, cls, 300.0, gradient
+        24.515,
+        3.0,
+        cls,
+        300.0,
+        gradient,
     )
 
 

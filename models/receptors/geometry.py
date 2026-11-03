@@ -12,7 +12,7 @@ def _check_point(latitude: float, longitude: float, name: str) -> None:
     finite = all(not isinstance(v, bool) and math.isfinite(v) for v in (latitude, longitude))
     if not finite or not -90.0 <= latitude <= 90.0 or not -180.0 <= longitude <= 180.0:
         raise ValueError(
-            f"{name} must be a finite latitude in [-90, 90] and longitude in [-180, 180]"
+            f"{name} must be a finite latitude in [-90, 90] and longitude in [-180, 180]",
         )
 
 

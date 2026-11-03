@@ -38,7 +38,7 @@ class Cassette:
     """Recorded outputs, keyed by tool name and canonical arguments."""
 
     outputs: Mapping[str, Mapping[str, object]] = field(
-        default_factory=lambda: dict[str, Mapping[str, object]]()
+        default_factory=lambda: dict[str, Mapping[str, object]](),
     )
 
     @classmethod
@@ -51,7 +51,7 @@ class Cassette:
             {
                 tool: {call_key(cast(Mapping[str, object], e["args"])): e["output"] for e in rows}
                 for tool, rows in raw.items()
-            }
+            },
         )
 
     def lookup(self, tool: str, args: Mapping[str, object]) -> tuple[bool, object]:
@@ -137,7 +137,9 @@ class Recorder:
 
 
 def replay_tools(
-    tools: Sequence[BaseTool], cassette: Cassette, live_tools: Collection[str]
+    tools: Sequence[BaseTool],
+    cassette: Cassette,
+    live_tools: Collection[str],
 ) -> list[BaseTool]:
     """Return the tools with network tools replayed from ``cassette``.
 

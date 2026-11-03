@@ -73,7 +73,11 @@ def _receptor(tract: TractReceptor, concentration: float, maximum: float) -> Sce
 
 
 def _evaluate(
-    tracts: list[TractReceptor], rate: float, stack: Stack, weather: Weather, air: Atmosphere
+    tracts: list[TractReceptor],
+    rate: float,
+    stack: Stack,
+    weather: Weather,
+    air: Atmosphere,
 ) -> tuple[list[ScenarioReceptor], int]:
     """Each tract in the model's range with its concentration, and how many were out of range."""
     found: list[ScenarioReceptor] = []
@@ -104,7 +108,7 @@ def _note(found: list[ScenarioReceptor], listed: int, outside: int, total: int) 
         near = min(found, key=lambda r: r["distance_m"] or 0.0)
         parts.append(
             "no resident lives where the maximum falls; the nearest populated tract "
-            f"({near['label']}) has {near['fraction_of_maximum']:.2g} of the maximum"
+            f"({near['label']}) has {near['fraction_of_maximum']:.2g} of the maximum",
         )
     elif not found:
         parts.append("no listed tract lies where the model applies")

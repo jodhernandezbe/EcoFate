@@ -126,7 +126,9 @@ def _resolve(cas: str, services: ReadAcrossServices, warnings: list[str]) -> _Qu
 
 
 def _similarities(
-    query: _Query, candidates: Catalog, services: ReadAcrossServices
+    query: _Query,
+    candidates: Catalog,
+    services: ReadAcrossServices,
 ) -> tuple[Scores, Scores, Scores] | str:
     """Cosine, Tanimoto and hybrid score of the query against every candidate.
 
@@ -184,7 +186,9 @@ def _best_match(
 
 
 def _score(
-    query: _Query, candidates: Catalog, services: ReadAcrossServices
+    query: _Query,
+    candidates: Catalog,
+    services: ReadAcrossServices,
 ) -> ReadAcrossMatch | str:
     """The best candidate for a resolved query, or a reason why it could not be scored."""
     scores = _similarities(query, candidates, services)
@@ -200,7 +204,9 @@ def _candidates(
 ) -> tuple[Catalog, list[str]]:
     """The candidate surrogates left by the optional filters, with any filter warnings."""
     return filter_candidates(
-        services.catalog, require_benchmarks=require_benchmarks, naics_prefix=naics_prefix
+        services.catalog,
+        require_benchmarks=require_benchmarks,
+        naics_prefix=naics_prefix,
     )
 
 
@@ -215,7 +221,10 @@ def _domain_warning(match: ReadAcrossMatch, threshold: float) -> str | None:
 
 
 def _by_similarity(
-    cas: str, candidates: Catalog, services: ReadAcrossServices, warnings: list[str]
+    cas: str,
+    candidates: Catalog,
+    services: ReadAcrossServices,
+    warnings: list[str],
 ) -> ReadAcrossMatch:
     """Resolve the chemical on PubChem and pick the most similar candidate."""
     query = _resolve(cas, services, warnings)
@@ -251,7 +260,10 @@ def _category_warning(cas: str, categories: tuple[Category, ...]) -> str:
 
 
 def _own_structure(
-    cas: str, candidates: Catalog, services: ReadAcrossServices, warnings: list[str]
+    cas: str,
+    candidates: Catalog,
+    services: ReadAcrossServices,
+    warnings: list[str],
 ) -> tuple[str | None, float | None]:
     """The member's SMILES and molecular weight (g/mol): from the catalog, else PubChem."""
     row = candidates.index_of(cas)

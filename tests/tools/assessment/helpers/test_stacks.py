@@ -45,7 +45,7 @@ def test_matches_below_the_score_floor_or_without_pstk_rows_are_skipped_and_dupl
     )
     choice = choose_stacks(record(naics_title="Synthetic Milling"), fake.steps(), SETTINGS)
     assert [s["scc"] for s in choice.stacks] == [
-        "2"
+        "2",
     ]  # 1 has no PSTK row, 3 repeats 2, 4 is too weak
 
 
@@ -81,7 +81,9 @@ def test_an_unknown_industry_goes_to_the_default_without_a_search() -> None:
 def test_eis_ids_without_nei_rows_fall_back_and_say_so() -> None:
     fake = FakeSteps(matches=[match("1", 0.9)], pstk_rows={"1": stack(15, "PSTK", "1")})
     choice = choose_stacks(
-        record(eis_ids=["123"], naics_title="Synthetic Milling"), fake.steps(), SETTINGS
+        record(eis_ids=["123"], naics_title="Synthetic Milling"),
+        fake.steps(),
+        SETTINGS,
     )
     assert choice.tier == "PSTK"
     assert choice.notes[0] == "the NEI has no usable stack for EIS ID 123"
@@ -91,6 +93,8 @@ def test_no_match_and_all_matches_without_rows_are_told_apart() -> None:
     none = choose_stacks(record(naics_title="T"), FakeSteps().steps(), SETTINGS)
     assert "no SCC process matched the industry 'T'" in none.notes
     rowless = choose_stacks(
-        record(naics_title="T"), FakeSteps(matches=[match("1", 0.9)]).steps(), SETTINGS
+        record(naics_title="T"),
+        FakeSteps(matches=[match("1", 0.9)]).steps(),
+        SETTINGS,
     )
     assert "none of the 1 SCC processes matching 'T' has a PSTK stack" in rowless.notes

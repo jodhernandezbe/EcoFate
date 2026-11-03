@@ -14,7 +14,8 @@ from config.telemetry import TelemetrySettings
 
 
 def test_the_answer_goes_to_stdout_and_the_cost_summary_to_stderr(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     model = get_agent_settings().model
     calls = (CallUsage(model, 1000, 0, 100), CallUsage(model, 500, 0, 50))

@@ -117,7 +117,9 @@ def known_smiles(settings: ReadAcrossSettings) -> dict[str, str]:
 
 
 def _structure(
-    chemical: TriChemical, known: Mapping[str, str], services: Services
+    chemical: TriChemical,
+    known: Mapping[str, str],
+    services: Services,
 ) -> Structure | str:
     """The chemical's structure from the cache or PubChem, or the reason there is none."""
     smiles = known.get(chemical.cas)
@@ -153,7 +155,8 @@ def _as_columns(rows: Sequence[dict[str, object]], columns: CatalogColumns) -> C
 
 
 def _by_shard(
-    rows: Sequence[dict[str, object]], settings: ReadAcrossSettings
+    rows: Sequence[dict[str, object]],
+    settings: ReadAcrossSettings,
 ) -> dict[str, list[dict[str, object]]]:
     """Group rows by their CAS prefix, each shard sorted by CAS number.
 
@@ -195,7 +198,8 @@ def write_shards(rows: Sequence[dict[str, object]], settings: ReadAcrossSettings
 
 
 def category_candidates(
-    index: CategoryIndex, listed: set[str]
+    index: CategoryIndex,
+    listed: set[str],
 ) -> tuple[list[Candidate], dict[str, int]]:
     """The organic category members that are not discrete TRI chemicals, and how the rest fell."""
     counts = {"skipped_inorganic": 0, "already_listed": 0}
@@ -208,14 +212,18 @@ def category_candidates(
         else:
             found.append(
                 Candidate(
-                    TriChemical(member.cas, member.name), SOURCE_TRI_CATEGORY, member.categories
-                )
+                    TriChemical(member.cas, member.name),
+                    SOURCE_TRI_CATEGORY,
+                    member.categories,
+                ),
             )
     return found, counts
 
 
 def _resolve_all(
-    candidates: Sequence[Candidate], known: Mapping[str, str], services: Services
+    candidates: Sequence[Candidate],
+    known: Mapping[str, str],
+    services: Services,
 ) -> tuple[list[dict[str, object]], list[tuple[str, str]]]:
     """A catalog row for each candidate with a usable structure, and the ones without."""
     built: list[dict[str, object]] = []
@@ -249,7 +257,12 @@ def build_catalog(services: Services) -> BuildReport:
     reused = sum(1 for row in built if row[settings.columns.cas] in known)
     outcome = _category_outcome(counts, members, built, settings, unresolved)
     return BuildReport(
-        len(built), reused, listed.dropped, tuple(unresolved), tuple(shards), outcome
+        len(built),
+        reused,
+        listed.dropped,
+        tuple(unresolved),
+        tuple(shards),
+        outcome,
     )
 
 
@@ -270,7 +283,7 @@ def report_lines(report: BuildReport, target: Path) -> list[str]:
     """Human-readable summary of a build."""
     lines = [
         f"wrote {report.kept} chemicals to {len(report.shards)} shards in {target} "
-        f"({report.reused} SMILES reused)"
+        f"({report.reused} SMILES reused)",
     ]
     lines += [f"dropped {count}: {reason}" for reason, count in sorted(report.dropped.items())]
     lines += [f"category members {reason}: {n}" for reason, n in sorted(report.categories.items())]

@@ -140,8 +140,13 @@ def _band_dose(
         raise ValueError(f"no inhalation rate or body weight for age band {band!r}")
     return float(
         average_daily_dose(
-            mg_per_m3, rates[band], frequency, duration, weights[band], duration * _DAYS_PER_YEAR
-        )
+            mg_per_m3,
+            rates[band],
+            frequency,
+            duration,
+            weights[band],
+            duration * _DAYS_PER_YEAR,
+        ),
     )
 
 

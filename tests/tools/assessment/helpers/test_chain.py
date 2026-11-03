@@ -106,7 +106,11 @@ def test_a_setup_error_is_raised() -> None:
 
 def test_worst_case_only_facility_still_has_a_worker_result_and_profile() -> None:
     refined = refine_one(
-        record("A"), None, TOXICITY, FakeSteps(nei_stacks={"A": [stack(10.0)]}).steps(), SETTINGS
+        record("A"),
+        None,
+        TOXICITY,
+        FakeSteps(nei_stacks={"A": [stack(10.0)]}).steps(),
+        SETTINGS,
     )
     item = worst_case_only(refined, None)
     assert item["level"] == "worst case only"

@@ -47,7 +47,8 @@ def test_density_in_kg_per_m3_is_converted() -> None:
 
 def test_agreeing_statements_give_their_median() -> None:
     found = _extract(
-        _pressure("6 mmHg at 20 °C", "8 mmHg at 25 °C", "7 mmHg at 22 °C"), "vapor_pressure"
+        _pressure("6 mmHg at 20 °C", "8 mmHg at 25 °C", "7 mmHg at 22 °C"),
+        "vapor_pressure",
     )
     assert found.value is not None and found.value.value == 7.0 and found.value.count == 3
 
@@ -85,7 +86,8 @@ def test_density_without_a_temperature_is_allowed_when_it_has_a_unit() -> None:
 
 def test_unitless_density_is_refused() -> None:
     found = _extract(
-        record(density=[info("0.5"), info("Relative density (water = 1): 0.5")]), "density"
+        record(density=[info("0.5"), info("Relative density (water = 1): 0.5")]),
+        "density",
     )
     assert found.value is None and found.reason is not None
 

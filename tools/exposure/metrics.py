@@ -104,5 +104,10 @@ def calculate_exposure_metrics(
         These are screening estimates, not regulatory determinations.
     """
     return assess_facility(
-        emission_rate, stacks, meteorology, population, toxicity, get_exposure_settings()
+        emission_rate,
+        stacks,
+        meteorology,
+        population,
+        toxicity,
+        get_exposure_settings(),
     )

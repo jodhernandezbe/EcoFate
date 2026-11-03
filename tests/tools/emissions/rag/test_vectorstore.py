@@ -20,7 +20,11 @@ DOCUMENTS = [
 
 def _index(tmp_path: Path, embeddings: KeywordEmbeddings) -> VectorIndex:
     return VectorIndex(
-        tmp_path / "idx", "test_collection", embeddings, batch_size=2, query_cache_size=2
+        tmp_path / "idx",
+        "test_collection",
+        embeddings,
+        batch_size=2,
+        query_cache_size=2,
     )
 
 

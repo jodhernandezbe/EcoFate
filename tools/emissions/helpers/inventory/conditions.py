@@ -134,7 +134,9 @@ class ConditionsMapper:
         """The conditions of ``activities`` (Form R sections); ``seen`` is whether TRI sent any."""
         if self._crosswalk.unavailable:
             return Conditions(
-                [], [], f"conditions of use unavailable: {self._crosswalk.unavailable}"
+                [],
+                [],
+                f"conditions of use unavailable: {self._crosswalk.unavailable}",
             )
         if not seen:
             return Conditions([], [], NO_ACTIVITY_DATA)

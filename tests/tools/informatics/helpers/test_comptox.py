@@ -21,7 +21,8 @@ ENV = {"TEST_KEY_VAR": "test-key"}  # pragma: allowlist secret
 
 
 def _settings(
-    *extra: PropertySpec, tox_extra: tuple[ToxicityValueSpec, ...] = ()
+    *extra: PropertySpec,
+    tox_extra: tuple[ToxicityValueSpec, ...] = (),
 ) -> ComptoxSettings:
     return ComptoxSettings(
         base_url="https://ctx.test/api",
@@ -54,7 +55,10 @@ def _settings(
 
 
 def _entry(
-    name: str, unit: object = "u", experimental: object = None, predicted: object = None
+    name: str,
+    unit: object = "u",
+    experimental: object = None,
+    predicted: object = None,
 ) -> dict[str, object]:
     return {
         "propName": name,
@@ -143,7 +147,10 @@ def _lookup(
     client = httpx.Client(transport=httpx.MockTransport(respond))
     record = sleeps if sleeps is not None else []
     lookup = ComptoxLookup(
-        settings or _settings(), client, sleep=record.append, environ=ENV if env is None else env
+        settings or _settings(),
+        client,
+        sleep=record.append,
+        environ=ENV if env is None else env,
     )
     return lookup, requests
 
@@ -170,7 +177,7 @@ def test_experimental_preferred_over_predicted() -> None:
 def test_predicted_fallback_and_unit_passthrough() -> None:
     lookup, _ = _lookup([_entry("Vapor Pressure", "mmHg", predicted=3.0)])
     assert lookup.get_properties(CAS) == {
-        "vapor_pressure": {"value": 3.0, "unit": "mmHg", "source": "predicted"}
+        "vapor_pressure": {"value": 3.0, "unit": "mmHg", "source": "predicted"},
     }
 
 
@@ -209,7 +216,8 @@ def test_unconfigured_ignored_and_extra_configured_picked_up() -> None:
     lookup, _ = _lookup(summary)
     assert set(lookup.get_properties(CAS)) == {"density"}
     extended, _ = _lookup(
-        summary, settings=_settings(PropertySpec("melting_point", "Melting Point", "u"))
+        summary,
+        settings=_settings(PropertySpec("melting_point", "Melting Point", "u")),
     )
     assert set(extended.get_properties(CAS)) == {"density", "melting_point"}
 
@@ -664,7 +672,11 @@ def test_record_context_is_returned() -> None:
         _rec("RfD", 0.5, route="oral", effect="reduced lymphocyte count", assessment="Non-cancer"),
         _rec("cancer slope factor", 3.0, effect="leukemia", assessment="Cancer"),
         _rec(
-            "RfC", 1.0, route="Inhalation", effect="neurological effects", assessment="Non-cancer"
+            "RfC",
+            1.0,
+            route="Inhalation",
+            effect="neurological effects",
+            assessment="Non-cancer",
         ),
     ]
     lookup, _ = _lookup(tox=records)

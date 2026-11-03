@@ -46,7 +46,7 @@ def load_children(
         handle = path.open(encoding="utf-8", newline="")
     except OSError as error:
         raise QpcDataError(
-            f"cannot read {path} (run scripts.build_naics_titles): {error}"
+            f"cannot read {path} (run scripts.build_naics_titles): {error}",
         ) from error
     found: dict[str, set[str]] = {}
     with handle:
@@ -65,7 +65,9 @@ def build(
 ) -> Extraction:
     """Read and validate the workbook; returns what to write and what was left out."""
     sheets = read_sheets(
-        workbook, (settings.sheet_name, settings.intro_sheet_name), settings.max_bytes
+        workbook,
+        (settings.sheet_name, settings.intro_sheet_name),
+        settings.max_bytes,
     )
     check_edition(sheets[settings.intro_sheet_name], settings)
     return extract(sheets[settings.sheet_name], release, settings, children)

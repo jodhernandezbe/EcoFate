@@ -25,7 +25,7 @@ def test_weather_of_no_facility_is_listed() -> None:
     loose = plant.meteorology.model_copy(update={"frs_id": None})
     groups = dict(warning_groups(WorkspaceState(meteorology=loose)))
     assert groups["Meteorology not attached to a facility"] == [
-        "Meteorology is a screening default (Source W)."
+        "Meteorology is a screening default (Source W).",
     ]
 
 

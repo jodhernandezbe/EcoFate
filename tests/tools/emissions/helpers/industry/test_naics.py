@@ -34,7 +34,10 @@ def no_local_titles(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 EF = replace(
-    load_efservice_settings(), base_url="https://ef.test", delay_seconds=0.0, max_retries=0
+    load_efservice_settings(),
+    base_url="https://ef.test",
+    delay_seconds=0.0,
+    max_retries=0,
 )
 DOC = "1313000000001"
 TITLES = {
@@ -67,7 +70,10 @@ class Service:
     """A mock Envirofacts: a submission's NAICS rows and the reference titles; logs requests."""
 
     def __init__(
-        self, rows: object, titles: dict[str, str] | None = None, status: int = 200
+        self,
+        rows: object,
+        titles: dict[str, str] | None = None,
+        status: int = 200,
     ) -> None:
         self.rows = rows
         self.titles = TITLES if titles is None else titles

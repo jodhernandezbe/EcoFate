@@ -58,7 +58,8 @@ def describe(smiles: str, fingerprint: FingerprintSettings) -> Structure | None:
     if mol is None:
         return None
     generator = rdFingerprintGenerator.GetMorganGenerator(
-        radius=fingerprint.radius, fpSize=fingerprint.n_bits
+        radius=fingerprint.radius,
+        fpSize=fingerprint.n_bits,
     )
     bits = np.asarray(generator.GetFingerprintAsNumPy(mol), dtype=np.uint8)
     # Average molecular weight; defined at runtime but missing from the RDKit stubs.

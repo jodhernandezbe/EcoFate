@@ -48,7 +48,8 @@ def test_placeholder_required() -> None:
 
 def test_unit_must_be_a_string() -> None:
     bad = GRAPH.replace(
-        'twa = { label = "L twa", unit = "u" }', 'twa = { label = "L twa", unit = 1 }'
+        'twa = { label = "L twa", unit = "u" }',
+        'twa = { label = "L twa", unit = 1 }',
     )
     with pytest.raises(ValueError, match="quantities.twa.unit"):
         _parse(bad)

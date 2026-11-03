@@ -46,7 +46,9 @@ def test_explicit_values(tmp_path: Path) -> None:
         max_screened_out_listed=3,
         weather_cell_deg=0.5,
         screening=ScreeningSettings(
-            hq=0.2, cancer_risk=1e-5, ambient_temperatures_k=(260.0, 300.5)
+            hq=0.2,
+            cancer_risk=1e-5,
+            ambient_temperatures_k=(260.0, 300.5),
         ),
     )
 

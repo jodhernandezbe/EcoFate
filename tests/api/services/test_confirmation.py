@@ -28,7 +28,8 @@ def _entry(entry_id: str, quantity: str) -> MissingEntry:
 
 def _open(threads: ThreadStore, *keys: tuple[str, str]) -> ConfirmationRequest:
     request = ConfirmationRequest(
-        request_id="req1", entries=[_entry(key, quantity) for key, quantity in keys]
+        request_id="req1",
+        entries=[_entry(key, quantity) for key, quantity in keys],
     )
     threads.set_pending(THREAD, request)
     return request
@@ -36,7 +37,7 @@ def _open(threads: ThreadStore, *keys: tuple[str, str]) -> ConfirmationRequest:
 
 def _reply(entries: list[dict[str, object]], request_id: str = "req1") -> ChatRequest:
     return ChatRequest.model_validate(
-        {"thread_id": THREAD, "answers": {"request_id": request_id, "entries": entries}}
+        {"thread_id": THREAD, "answers": {"request_id": request_id, "entries": entries}},
     )
 
 
@@ -123,7 +124,8 @@ def test_repeated_entry_is_422() -> None:
     ],
 )
 def test_out_of_range_or_incomplete_value_is_422_and_changes_nothing(
-    number: float | None, unit: str | None
+    number: float | None,
+    unit: str | None,
 ) -> None:
     threads = ThreadStore()
     _open(threads, (IUR, "iur"))

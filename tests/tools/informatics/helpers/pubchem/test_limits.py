@@ -35,7 +35,8 @@ def control(**sections: list[Json]) -> Json:
     }
     children = [section(headings[k], entries=v) for k, v in sections.items()]
     body = section(
-        "Safety and Hazards", section("Exposure Control and Personal Protection", *children)
+        "Safety and Hazards",
+        section("Exposure Control and Personal Protection", *children),
     )
     return {"Record": {"Section": [body]}}
 
@@ -79,7 +80,7 @@ def test_falls_back_to_acgih_when_it_is_the_only_one() -> None:
     assert result["oel_source"] == "ACGIH TLV-TWA (PubChem)"
     assert result["oel_twa_mg_m3"] == pytest.approx(ppm_to_mg_per_m3(0.5, WEIGHT, V))
     assert result["limits"]["acgih_tlv_stel"]["value"] == pytest.approx(
-        ppm_to_mg_per_m3(2.5, WEIGHT, V)
+        ppm_to_mg_per_m3(2.5, WEIGHT, V),
     )
 
 
@@ -91,7 +92,7 @@ def test_no_twa_keeps_idlh_and_pac() -> None:
     result = _read(record)
     assert result["oel_twa_mg_m3"] is None and result["oel_source"] is None
     assert result["limits"]["niosh_idlh"]["value"] == pytest.approx(
-        ppm_to_mg_per_m3(500, WEIGHT, V)
+        ppm_to_mg_per_m3(500, WEIGHT, V),
     )
     assert set(result["limits"]) == {"niosh_idlh", "pac_1", "pac_2", "pac_3"}
     assert result["warnings"]
@@ -106,7 +107,7 @@ def test_unclear_named_statements_are_skipped(text: str) -> None:
 
 def test_unnamed_or_stel_entries_are_not_a_twa() -> None:
     record = control(
-        pel=[named("PEL-STEL (Short Term Exposure Limit)", "5 ppm"), named(None, "1 ppm")]
+        pel=[named("PEL-STEL (Short Term Exposure Limit)", "5 ppm"), named(None, "1 ppm")],
     )
     assert _read(record)["oel_twa_mg_m3"] is None
 

@@ -321,13 +321,20 @@ def _initial_view(sub: dict[str, object], parent: str) -> MapBounds:
     return view
 
 
-def _map(table: dict[str, object]) -> MapDisplay:
-    name = f"{_NAME}.map"
-    sub = subtable(table, "map", _NAME)
+def _marker_sizes(sub: dict[str, object], name: str) -> tuple[float, float]:
+    """Smallest and largest marker radius in pixels; the largest is never the smaller one."""
     smallest = require_number(sub, "marker_min_px", minimum=0.001, name=name)
     largest = require_number(sub, "marker_max_px", minimum=0.001, name=name)
     if largest < smallest:
         raise ValueError(f"{name}.marker_max_px must be >= {name}.marker_min_px")
+    return smallest, largest
+
+
+def _map(table: dict[str, object]) -> MapDisplay:
+    name = f"{_NAME}.map"
+    sub = subtable(table, "map", _NAME)
+    smallest, largest = _marker_sizes(sub, name)
+    tolerance = require_number(sub, "coordinate_tolerance_deg", minimum=0, name=name)
     return MapDisplay(
         light_style=require_str(sub, "light_style", name).strip(),
         dark_style=require_str(sub, "dark_style", name).strip(),
@@ -335,9 +342,7 @@ def _map(table: dict[str, object]) -> MapDisplay:
         vertex_spacing_deg=_spacing(sub, name),
         marker_min_px=smallest,
         marker_max_px=largest,
-        coordinate_tolerance_deg=require_number(
-            sub, "coordinate_tolerance_deg", minimum=0, name=name
-        ),
+        coordinate_tolerance_deg=tolerance,
         initial_view=_initial_view(sub, name),
     )
 
@@ -438,7 +443,10 @@ def _price(raw: object, name: str) -> ModelPrice:
     return ModelPrice(
         input_usd_per_mtok=require_number(sub, "input_usd_per_mtok", minimum=0, name=name),
         cached_input_usd_per_mtok=require_number(
-            sub, "cached_input_usd_per_mtok", minimum=0, name=name
+            sub,
+            "cached_input_usd_per_mtok",
+            minimum=0,
+            name=name,
         ),
         output_usd_per_mtok=require_number(sub, "output_usd_per_mtok", minimum=0, name=name),
         priced_on=_priced_on(sub, name),

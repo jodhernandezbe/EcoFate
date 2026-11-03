@@ -23,7 +23,7 @@ def _workbook(path: Path, rows: list[tuple[str, str]]) -> Path:
     for index, (code, _) in enumerate(rows, start=1):
         cells.append(
             f'<row r="{index}"><c r="A{index}"><v>{code}</v></c>'
-            f'<c r="B{index}" t="s"><v>{index - 1}</v></c></row>'
+            f'<c r="B{index}" t="s"><v>{index - 1}</v></c></row>',
         )
     with zipfile.ZipFile(path, "w") as book:
         book.writestr("xl/worksheets/sheet1.xml", SHEET.format(rows="".join(cells)))

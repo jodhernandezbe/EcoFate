@@ -52,7 +52,8 @@ def _supply(number: float) -> dict[str, object]:
 
 
 def test_valid_answer_starts_the_next_turn_and_closes_the_request(
-    chat: TestClient, app: FastAPI
+    chat: TestClient,
+    app: FastAPI,
 ) -> None:
     threads: ThreadStore = app.state.threads
     _open(threads)
@@ -65,7 +66,8 @@ def test_valid_answer_starts_the_next_turn_and_closes_the_request(
 
 
 def test_answer_for_a_closed_request_is_409_and_nothing_starts(
-    chat: TestClient, app: FastAPI
+    chat: TestClient,
+    app: FastAPI,
 ) -> None:
     threads: ThreadStore = app.state.threads
     response = chat.post("/api/v1/chat/stream", json=_answer("req1", [_supply(0.002)]), headers=OWN)

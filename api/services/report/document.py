@@ -65,7 +65,8 @@ def _field(line: Paragraph, instruction: str) -> None:
     """A Word field (``PAGE`` or ``NUMPAGES``) that Word fills in when it lays the pages out."""
     # ``instruction`` is one of the fixed values of _PAGE_FIELDS, never workspace text.
     field = parse_xml(
-        f'<w:fldSimple {nsdecls("w")} w:instr="{instruction}"><w:r><w:t>1</w:t></w:r></w:fldSimple>'
+        f'<w:fldSimple {nsdecls("w")} w:instr="{instruction}">'
+        "<w:r><w:t>1</w:t></w:r></w:fldSimple>",
     )
     line._p.append(field)  # pyright: ignore[reportPrivateUsage]  # python-docx has no field API
 

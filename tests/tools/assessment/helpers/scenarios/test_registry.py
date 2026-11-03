@@ -39,7 +39,7 @@ def test_a_new_pathway_reaches_the_output_in_the_same_shape(
                 receptors=[],
                 receptors_note=None,
                 notes=[],
-            )
+            ),
         ]
 
     monkeypatch.setitem(scenarios.PATHWAYS, "dermal", dermal)

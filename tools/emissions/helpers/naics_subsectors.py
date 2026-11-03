@@ -25,7 +25,9 @@ def subsector_titles(settings: IndustrySettings) -> Mapping[str, str]:
         ValueError: If it lacks the configured columns.
     """
     return read_titles(
-        settings.subsectors_path, settings.subsectors_code_column, settings.subsectors_title_column
+        settings.subsectors_path,
+        settings.subsectors_code_column,
+        settings.subsectors_title_column,
     )
 
 
@@ -36,7 +38,8 @@ def subsector_of(naics_code: str | None) -> str | None:
 
 
 def with_subsectors(
-    records: Sequence[EmissionRecord], titles: Mapping[str, str]
+    records: Sequence[EmissionRecord],
+    titles: Mapping[str, str],
 ) -> list[EmissionRecord]:
     """Copies of ``records`` with ``naics_subsector`` and its title filled in.
 

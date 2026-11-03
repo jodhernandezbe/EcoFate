@@ -43,6 +43,7 @@ class OriginGuard:
             await self.app(scope, receive, send)
             return
         denied: Response = JSONResponse(
-            error_body("Request not allowed.", new_correlation_id()), status_code=403
+            error_body("Request not allowed.", new_correlation_id()),
+            status_code=403,
         )
         await denied(scope, receive, send)

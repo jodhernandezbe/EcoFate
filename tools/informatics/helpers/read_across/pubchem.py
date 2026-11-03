@@ -67,7 +67,9 @@ def _compound(payload: object, settings: PubchemSettings) -> PubchemCompound | s
 
 
 def fetch_compound(
-    cas: str, client: RetryingClient, settings: PubchemSettings
+    cas: str,
+    client: RetryingClient,
+    settings: PubchemSettings,
 ) -> PubchemCompound | str:
     """Look up a chemical's SMILES and molecular weight on PubChem.
 

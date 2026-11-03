@@ -179,7 +179,9 @@ def _label(labels: Mapping[str, str], tool_name: str) -> str:
 
 
 def _tool_starts(
-    message: AIMessage, seq: EventSequence, labels: Mapping[str, str]
+    message: AIMessage,
+    seq: EventSequence,
+    labels: Mapping[str, str],
 ) -> list[StreamEvent]:
     return [
         ToolStatus(
@@ -223,7 +225,9 @@ def _scope_events(update: Mapping[str, object], seq: EventSequence) -> list[Stre
 
 
 def _update_events(
-    payload: object, seq: EventSequence, labels: Mapping[str, str]
+    payload: object,
+    seq: EventSequence,
+    labels: Mapping[str, str],
 ) -> list[StreamEvent]:
     update = cast(Mapping[str, object], payload)
     events: list[StreamEvent] = _scope_events(update, seq)
@@ -242,7 +246,10 @@ def _update_events(
 
 
 def _translate(
-    mode: str, payload: object, seq: EventSequence, labels: Mapping[str, str]
+    mode: str,
+    payload: object,
+    seq: EventSequence,
+    labels: Mapping[str, str],
 ) -> list[StreamEvent]:
     if mode == "messages":
         return _token_events(payload, seq)
@@ -267,7 +274,10 @@ def _callbacks(runtime: AgentRuntime, recorder: UsageRecorder) -> list[BaseCallb
 
 
 def _run_config(
-    request: ChatRequest, threads: ThreadStore, runtime: AgentRuntime, recorder: UsageRecorder
+    request: ChatRequest,
+    threads: ThreadStore,
+    runtime: AgentRuntime,
+    recorder: UsageRecorder,
 ) -> RunnableConfig:
     """The run configuration: the thread, its answers for the tools, and the recorder."""
     supplied, declined = threads.answers(request.thread_id)
@@ -282,7 +292,10 @@ def _run_config(
 
 
 def _confirmation_events(
-    payload: object, request: ChatRequest, threads: ThreadStore, seq: EventSequence
+    payload: object,
+    request: ChatRequest,
+    threads: ThreadStore,
+    seq: EventSequence,
 ) -> list[StreamEvent]:
     """The question and the open request when the turn stopped to ask for missing values."""
     update = cast(Mapping[str, object], payload)
@@ -357,7 +370,10 @@ def _workspace_events(
 
 
 def _rebuild(
-    request: ChatRequest, threads: ThreadStore, runtime: AgentRuntime, seq: EventSequence
+    request: ChatRequest,
+    threads: ThreadStore,
+    runtime: AgentRuntime,
+    seq: EventSequence,
 ) -> list[StreamEvent]:
     """Rebuild the workspace from the tool messages and the user's answers, if it changed."""
     if runtime.workspace_rules is None:
@@ -365,7 +381,10 @@ def _rebuild(
     previous = threads.workspace(request.thread_id)
     supplied, _ = threads.answers(request.thread_id)
     state = build_workspace(
-        threads.tool_messages(request.thread_id), runtime.workspace_rules, previous, supplied
+        threads.tool_messages(request.thread_id),
+        runtime.workspace_rules,
+        previous,
+        supplied,
     )
     if state == previous:
         return []

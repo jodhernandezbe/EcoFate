@@ -91,7 +91,7 @@ def assessed_candidates(record: RunRecord) -> dict[str, list[Facility]]:
     found: dict[str, list[Facility]] = {}
     for call in record.calls_to(NEI_STACKS):
         found[str(call.args.get("frs_id")).strip()] = _dicts(
-            _mapping(call.output).get("candidates")
+            _mapping(call.output).get("candidates"),
         )
     return found
 
@@ -216,7 +216,9 @@ def _carries(call: ToolCall, candidate: Facility) -> bool:
 
 
 def _facility_calls(
-    record: RunRecord, facility: Facility, candidates: list[Facility]
+    record: RunRecord,
+    facility: Facility,
+    candidates: list[Facility],
 ) -> list[ToolCall]:
     """Exposure calls for this facility: its emission rate and at least one of its stacks."""
     return [
@@ -437,7 +439,7 @@ def _name_problems(record: RunRecord) -> list[str]:
                 problems.append(f"the chemical's name {name!r} is not in the report")
         elif re.search(rf"{re.escape(cas)}\s*\(|\bknown as\b", record.report, re.I):
             problems.append(
-                f"the report names the chemical although no result gave CAS {cas} a name"
+                f"the report names the chemical although no result gave CAS {cas} a name",
             )
     return problems
 

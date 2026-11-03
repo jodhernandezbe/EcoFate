@@ -121,7 +121,7 @@ def _collection(table: dict[str, object]) -> str:
     if not _COLLECTION_NAME.fullmatch(name):
         raise ValueError(
             "scc_index.collection must be 3-512 characters from [a-zA-Z0-9._-], "
-            "starting and ending with a letter or digit"
+            "starting and ending with a letter or digit",
         )
     return name
 

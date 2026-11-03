@@ -65,7 +65,11 @@ def _supplied_value(answer: EntryAnswer, entry: MissingEntry) -> float:
         raise ConfirmationError(422, ENTER.format(key=answer.entry_id))
     settings = get_user_value_settings()
     result = check_entered_value(
-        entry["quantity"], answer.number, answer.unit, settings, get_unit_settings().aliases
+        entry["quantity"],
+        answer.number,
+        answer.unit,
+        settings,
+        get_unit_settings().aliases,
     )
     if result.value is None:
         raise ConfirmationError(422, f"{answer.entry_id}: {result.reason}")
@@ -108,7 +112,7 @@ def _answers_note(supplied: Mapping[str, float], declined: Sequence[str]) -> str
     if declined:
         lines.append(
             "The user chose to proceed without these values; report them as absent and do not "
-            f"ask again: {', '.join(declined)}."
+            f"ask again: {', '.join(declined)}.",
         )
     return " ".join(lines)
 
@@ -150,7 +154,9 @@ def plan_turn(request: ChatRequest, threads: ThreadStore) -> TurnPlan:
 
 
 def _plan_free_message(
-    request: ChatRequest, threads: ThreadStore, pending: ConfirmationRequest | None
+    request: ChatRequest,
+    threads: ThreadStore,
+    pending: ConfirmationRequest | None,
 ) -> TurnPlan:
     if pending is None:
         supplied, declined = threads.answers(request.thread_id)

@@ -76,7 +76,8 @@ def test_the_newest_vintage_wins_and_older_only_codes_are_kept(tmp_path: Path) -
         [_header(2017), ("1", "111", "Old title"), ("2", "222", "Only 2017")],
     )
     new = _workbook(
-        tmp_path / "2-6_digit_2022_Codes.xlsx", [_header(2022), ("1", "111", "New title")]
+        tmp_path / "2-6_digit_2022_Codes.xlsx",
+        [_header(2022), ("1", "111", "New title")],
     )
     assert merge([new, old]) == {"111": ("New title", 2022), "222": ("Only 2017", 2017)}
 

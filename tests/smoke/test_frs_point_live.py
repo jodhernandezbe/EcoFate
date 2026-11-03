@@ -23,7 +23,8 @@ def test_one_request_gives_the_coordinates_of_several_facilities() -> None:
     settings = get_frs_point_settings()
     with httpx.Client() as http:
         client = EfserviceClient(
-            replace(get_efservice_settings(), base_url=settings.base_url), http
+            replace(get_efservice_settings(), base_url=settings.base_url),
+            http,
         )
         found = FrsLocator(client, settings)(["110012141805", "110000313152", "110000314357"])
     assert set(found) == {"110012141805", "110000313152", "110000314357"}

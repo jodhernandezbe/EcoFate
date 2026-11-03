@@ -162,7 +162,9 @@ def test_written_columns(tmp_path: Path) -> None:
 
 
 def test_main_exits_non_zero_on_failure(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     run = Fakes(tmp_path, tri_status=500)
     _patch(monkeypatch, run)
@@ -172,7 +174,9 @@ def test_main_exits_non_zero_on_failure(
 
 
 def test_main_writes_the_requested_path(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     run = Fakes(tmp_path)
     _patch(monkeypatch, run)

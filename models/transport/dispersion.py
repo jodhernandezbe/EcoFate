@@ -28,7 +28,8 @@ _SIGMA_Z_COEFF: dict[str, tuple[float, float, float]] = {
 
 
 def calculate_dispersion_coefficients(
-    downwind_distance_m: FloatOrArray, stability_class: str
+    downwind_distance_m: FloatOrArray,
+    stability_class: str,
 ) -> tuple[FloatOrArray, FloatOrArray]:
     """Compute Pasquill-Gifford dispersion coefficients (Briggs open-country fits).
 
@@ -104,7 +105,7 @@ def gaussian_plume(
 
     lateral = np.exp(-(y_arr**2) / (2.0 * sy**2))
     vertical = np.exp(-((z_arr - effective_release_height_m) ** 2) / (2.0 * sz**2)) + np.exp(
-        -((z_arr + effective_release_height_m) ** 2) / (2.0 * sz**2)
+        -((z_arr + effective_release_height_m) ** 2) / (2.0 * sz**2),
     )
     conc = emission_rate_g_per_s / (2.0 * np.pi * wind_speed_m_per_s * sy * sz) * lateral * vertical
     if np.ndim(conc) == 0:

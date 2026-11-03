@@ -168,7 +168,7 @@ def worker_average_concentration(
         raise ValueError("shift_inhalation_m3 must not exceed daily_inhalation_m3")
     if worker_days_per_year > _DAYS_PER_YEAR or tenure_years > averaging_years:
         raise ValueError(
-            "worker days must be at most 365 and the tenure at most the averaging time"
+            "worker days must be at most 365 and the tenure at most the averaging time",
         )
     days = worker_days_per_year * tenure_years / (averaging_years * _DAYS_PER_YEAR)
     return twa_mg_per_m3 * shift_inhalation_m3 / daily_inhalation_m3 * days

@@ -179,7 +179,7 @@ def test_subset_keeps_the_whole_catalogs_mean(tmp_path: Path) -> None:
     assert candidates.mean_embedding.tolist() == catalog.mean_embedding.tolist()
     assert candidates.centered_embeddings.shape == (1, 768)
     assert candidates.centered_embeddings[0].tolist() == pytest.approx(
-        catalog.centered_embeddings[1].tolist()
+        catalog.centered_embeddings[1].tolist(),
     )
 
 

@@ -13,7 +13,9 @@ ELEVATED = (0.1, 0.1, 1e-6)
 
 
 def _tier(
-    ratio: float | None = None, hq: float | None = None, risk: float | None = None
+    ratio: float | None = None,
+    hq: float | None = None,
+    risk: float | None = None,
 ) -> str | None:
     return occ.risk_tier(ratio, hq, risk, exceedance=EXCEED, elevated=ELEVATED)
 

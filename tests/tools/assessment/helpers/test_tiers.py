@@ -15,7 +15,9 @@ UNIT = unit_bound(FakeSteps().steps(), TOXICITY, SETTINGS.screening.ambient_temp
 
 def test_a_facility_below_both_thresholds_at_the_bound_is_screened_out_with_it() -> None:
     result = screen(
-        [record("SMALL", emission_rate=0.2), record("BIG", emission_rate=3.0)], UNIT, SETTINGS
+        [record("SMALL", emission_rate=0.2), record("BIG", emission_rate=3.0)],
+        UNIT,
+        SETTINGS,
     )
     assert [r["frs_id"] for r, _ in result.candidates] == ["BIG"]
     (out,) = result.screened_out

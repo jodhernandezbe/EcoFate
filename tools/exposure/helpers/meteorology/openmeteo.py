@@ -41,7 +41,10 @@ class HourlyData:
 
 
 def archive_params(
-    latitude: float, longitude: float, year: int, request: ArchiveRequest
+    latitude: float,
+    longitude: float,
+    year: int,
+    request: ArchiveRequest,
 ) -> dict[str, str | int | float]:
     """Return the query parameters asking for the whole of ``year`` at a point."""
     decimals = request.coordinate_decimals
@@ -64,7 +67,10 @@ def _object(value: object, what: str) -> dict[str, object]:
 
 
 def _one_series(
-    quantity: str, hourly: dict[str, object], units: dict[str, object], request: ArchiveRequest
+    quantity: str,
+    hourly: dict[str, object],
+    units: dict[str, object],
+    request: ArchiveRequest,
 ) -> list[object]:
     name = request.variables[quantity]
     values = hourly.get(name)
@@ -72,7 +78,7 @@ def _one_series(
         raise ArchiveError(f"the archive response lacks the hourly series {name}")
     if units.get(name) != request.units[quantity]:
         raise ArchiveError(
-            f"{name} is reported in {units.get(name)!r}, expected {request.units[quantity]!r}"
+            f"{name} is reported in {units.get(name)!r}, expected {request.units[quantity]!r}",
         )
     return cast(list[object], values)
 

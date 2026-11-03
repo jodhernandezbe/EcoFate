@@ -25,7 +25,8 @@ class SectorTable:
 
 
 def _row(
-    raw: dict[str, str], settings: CdrSectorSettings
+    raw: dict[str, str],
+    settings: CdrSectorSettings,
 ) -> tuple[str, tuple[str, str, str]] | None:
     prefix = (raw.get(settings.prefix_column) or "").strip()
     code = (raw.get(settings.code_column) or "").strip()
@@ -83,7 +84,9 @@ def get_sector_table(settings: CdrSectorSettings) -> SectorTable:
 
 
 def sector_for(
-    naics_code: str | None, table: SectorTable, settings: CdrSectorSettings
+    naics_code: str | None,
+    table: SectorTable,
+    settings: CdrSectorSettings,
 ) -> tuple[CdrSector | None, str | None]:
     """The sector of ``naics_code`` and None, or None and why there is none; never raises."""
     code = digit_string(naics_code) if naics_code is not None else None
@@ -96,5 +99,8 @@ def sector_for(
         return None, f"EPA's crosswalk has no industrial sector for NAICS {code}"
     prefix, (sector, name, edition) = hit
     return CdrSector(
-        code=sector, name=name, matched_naics_prefix=prefix, naics_edition=edition
+        code=sector,
+        name=name,
+        matched_naics_prefix=prefix,
+        naics_edition=edition,
     ), None

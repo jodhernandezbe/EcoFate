@@ -13,7 +13,9 @@ StackRow = Mapping[str, str | None]
 
 
 def check_units_convertible(
-    units: Mapping[str, str], settings: StackSettings, aliases: Mapping[str, str] | None
+    units: Mapping[str, str],
+    settings: StackSettings,
+    aliases: Mapping[str, str] | None,
 ) -> None:
     """Raise ``ValueError`` naming the quantity whose source unit cannot reach its target unit.
 

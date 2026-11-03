@@ -103,7 +103,10 @@ async def test_missing_key_is_a_user_message_and_builds_no_model() -> None:
 
 async def test_unavailable_keychain_is_reported_safely() -> None:
     events = await _run(
-        "hi", FakeCredentialStore(fail=True), _factory(scripted("x")), with_key=False
+        "hi",
+        FakeCredentialStore(fail=True),
+        _factory(scripted("x")),
+        with_key=False,
     )
     errors = [e for e in events if isinstance(e, ErrorEvent)]
     assert errors[0].message == "The OS keychain is unavailable."
@@ -213,19 +216,24 @@ def _fail() -> str:
 
 
 flaky = StructuredTool.from_function(
-    _fail, name="flaky", description="A tool that reports a handled error.", handle_tool_error=True
+    _fail,
+    name="flaky",
+    description="A tool that reports a handled error.",
+    handle_tool_error=True,
 )
 
 
 def _calling(*names: str) -> BaseChatModel:
     calls = [ToolCall(name=name, args={}, id=f"c{i}") for i, name in enumerate(names)]
     return ScriptedChatModel(
-        [AIMessage(content="", tool_calls=calls), AIMessage(content="all done")]
+        [AIMessage(content="", tool_calls=calls), AIMessage(content="all done")],
     )
 
 
 async def _tool_events(
-    monkeypatch: pytest.MonkeyPatch, model: BaseChatModel, labels: dict[str, str]
+    monkeypatch: pytest.MonkeyPatch,
+    model: BaseChatModel,
+    labels: dict[str, str],
 ) -> list[StreamEvent]:
     monkeypatch.setattr("agent.graph.get_all_tools", lambda: [probe_key, flaky])
     run = run_turn(
@@ -293,7 +301,7 @@ PRICING = {
         output_usd_per_mtok=8.0,
         priced_on=date(2026, 1, 2),
         source_url="https://example.test/pricing",
-    )
+    ),
 }
 
 
@@ -327,7 +335,7 @@ async def test_usage_is_reported_for_every_model_call_of_the_turn(
     assert usage.turn.complete is True
     assert usage.turn.cost_status == "estimate"
     assert usage.turn.cost_usd == pytest.approx(
-        ((60 + 150) * 2.0 + 40 * 0.5 + 50 * 8.0) / 1_000_000
+        ((60 + 150) * 2.0 + 40 * 0.5 + 50 * 8.0) / 1_000_000,
     )
 
 
@@ -418,7 +426,9 @@ def _service_probe_model() -> BaseChatModel:
 
 
 async def _probe_turn(
-    monkeypatch: pytest.MonkeyPatch, store: FakeCredentialStore, threads: ThreadStore | None = None
+    monkeypatch: pytest.MonkeyPatch,
+    store: FakeCredentialStore,
+    threads: ThreadStore | None = None,
 ) -> dict[str, str]:
     monkeypatch.setattr("agent.graph.get_all_tools", lambda: [probe_census, probe_comptox])
     threads = threads or ThreadStore()
@@ -505,14 +515,18 @@ async def test_concurrent_turns_keep_their_own_service_keys(
         seen[thread_id] = next(m.content for m in tools if m.name == "probe_census")
 
     await asyncio.gather(
-        turn("a", "census-key-for-a-0123456789"), turn("b", "census-key-for-b-0123456789")
+        turn("a", "census-key-for-a-0123456789"),
+        turn("b", "census-key-for-b-0123456789"),
     )
     assert seen == {"a": "census-key-for-a-0123456789", "b": "census-key-for-b-0123456789"}
 
 
 async def test_an_unavailable_keychain_stops_the_turn_with_a_safe_message() -> None:
     events = await _run(
-        "hi", FakeCredentialStore(fail=True), _factory(scripted("x")), with_key=False
+        "hi",
+        FakeCredentialStore(fail=True),
+        _factory(scripted("x")),
+        with_key=False,
     )
     errors = [e for e in events if isinstance(e, ErrorEvent)]
     assert [e.message for e in errors] == ["The OS keychain is unavailable."]
@@ -540,7 +554,8 @@ async def _guarded_turn(model: ScriptedChatModel, message: str = "hello") -> lis
 
 async def test_an_in_scope_turn_reports_the_scope_then_runs_the_agent() -> None:
     model = ScriptedChatModel(
-        [reply("an answer", 50, 5)], classifier=[verdict(True, usage=(20, 4))]
+        [reply("an answer", 50, 5)],
+        classifier=[verdict(True, usage=(20, 4))],
     )
     events = await _guarded_turn(model)
     kinds = [e.type for e in events]
@@ -571,7 +586,8 @@ async def test_an_off_topic_turn_streams_the_pivot_and_runs_no_agent_or_tool() -
 
 async def test_the_classifier_call_is_part_of_the_turns_usage() -> None:
     model = ScriptedChatModel(
-        [reply("an answer", 50, 5)], classifier=[verdict(True, usage=(20, 4))]
+        [reply("an answer", 50, 5)],
+        classifier=[verdict(True, usage=(20, 4))],
     )
     usage = next(e for e in await _guarded_turn(model) if isinstance(e, Usage))
     assert usage.turn.calls == 2  # the scope check and the agent

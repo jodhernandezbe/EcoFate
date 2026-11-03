@@ -123,7 +123,7 @@ def test_duplicate_rows_first_used(tmp_path: Path) -> None:
     result = scc_stack_parameters("99900006", _settings(tmp_path), None)
     assert result["stack_height"] == 10.0
     assert result["warnings"] == [
-        "PSTK lists 2 national rows for SCC 99900006; the first one was used"
+        "PSTK lists 2 national rows for SCC 99900006; the first one was used",
     ]
 
 
@@ -134,7 +134,7 @@ def test_unit_conversion_from_file_units(tmp_path: Path) -> None:
             "stack_diameter": "ft",
             "exit_velocity": "ft/s",
             "exit_temperature": "degF",
-        }
+        },
     )
     result = scc_stack_parameters("99900001", _settings(tmp_path, units=units), None)
     assert result["stack_height"] == pytest.approx(3.048)
@@ -167,7 +167,7 @@ def test_no_scc_global_default_without_reading_pstk(tmp_path: Path) -> None:
     assert result["source"] == "AirToxScreen global default"
     assert result["scc"] is None
     assert result["warnings"] == [
-        "no SCC was given; using the AirToxScreen global default (generic, not facility-specific)"
+        "no SCC was given; using the AirToxScreen global default (generic, not facility-specific)",
     ]
 
 
@@ -197,7 +197,9 @@ def test_unconvertible_unit_raises(tmp_path: Path) -> None:
     units = MappingProxyType({**settings.pstk.units, "stack_height": "kg"})
     with pytest.raises(ValueError, match="stack_height"):
         scc_stack_parameters(
-            "99900001", replace(settings, pstk=replace(settings.pstk, units=units)), None
+            "99900001",
+            replace(settings, pstk=replace(settings.pstk, units=units)),
+            None,
         )
 
 

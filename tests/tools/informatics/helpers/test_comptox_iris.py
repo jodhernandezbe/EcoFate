@@ -43,7 +43,8 @@ def _ok(body: object) -> httpx.Response:
 
 
 def _lookup(
-    iris: list[httpx.Response | Exception], toxval: Sequence[Mapping[str, object]] | None = None
+    iris: list[httpx.Response | Exception],
+    toxval: Sequence[Mapping[str, object]] | None = None,
 ) -> tuple[Service, ComptoxLookup]:
     service = Service({SEARCH: [_ok(CHEM)], TOXVAL: [_ok(toxval or [])], IRIS: iris})
     return service, service.lookup(with_iris=True)
@@ -108,7 +109,7 @@ def test_unreadable_text_falls_back_to_toxval_with_a_note() -> None:
     _, lookup = _lookup([_ok([record])], [RFC])
     assert lookup.get_toxicity_values(CAS)["rfc"]["value"] == 0.5
     assert lookup.get_toxicity_notes(CAS) == [
-        "rfc: IRIS endpoint text '1-2 mg/m3' cannot be read exactly"
+        "rfc: IRIS endpoint text '1-2 mg/m3' cannot be read exactly",
     ]
 
 

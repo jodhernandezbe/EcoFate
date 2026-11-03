@@ -104,7 +104,9 @@ def _highest(
 
 
 def risk_summary(
-    facilities: Sequence[Facility], rules: WorkspaceRules, exposure_seen: bool
+    facilities: Sequence[Facility],
+    rules: WorkspaceRules,
+    exposure_seen: bool,
 ) -> RiskSummary:
     """The highest worst-case and representative HQ and cancer risk over the facilities."""
     hq = partial(hq_status, thresholds=rules.thresholds)
@@ -114,13 +116,15 @@ def risk_summary(
         cancer_risk_worst=_highest(facilities, lambda r: r.cancer_risk_worst, risk),
         hq_representative=_highest(facilities, lambda r: r.hq_representative, hq),
         cancer_risk_representative=_highest(
-            facilities, lambda r: r.cancer_risk_representative, risk
+            facilities,
+            lambda r: r.cancer_risk_representative,
+            risk,
         ),
     )
     if any(f.exposure for f in facilities):
         return summary
     return summary.model_copy(
-        update={"reason": UNATTRIBUTED_EXPOSURE if exposure_seen else NOT_COMPUTED}
+        update={"reason": UNATTRIBUTED_EXPOSURE if exposure_seen else NOT_COMPUTED},
     )
 
 
@@ -128,7 +132,8 @@ NO_WORKER_RESULT = "no facility has a worker screening result yet"
 
 
 def _worst_worker(
-    facilities: Sequence[Facility], pick: Callable[[Facility], float | None]
+    facilities: Sequence[Facility],
+    pick: Callable[[Facility], float | None],
 ) -> WorkerExtremum | None:
     """The facility with the highest value of one worker quantity (a selection, never a sum)."""
     best: WorkerExtremum | None = None
@@ -139,13 +144,17 @@ def _worst_worker(
                 facility.occupational_exposure.risk_tier if facility.occupational_exposure else None
             )
             best = WorkerExtremum(
-                value=value, frs_id=facility.frs_id, facility_name=facility.name, risk_tier=tier
+                value=value,
+                frs_id=facility.frs_id,
+                facility_name=facility.name,
+                risk_tier=tier,
             )
     return best
 
 
 def _tier_summary(
-    facilities: Sequence[Facility], tier: Callable[[Facility], VentilationTier | None]
+    facilities: Sequence[Facility],
+    tier: Callable[[Facility], VentilationTier | None],
 ) -> WorkerTierSummary:
     def of(field: Callable[[VentilationTier], float | None]) -> WorkerExtremum | None:
         return _worst_worker(facilities, lambda f: _field(tier(f), field))
@@ -158,7 +167,8 @@ def _tier_summary(
 
 
 def _field(
-    tier: VentilationTier | None, field: Callable[[VentilationTier], float | None]
+    tier: VentilationTier | None,
+    field: Callable[[VentilationTier], float | None],
 ) -> float | None:
     return field(tier) if tier is not None else None
 

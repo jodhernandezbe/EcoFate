@@ -110,13 +110,16 @@ def _block(rows: Sequence[Row], header: int, release: Release) -> tuple[int, int
 
 
 def _pick(
-    rows: Sequence[Row], at: int, labels: Mapping[int, int], release: Release
+    rows: Sequence[Row],
+    at: int,
+    labels: Mapping[int, int],
+    release: Release,
 ) -> tuple[int, int | None]:
     starts = sorted(labels)
     mine = [c for c in starts if labels[c] == release.quarter]
     if len(mine) != 1:
         raise QpcLayoutError(
-            f"{release.label}: quarters in the sheet are {sorted(labels.values())}"
+            f"{release.label}: quarters in the sheet are {sorted(labels.values())}",
         )
     years = {
         c for row in rows[:at] if isinstance(c := _cell(row, mine[0]), int) and c in YEAR_RANGE
@@ -136,7 +139,7 @@ def find_hours_column(rows: Sequence[Row], header: int, release: Release, wanted
     ]
     if len(matches) != 1:
         raise QpcLayoutError(
-            f"{wanted!r} appears {len(matches)} times in the {release.label} block"
+            f"{wanted!r} appears {len(matches)} times in the {release.label} block",
         )
     return matches[0]
 
@@ -153,7 +156,7 @@ def valid_hours(value: Cell, settings: QpcSettings) -> float:
         raise RowSkipped(f"hours are not a finite number: {value!r}")
     if not settings.min_hours < value <= settings.max_hours_per_week:
         raise RowSkipped(
-            f"hours {value} outside ({settings.min_hours}, {settings.max_hours_per_week}]"
+            f"hours {value} outside ({settings.min_hours}, {settings.max_hours_per_week}]",
         )
     return float(value)
 
@@ -246,5 +249,5 @@ def _enough(result: Extraction, settings: QpcSettings) -> None:
     count = sum(len(e.codes) for e in result.entries)
     if count < settings.min_codes:
         raise QpcDataError(
-            f"only {count} four-digit codes found; at least {settings.min_codes} expected"
+            f"only {count} four-digit codes found; at least {settings.min_codes} expected",
         )

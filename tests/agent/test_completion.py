@@ -49,7 +49,9 @@ def _call(name: str = "lookup") -> AIMessage:
 
 
 def _run(
-    model: ScriptedChatModel, text: str = "map hexane", guard: CompletionGuard | None = GUARD
+    model: ScriptedChatModel,
+    text: str = "map hexane",
+    guard: CompletionGuard | None = GUARD,
 ) -> AgentState:
     state: AgentState = {"messages": [HumanMessage(content=text)]}
     return cast(AgentState, build_agent(model, completion_guard=guard).invoke(state))
@@ -199,7 +201,11 @@ class RefusingModel(ScriptedChatModel):
         super().__init__([])
 
     def with_structured_output(  # pyright: ignore[reportIncompatibleMethodOverride]
-        self, schema: object, *, include_raw: bool = False, **kwargs: object
+        self,
+        schema: object,
+        *,
+        include_raw: bool = False,
+        **kwargs: object,
     ) -> RunnableLambda[object, object]:
         def fail(_: object) -> object:
             raise Refusal("no credits")

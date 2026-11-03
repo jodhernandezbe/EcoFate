@@ -133,18 +133,26 @@ class RetryingClient:
             response = self._client.get(url, params=params, timeout=self._policy.timeout_seconds)
         except httpx.HTTPError as exc:
             return _Retry(f"{type(exc).__name__}")
-        if response.status_code in RETRYABLE_STATUS:
-            return _Retry(
-                f"HTTP {response.status_code}", retry_after(response), response.status_code
-            )
-        if response.status_code != 200:
-            raise HttpRequestError(
-                f"server returned HTTP {response.status_code}", response.status_code
-            )
-        try:
-            return _Body(cast(object, response.json()))
-        except ValueError:
-            return _Retry("malformed JSON")
+        return _outcome(response)
+
+
+def _outcome(response: httpx.Response) -> _Body | _Retry:
+    """Read one answer: a decoded body, a reason to retry, or an error for a final status."""
+    if response.status_code in RETRYABLE_STATUS:
+        return _Retry(
+            f"HTTP {response.status_code}",
+            retry_after(response),
+            response.status_code,
+        )
+    if response.status_code != 200:
+        raise HttpRequestError(
+            f"server returned HTTP {response.status_code}",
+            response.status_code,
+        )
+    try:
+        return _Body(cast(object, response.json()))
+    except ValueError:
+        return _Retry("malformed JSON")
 
 
 @dataclass(frozen=True)

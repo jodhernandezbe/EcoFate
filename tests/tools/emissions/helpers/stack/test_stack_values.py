@@ -10,10 +10,10 @@ from config.stack import StackSettings, load_stack_settings
 from tools.emissions.helpers.stack.stack_values import check_units_convertible, stack_values
 
 COLUMNS = MappingProxyType(
-    {"stack_height": "h", "stack_diameter": "d", "exit_velocity": "v", "exit_temperature": "t"}
+    {"stack_height": "h", "stack_diameter": "d", "exit_velocity": "v", "exit_temperature": "t"},
 )
 SI = MappingProxyType(
-    {"stack_height": "m", "stack_diameter": "m", "exit_velocity": "m/s", "exit_temperature": "K"}
+    {"stack_height": "m", "stack_diameter": "m", "exit_velocity": "m/s", "exit_temperature": "K"},
 )
 IMPERIAL = MappingProxyType(
     {
@@ -21,7 +21,7 @@ IMPERIAL = MappingProxyType(
         "stack_diameter": "ft",
         "exit_velocity": "ft/s",
         "exit_temperature": "degF",
-    }
+    },
 )
 ROW = {"h": "10", "d": "1", "v": "5", "t": "400"}
 
@@ -67,7 +67,10 @@ def test_imperial_row_converted(settings: StackSettings) -> None:
     ],
 )
 def test_bad_cell_rejects_whole_row(
-    settings: StackSettings, column: str, cell: str, message: str
+    settings: StackSettings,
+    column: str,
+    cell: str,
+    message: str,
 ) -> None:
     values, problems = stack_values({**ROW, column: cell}, COLUMNS, SI, settings, None)
     assert values is None
@@ -84,7 +87,11 @@ def test_missing_column_rejects_row(settings: StackSettings) -> None:
 
 def test_every_problem_reported(settings: StackSettings) -> None:
     _, problems = stack_values(
-        {"h": "x", "d": "x", "v": "5", "t": "400"}, COLUMNS, SI, settings, None
+        {"h": "x", "d": "x", "v": "5", "t": "400"},
+        COLUMNS,
+        SI,
+        settings,
+        None,
     )
     assert len(problems) == 2
 

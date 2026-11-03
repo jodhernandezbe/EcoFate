@@ -26,7 +26,10 @@ DEFAULT = 8760.0
 
 
 def _write(
-    path: Path, codes: list[object], hours: list[object], release: str | None = "2026Q2"
+    path: Path,
+    codes: list[object],
+    hours: list[object],
+    release: str | None = "2026Q2",
 ) -> Path:
     table = pa.table({"naics_code": pa.array(codes), "avg_plant_hours_per_week": pa.array(hours)})
     if release:
@@ -143,7 +146,7 @@ def test_not_a_parquet_file_is_unavailable_not_an_error(tmp_path: Path) -> None:
 def test_renamed_columns_are_read_from_configuration(tmp_path: Path) -> None:
     path = tmp_path / "b.parquet"
     table = pa.table({"code": ["3252"], "hrs": [84.0]}).replace_schema_metadata(
-        {"qpc.release": "2026Q2"}
+        {"qpc.release": "2026Q2"},
     )
     pq.write_table(table, path)
     settings = _settings(path, code_column="code", hours_column="hrs")
@@ -151,7 +154,9 @@ def test_renamed_columns_are_read_from_configuration(tmp_path: Path) -> None:
 
 
 def test_baseline_is_read_once_for_many_lookups(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     get_baseline.cache_clear()
     settings = _settings(_write(tmp_path / "b.parquet", ["3252", "3253"], [1.0, 2.0]))

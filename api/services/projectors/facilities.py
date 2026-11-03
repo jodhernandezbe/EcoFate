@@ -83,7 +83,8 @@ def _receptors(receptor: Receptor) -> Receptors:
 
 
 def meteorology_view(
-    point: Located[MeteorologyPayload], facility: EmissionPayload | None = None
+    point: Located[MeteorologyPayload],
+    facility: EmissionPayload | None = None,
 ) -> Meteorology:
     """The tool's weather with the downwind direction, for its point and facility (if any)."""
     weather = point.payload
@@ -107,7 +108,10 @@ def _extreme(entry: RangeEntryPayload | None) -> Extreme | None:
     if entry is None:
         return None
     return Extreme(
-        low=entry.low, high=entry.high, low_stack=entry.low_stack, high_stack=entry.high_stack
+        low=entry.low,
+        high=entry.high,
+        low_stack=entry.low_stack,
+        high_stack=entry.high_stack,
     )
 
 
@@ -135,7 +139,7 @@ def _ranges(payload: ExposurePayload) -> ExposureRanges:
         hq_representative=_extreme(found.representative.hq if found else None),
         cancer_risk_representative=_extreme(found.representative.cancer_risk if found else None),
         concentration_representative=_extreme(
-            found.representative.max_concentration if found else None
+            found.representative.max_concentration if found else None,
         ),
         dose=_highest_dose(payload),
         warnings=list(payload.warnings),
@@ -167,7 +171,8 @@ INVENTORY_SOURCE = "TRI inventory"
 
 
 def _industry(
-    entry: tuple[str, IndustryPayload] | None, record: EmissionPayload
+    entry: tuple[str, IndustryPayload] | None,
+    record: EmissionPayload,
 ) -> Industry | None:
     """The industry tool's answer; else the code and title the inventory reported, if any."""
     if entry is not None:
@@ -175,7 +180,9 @@ def _industry(
     if record.naics_code is None:
         return None
     return Industry(
-        naics_code=record.naics_code, naics_title=record.naics_title, source=INVENTORY_SOURCE
+        naics_code=record.naics_code,
+        naics_title=record.naics_title,
+        source=INVENTORY_SOURCE,
     )
 
 
@@ -239,7 +246,10 @@ def _model(payload: BaseModel | None) -> dict[str, object] | None:
 
 
 def _attached(
-    record: EmissionPayload, found: Attachments, ledger: Ledger, rules: WorkspaceRules
+    record: EmissionPayload,
+    found: Attachments,
+    ledger: Ledger,
+    rules: WorkspaceRules,
 ) -> dict[str, object]:
     frs_id = record.frs_id
     nei, exposure = found.stacks.get(frs_id), found.exposures.get(frs_id)
@@ -264,12 +274,13 @@ def _attached(
 def _with_graph(facility: Facility, rules: WorkspaceRules) -> Facility:
     """The facility with its exposure graph, built from its own validated values."""
     return facility.model_copy(
-        update={"exposure_graph": build_exposure_graph(facility, rules.graph)}
+        update={"exposure_graph": build_exposure_graph(facility, rules.graph)},
     )
 
 
 def build_facilities(
-    ledger: Ledger, rules: WorkspaceRules
+    ledger: Ledger,
+    rules: WorkspaceRules,
 ) -> tuple[list[Facility], list[Unattributed]]:
     """Every placed facility with its attributed results, and the results that fit none."""
     lost: list[Unattributed] = []
@@ -281,7 +292,7 @@ def build_facilities(
                     **_identity(record),
                     **_release(record, ledger.facility_cas.get(frs_id)),
                     **_attached(record, found, ledger, rules),
-                }
+                },
             ),
             rules,
         )

@@ -94,7 +94,10 @@ class MonitoringService:
             rows, project = await self._fetch(sql, with_project=True)
         except _Stopped as stopped:
             return SessionDetailResponse(
-                state=stopped.state, message=stopped.message, session=None, turns=[]
+                state=stopped.state,
+                message=stopped.message,
+                session=None,
+                turns=[],
             )
         records, turns = build_turns(rows, self.settings, self.step_labels, project)
         summary = summarize_session(records) if records else None

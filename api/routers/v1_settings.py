@@ -111,7 +111,7 @@ def _layout_config(settings: UiSettings) -> LayoutConfig:
             "rail": vars(shown.rail),
             "chat": vars(shown.chat),
             "overview": vars(shown.overview),
-        }
+        },
     )
 
 

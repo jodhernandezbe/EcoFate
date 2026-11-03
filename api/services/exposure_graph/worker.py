@@ -45,7 +45,10 @@ def _air_quantities(worker: OccupationalExposure, text: GraphText) -> list[Graph
         tier = _tier(worker, variant)
         rows += [
             quantity(
-                text, "workplace_concentration", tier.workplace_concentration_mg_m3, variant=variant
+                text,
+                "workplace_concentration",
+                tier.workplace_concentration_mg_m3,
+                variant=variant,
             ),
             quantity(text, "ventilation_rate", tier.ventilation_m3_per_s, variant=variant),
             quantity(text, "mixing_factor", tier.mixing_factor, variant=variant),
@@ -74,7 +77,9 @@ def _air_node(worker: OccupationalExposure, text: GraphText) -> GraphNode:
 
 
 def _schedule(
-    facility: Facility, worker: OccupationalExposure, text: GraphText
+    facility: Facility,
+    worker: OccupationalExposure,
+    text: GraphText,
 ) -> list[GraphQuantity]:
     profile = facility.operational_profile
     return [

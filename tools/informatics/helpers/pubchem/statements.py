@@ -19,7 +19,8 @@ _UNIT = rf"(?:\[(?P<bracketed>{_WORD}(?: {_WORD})?)\]|(?P<plain>{_WORD}(?: {_WOR
 _TEMPERATURE = rf"(?:\s*(?:at|@)\s*(?P<temp>{_NUMBER})\s*°?\s*(?P<scale>[CF]))"
 _VALUE_FIRST = re.compile(rf"^(?P<value>{_NUMBER})\s*{_UNIT}{_TEMPERATURE}?$", re.IGNORECASE)
 _LABELLED = re.compile(
-    rf"^[^:,\d]+,\s*{_UNIT}{_TEMPERATURE}?\s*:\s*(?P<value>{_NUMBER})$", re.IGNORECASE
+    rf"^[^:,\d]+,\s*{_UNIT}{_TEMPERATURE}?\s*:\s*(?P<value>{_NUMBER})$",
+    re.IGNORECASE,
 )
 _LONE_NUMBER = re.compile(rf"^{_NUMBER}$")
 # Words Pint would read as a unit (technical atmosphere) but that here are only the "at" of

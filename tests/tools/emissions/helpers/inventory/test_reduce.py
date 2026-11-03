@@ -44,7 +44,8 @@ def _row(**over: object) -> dict[str, object]:
 
 
 def _run(
-    rows: list[dict[str, object]], settings: TriSettings | None = None
+    rows: list[dict[str, object]],
+    settings: TriSettings | None = None,
 ) -> tuple[list[EmissionRecord], LatestReports]:
     reducer = LatestReports(settings or load_tri_settings(), first_year=0)
     reducer.add_rows(rows)
@@ -151,7 +152,8 @@ def test_facilities_are_kept_apart() -> None:
 
 
 @pytest.mark.parametrize(
-    "bad", [None, -1, -0.5, math.nan, math.inf, -math.inf, True, False, "12", "", [1], {"a": 1}]
+    "bad",
+    [None, -1, -0.5, math.nan, math.inf, -math.inf, True, False, "12", "", [1], {"a": 1}],
 )
 def test_bad_quantity_is_omitted(bad: object) -> None:
     records, reducer = _run([_row(total_release=bad)])
@@ -297,7 +299,8 @@ def test_warnings_describe_each_count() -> None:
 
 
 def _window(
-    rows: list[dict[str, object]], first_year: int
+    rows: list[dict[str, object]],
+    first_year: int,
 ) -> tuple[list[EmissionRecord], LatestReports]:
     reducer = LatestReports(load_tri_settings(), first_year=first_year)
     reducer.add_rows(rows)
@@ -315,7 +318,8 @@ def test_a_facility_whose_latest_report_is_outside_the_window_is_absent() -> Non
 
 def test_the_first_year_of_the_window_is_included() -> None:
     records, reducer = _window(
-        [_row(reporting_year="2017"), _row(reporting_year="2016")], first_year=2017
+        [_row(reporting_year="2017"), _row(reporting_year="2016")],
+        first_year=2017,
     )
     assert [r["reporting_year"] for r in records] == [2017]
     assert reducer.stats.outside_window == 1
@@ -400,7 +404,7 @@ def test_every_facility_without_coordinates_is_located_in_one_call() -> None:
             _no_coordinates(epa_registry_id="110000000001"),
             _no_coordinates(epa_registry_id="110000000002"),
             _row(epa_registry_id="110000000003"),  # TRI has its coordinates
-        ]
+        ],
     )
     assert len(reducer.records(EMISSIONS, ALIASES, locate)) == 3
     assert asked == [["110000000001", "110000000002"]]
@@ -519,7 +523,7 @@ def test_each_facility_gets_the_hours_of_its_own_naics_code() -> None:
             _row(epa_registry_id="110000000001", total_release=8760, naics_code="325211"),
             _row(epa_registry_id="110000000002", total_release=8760, naics_code="324110"),
             _row(epa_registry_id="110000000003", total_release=8760),
-        ]
+        ],
     )
     resolver = _hours_by_code({"325211": 4380.0})
     by_id = {r["frs_id"]: r for r in reducer.records(EMISSIONS, ALIASES, hours_for=resolver)}
@@ -579,7 +583,8 @@ def test_other_flag_values_set_nothing(value: object) -> None:
 
 def test_same_year_reports_add_their_activities() -> None:
     log, records = _activities(
-        _row(doc_ctrl_num="1", reactant="1"), _row(doc_ctrl_num="2", formulation_component="1")
+        _row(doc_ctrl_num="1", reactant="1"),
+        _row(doc_ctrl_num="2", formulation_component="1"),
     )
     assert log == [(frozenset({"3.2a", "3.2b"}), True)] and len(records) == 1
 
@@ -591,14 +596,16 @@ def test_repeated_rows_do_not_repeat_an_activity() -> None:
 
 def test_a_later_year_replaces_the_activities() -> None:
     log, _ = _activities(
-        _row(reporting_year="2019", produce="1"), _row(reporting_year="2020", reactant="1")
+        _row(reporting_year="2019", produce="1"),
+        _row(reporting_year="2020", reactant="1"),
     )
     assert log == [(frozenset({"3.2a"}), True)]
 
 
 def test_an_earlier_year_adds_nothing() -> None:
     log, _ = _activities(
-        _row(reporting_year="2020", reactant="1"), _row(reporting_year="2019", produce="1")
+        _row(reporting_year="2020", reactant="1"),
+        _row(reporting_year="2019", produce="1"),
     )
     assert log == [(frozenset({"3.2a"}), True)]
 

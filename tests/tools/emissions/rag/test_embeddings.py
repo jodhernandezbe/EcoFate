@@ -15,7 +15,10 @@ from tools.emissions.rag.errors import EmbeddingError
 
 class _Stub(Embeddings):
     def __init__(
-        self, documents: object = None, query: object = None, error: Exception | None = None
+        self,
+        documents: object = None,
+        query: object = None,
+        error: Exception | None = None,
     ) -> None:
         self._documents = documents
         self._query = query

@@ -36,7 +36,8 @@ def test_built_frontend_is_accepted(tmp_path: Path) -> None:
 
 
 def test_main_serves_on_the_configured_loopback_address(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     (tmp_path / "index.html").write_text("<html></html>")
     settings = replace(get_ui_settings(), frontend_dist=tmp_path)
@@ -48,7 +49,8 @@ def test_main_serves_on_the_configured_loopback_address(
 
 
 def test_main_loads_the_dotenv_file_before_serving(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     (tmp_path / "index.html").write_text("<html></html>")
     settings = replace(get_ui_settings(), frontend_dist=tmp_path)
@@ -60,7 +62,8 @@ def test_main_loads_the_dotenv_file_before_serving(
 
 
 def test_main_does_not_start_without_a_frontend(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     settings = replace(get_ui_settings(), frontend_dist=tmp_path / "missing")
     launched = _capture_launch(monkeypatch, settings)
@@ -70,7 +73,8 @@ def test_main_does_not_start_without_a_frontend(
 
 
 def test_main_configures_monitoring_after_the_dotenv_file_and_before_serving(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     (tmp_path / "index.html").write_text("<html></html>")
     order: list[str] = []

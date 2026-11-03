@@ -96,7 +96,9 @@ def _benchmark(value: object, *, positive: bool) -> float | None:
 
 
 def _exposure_concentration(
-    annual_ug_per_m3: float, settings: ExposureSettings, averaging_time_years: float
+    annual_ug_per_m3: float,
+    settings: ExposureSettings,
+    averaging_time_years: float,
 ) -> float:
     f = settings.factors
     return exposure_concentration(
@@ -109,7 +111,10 @@ def _exposure_concentration(
 
 
 def _risks(
-    annual_ug_per_m3: float, toxicity: Toxicity, settings: ExposureSettings, notes: list[str]
+    annual_ug_per_m3: float,
+    toxicity: Toxicity,
+    settings: ExposureSettings,
+    notes: list[str],
 ) -> tuple[float | None, float | None]:
     rfc = _benchmark(toxicity.get("rfc"), positive=True)
     iur = _benchmark(toxicity.get("iur"), positive=False)
@@ -118,7 +123,9 @@ def _risks(
         notes.append("no usable RfC, so the hazard quotient is not computed")
     else:
         ec = _exposure_concentration(
-            annual_ug_per_m3, settings, settings.factors.exposure_duration_years
+            annual_ug_per_m3,
+            settings,
+            settings.factors.exposure_duration_years,
         )
         hq = hazard_quotient_from_rfc(ec, rfc)
     if iur is None:
@@ -155,7 +162,10 @@ def _scenario(
 
 
 def _doses(
-    annual_ug_per_m3: float, population: Population, settings: ExposureSettings, notes: list[str]
+    annual_ug_per_m3: float,
+    population: Population,
+    settings: ExposureSettings,
+    notes: list[str],
 ) -> dict[str, float]:
     rates = {b: v.inhalation_rate_m3_per_day for b, v in settings.age_bands.items()}
     weights = {b: v.body_weight_kg for b, v in settings.age_bands.items()}
@@ -187,7 +197,7 @@ def _stack_notes(source: str | None) -> list[str]:
         return [
             "the stack is the EPA global default (3 m high, 0.2 m wide, cold and slow), not this "
             "facility's own; a low, cold stack gives much higher concentrations than a real tall "
-            "one, so these results are a generic worst-case-like screening value"
+            "one, so these results are a generic worst-case-like screening value",
         ]
     if source == _PROCESS_STACK:
         return ["the stack is a default for this kind of process (PSTK), not the facility's own"]
@@ -195,7 +205,9 @@ def _stack_notes(source: str | None) -> list[str]:
 
 
 def _standing_notes(
-    meteorology: Meteorology, population: Population, found: ScreeningResult
+    meteorology: Meteorology,
+    population: Population,
+    found: ScreeningResult,
 ) -> list[str]:
     notes = [
         "the worst case is the screening maximum between 100 m and 10 km; "
@@ -204,12 +216,12 @@ def _standing_notes(
     if found.at_last_distance:
         notes.append(
             "the worst case is at the farthest distance evaluated, "
-            "so the true maximum may lie farther away"
+            "so the true maximum may lie farther away",
         )
     if meteorology.get("source") == DEFAULT_SOURCE:
         notes.append(
             "the meteorology is a screening default, "
-            "so the representative result uses generic weather"
+            "so the representative result uses generic weather",
         )
     if population.get("source") == DEFAULT_SOURCE:
         notes.append("the population is a screening default, so the age mix is generic")
@@ -274,12 +286,7 @@ def _assess(
     settings: ExposureSettings,
 ) -> ExposureMetrics:
     notes: list[str] = []
-    atmosphere = _atmosphere(meteorology, settings)
-    grid = settings.combinations
-    worst, found = _scenario(emission_rate, stack, grid, atmosphere, toxicity, settings, notes)
-    typical = _representative_result(
-        emission_rate, stack, meteorology, atmosphere, toxicity, settings, notes
-    )
+    worst, found, typical = _cases(emission_rate, stack, meteorology, toxicity, settings, notes)
     doses = _doses(float(worst["max_concentration"] or 0.0), population, settings, notes)
     top = highest_dose_band(doses)
     return ExposureMetrics(
@@ -291,6 +298,30 @@ def _assess(
         representative=typical,
         warnings=_all_notes(notes, stack_source, meteorology, population, found),
     )
+
+
+def _cases(
+    emission_rate: float,
+    stack: Stack,
+    meteorology: Meteorology,
+    toxicity: Toxicity,
+    settings: ExposureSettings,
+    notes: list[str],
+) -> tuple[ScenarioResult, ScreeningResult, ScenarioResult]:
+    """The worst case over the settings' grid, its screening search, and the typical case."""
+    atmosphere = _atmosphere(meteorology, settings)
+    grid = settings.combinations
+    worst, found = _scenario(emission_rate, stack, grid, atmosphere, toxicity, settings, notes)
+    typical = _representative_result(
+        emission_rate,
+        stack,
+        meteorology,
+        atmosphere,
+        toxicity,
+        settings,
+        notes,
+    )
+    return worst, found, typical
 
 
 def _all_notes(

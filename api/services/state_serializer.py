@@ -106,5 +106,5 @@ def build_workspace(
             "facilities": facilities,
             "unattributed": lost,
             "warnings": ledger.warnings,
-        }
+        },
     )

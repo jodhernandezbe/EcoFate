@@ -130,7 +130,10 @@ def _mean_temperature(temperature: NDArray[np.float64]) -> float:
 
 
 def summarize_hours(
-    hours: HourlyInputs, *, minimum_wind_speed: float, sector_width: float
+    hours: HourlyInputs,
+    *,
+    minimum_wind_speed: float,
+    sector_width: float,
 ) -> HourlySummary:
     """Summarize validated hours into representative conditions.
 

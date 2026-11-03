@@ -19,7 +19,8 @@ def test_status_without_key(client: TestClient) -> None:
 
 
 def test_save_then_status_shows_only_that_a_key_is_stored(
-    client: TestClient, store: FakeCredentialStore
+    client: TestClient,
+    store: FakeCredentialStore,
 ) -> None:
     saved = client.post("/api/v1/settings/openai-key", json={"api_key": KEY}, headers=OWN)
     assert saved.status_code == 200
@@ -99,7 +100,9 @@ SECRETS = {
 
 @pytest.mark.parametrize("name", list(PATHS))
 def test_each_key_is_saved_under_its_own_keychain_entry(
-    client: TestClient, store: FakeCredentialStore, name: str
+    client: TestClient,
+    store: FakeCredentialStore,
+    name: str,
 ) -> None:
     response = client.post(PATHS[name], json={"api_key": SECRETS[name]}, headers=OWN)
     assert response.status_code == 200
@@ -119,7 +122,8 @@ def test_each_key_can_be_read_and_cleared(client: TestClient, name: str) -> None
 
 
 def test_saving_or_clearing_one_key_leaves_the_others(
-    client: TestClient, store: FakeCredentialStore
+    client: TestClient,
+    store: FakeCredentialStore,
 ) -> None:
     for name, path in PATHS.items():
         client.post(path, json={"api_key": SECRETS[name]}, headers=OWN)
@@ -150,7 +154,10 @@ def test_the_combined_status_reports_every_key_without_revealing_any(
 @pytest.mark.parametrize("name", list(PATHS))
 @pytest.mark.parametrize("bad", ["", "   ", "has space", "tab\there", "x" * 513])
 def test_each_key_is_validated_before_storing(
-    client: TestClient, store: FakeCredentialStore, name: str, bad: str
+    client: TestClient,
+    store: FakeCredentialStore,
+    name: str,
+    bad: str,
 ) -> None:
     response = client.post(PATHS[name], json={"api_key": bad}, headers=OWN)
     assert response.status_code == 422
@@ -160,7 +167,9 @@ def test_each_key_is_validated_before_storing(
 
 @pytest.mark.parametrize("path", [*PATHS.values(), "/api/v1/settings/keys"])
 def test_an_unavailable_keychain_is_a_safe_503_for_every_status(
-    app: FastAPI, store: FakeCredentialStore, path: str
+    app: FastAPI,
+    store: FakeCredentialStore,
+    path: str,
 ) -> None:
     store.fail = True
     with TestClient(app, base_url=ORIGIN, raise_server_exceptions=False) as client:

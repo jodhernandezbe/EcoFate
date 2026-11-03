@@ -14,13 +14,16 @@ EARTH_RADIUS_KM = 6371.0088  # IUGG mean Earth radius, km
 
 
 def destination(
-    latitude: float, longitude: float, bearing_deg: float, distance_km: float
+    latitude: float,
+    longitude: float,
+    bearing_deg: float,
+    distance_km: float,
 ) -> list[float]:
     """The ``[longitude, latitude]`` reached from a point along a great circle."""
     lat1, lon1, theta = math.radians(latitude), math.radians(longitude), math.radians(bearing_deg)
     delta = distance_km / EARTH_RADIUS_KM
     lat2 = math.asin(
-        math.sin(lat1) * math.cos(delta) + math.cos(lat1) * math.sin(delta) * math.cos(theta)
+        math.sin(lat1) * math.cos(delta) + math.cos(lat1) * math.sin(delta) * math.cos(theta),
     )
     lon2 = lon1 + math.atan2(
         math.sin(theta) * math.sin(delta) * math.cos(lat1),
@@ -56,7 +59,9 @@ def sector(
     arc = [
         destination(latitude, longitude, bearing, radius_km)
         for bearing in _bearings(
-            toward_deg + half_angle_deg, toward_deg - half_angle_deg, spacing_deg
+            toward_deg + half_angle_deg,
+            toward_deg - half_angle_deg,
+            spacing_deg,
         )
     ]
     centre = [longitude, latitude]

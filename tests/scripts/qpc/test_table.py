@@ -23,7 +23,9 @@ def _settings(**changes: int) -> QpcSettings:
 
 
 def _run(
-    rows: list[Row], release: Release = RELEASE, settings: QpcSettings | None = None
+    rows: list[Row],
+    release: Release = RELEASE,
+    settings: QpcSettings | None = None,
 ) -> Extraction:
     return extract(rows, release, settings or _settings(), CHILDREN)
 
@@ -101,7 +103,9 @@ def test_aggregate_row_is_reported() -> None:
 
 def test_overlapping_rows_are_both_removed() -> None:
     rows = sheet_rows(
-        data_row("313", "Wide", 10.0), data_row("3131", "Narrow", 11.0), data_row(3112, "Ok", 12.0)
+        data_row("313", "Wide", 10.0),
+        data_row("3131", "Narrow", 11.0),
+        data_row(3112, "Ok", 12.0),
     )
     result = _run(rows)
     assert [c for e in result.entries for c in e.codes] == ["3112"]

@@ -24,7 +24,8 @@ def _row(frs_id: str, lat: object = 1.0, lon: object = -1.0) -> dict[str, object
 
 
 def _locator(
-    answer: Callable[[list[str]], object] | object, status: int = 200
+    answer: Callable[[list[str]], object] | object,
+    status: int = 200,
 ) -> tuple[FrsLocator, list[list[str]]]:
     asked: list[list[str]] = []
 
@@ -34,7 +35,9 @@ def _locator(
         return httpx.Response(status, json=answer(ids) if callable(answer) else answer)
 
     client = EfserviceClient(
-        EF, httpx.Client(transport=httpx.MockTransport(handler)), lambda _: None
+        EF,
+        httpx.Client(transport=httpx.MockTransport(handler)),
+        lambda _: None,
     )
     return FrsLocator(client, SETTINGS), asked
 
@@ -82,7 +85,8 @@ def test_the_first_usable_point_of_a_facility_wins() -> None:
 
 
 @pytest.mark.parametrize(
-    ("lat", "lon"), [(91.0, -1.0), (1.0, 181.0), (True, -1.0), ("1", "-1"), (1.0, None)]
+    ("lat", "lon"),
+    [(91.0, -1.0), (1.0, 181.0), (True, -1.0), ("1", "-1"), (1.0, None)],
 )
 def test_unusable_points_are_left_out(lat: object, lon: object) -> None:
     locator, _ = _locator([_row(A, lat, lon)])
@@ -117,6 +121,8 @@ def test_one_failed_batch_does_not_lose_the_others() -> None:
         return httpx.Response(500) if A in ids else httpx.Response(200, json=answer(ids))
 
     client = EfserviceClient(
-        EF, httpx.Client(transport=httpx.MockTransport(handler)), lambda _: None
+        EF,
+        httpx.Client(transport=httpx.MockTransport(handler)),
+        lambda _: None,
     )
     assert set(FrsLocator(client, SETTINGS)([A, B, C])) == {C}

@@ -25,7 +25,8 @@ def test_a_count_accepts_whole_non_negative_numbers(value: object, expected: int
 
 
 @pytest.mark.parametrize(
-    "value", [True, -1, "-1", 2.5, "2.5", "x", float("nan"), float("inf"), [], {}, "", None]
+    "value",
+    [True, -1, "-1", 2.5, "2.5", "x", float("nan"), float("inf"), [], {}, "", None],
 )
 def test_a_count_rejects_everything_else(value: object) -> None:
     assert count({"n": value}, "n") is None
@@ -60,7 +61,8 @@ def test_an_instant_without_an_offset_is_taken_as_utc() -> None:
 
 
 @pytest.mark.parametrize(
-    ("value", "expected"), [("ok", "ok"), ("error", "error"), ("x", "unknown"), (None, "unknown")]
+    ("value", "expected"),
+    [("ok", "ok"), ("error", "error"), ("x", "unknown"), (None, "unknown")],
 )
 def test_an_outcome_is_ok_error_or_unknown(value: object, expected: str) -> None:
     assert outcome({"o": value}, "o") == expected

@@ -33,12 +33,19 @@ def lookup(cas: str) -> str:
 
 def _runtime(model: BaseChatModel, monitoring: TelemetrySettings) -> AgentRuntime:
     return AgentRuntime(
-        lambda key: model, 10, model_name="m", pricing=PRICING, telemetry=monitoring
+        lambda key: model,
+        10,
+        model_name="m",
+        pricing=PRICING,
+        telemetry=monitoring,
     )
 
 
 def _turn(
-    message: str, threads: ThreadStore, runtime: AgentRuntime, thread_id: str = "t1"
+    message: str,
+    threads: ThreadStore,
+    runtime: AgentRuntime,
+    thread_id: str = "t1",
 ) -> AsyncGenerator[StreamEvent]:
     store = FakeCredentialStore()
     store.entries[OPENAI_ENTRY] = KEY
@@ -51,7 +58,10 @@ def _turn(
 
 
 async def _run(
-    message: str, threads: ThreadStore, runtime: AgentRuntime, thread_id: str = "t1"
+    message: str,
+    threads: ThreadStore,
+    runtime: AgentRuntime,
+    thread_id: str = "t1",
 ) -> list[StreamEvent]:
     events = _turn(message, threads, runtime, thread_id)
     return [event async for event in events]
@@ -67,7 +77,8 @@ def _turn_spans(exporter: TestExporter, monitoring: TelemetrySettings) -> list[R
 
 
 async def test_a_turn_is_one_span_tagged_with_the_thread_and_its_totals(
-    monitoring: TelemetrySettings, exporter: TestExporter
+    monitoring: TelemetrySettings,
+    exporter: TestExporter,
 ) -> None:
     model = ScriptedChatModel([reply("hello", 100, 20), reply("again", 50, 10)])
     threads, runtime = ThreadStore(), _runtime(model, monitoring)
@@ -88,7 +99,8 @@ async def test_a_turn_is_one_span_tagged_with_the_thread_and_its_totals(
 
 
 async def test_a_missing_key_ends_the_turn_span_as_an_error(
-    monitoring: TelemetrySettings, exporter: TestExporter
+    monitoring: TelemetrySettings,
+    exporter: TestExporter,
 ) -> None:
     runtime = _runtime(ScriptedChatModel([reply("never", 1, 1)]), monitoring)
     events = run_turn(
@@ -103,7 +115,8 @@ async def test_a_missing_key_ends_the_turn_span_as_an_error(
 
 
 async def test_a_model_failure_ends_the_turn_span_as_an_error(
-    monitoring: TelemetrySettings, exporter: TestExporter
+    monitoring: TelemetrySettings,
+    exporter: TestExporter,
 ) -> None:
     runtime = _runtime(ScriptedChatModel([]), monitoring)  # out of script: the model raises
     await _run("hi", ThreadStore(), runtime)
@@ -112,11 +125,14 @@ async def test_a_model_failure_ends_the_turn_span_as_an_error(
 
 
 async def test_tool_calls_nest_in_the_turn_trace(
-    monkeypatch: pytest.MonkeyPatch, monitoring: TelemetrySettings, exporter: TestExporter
+    monkeypatch: pytest.MonkeyPatch,
+    monitoring: TelemetrySettings,
+    exporter: TestExporter,
 ) -> None:
     monkeypatch.setattr("agent.graph.get_all_tools", lambda: [lookup])
     call = AIMessage(
-        content="", tool_calls=[ToolCall(name="lookup", args={"cas": "71-43-2"}, id="c")]
+        content="",
+        tool_calls=[ToolCall(name="lookup", args={"cas": "71-43-2"}, id="c")],
     )
     model = ScriptedChatModel([call, reply("done", 20, 2)])
     await _run("Assess 71-43-2", ThreadStore(), _runtime(model, monitoring))
@@ -125,12 +141,14 @@ async def test_tool_calls_nest_in_the_turn_trace(
     tools = [s for s in exporter.exported_spans if (s.attributes or {}).get("gen_ai.tool.name")]
     assert [str((s.attributes or {})["gen_ai.tool.name"]) for s in tools] == ["lookup"]
     assert {s.context.trace_id for s in tools if s.context} == {
-        turn.context.trace_id if turn.context else None
+        turn.context.trace_id if turn.context else None,
     }
 
 
 async def test_closing_the_stream_early_still_ends_the_span_cleanly(
-    monitoring: TelemetrySettings, exporter: TestExporter, caplog: pytest.LogCaptureFixture
+    monitoring: TelemetrySettings,
+    exporter: TestExporter,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     runtime = _runtime(ScriptedChatModel([reply("hello there", 10, 2)]), monitoring)
     events = _turn("hi", ThreadStore(), runtime)

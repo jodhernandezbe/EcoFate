@@ -21,7 +21,9 @@ LANES: tuple[LaneBuilder, ...] = (community_lane, worker_lane)
 
 
 def build_exposure_graph(
-    facility: Facility, text: GraphText, lanes: tuple[LaneBuilder, ...] = LANES
+    facility: Facility,
+    text: GraphText,
+    lanes: tuple[LaneBuilder, ...] = LANES,
 ) -> ExposureGraph:
     """The facility's graph; a lane without its result is kept and marked unavailable."""
     parts = [build(facility, text) for build in lanes]

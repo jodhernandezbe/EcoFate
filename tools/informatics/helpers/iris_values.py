@@ -34,7 +34,10 @@ def _source(record: Mapping[str, object], iris: IrisSettings) -> str:
 
 
 def _value(
-    record: Mapping[str, object], iris: IrisSettings, field: IrisFieldSpec, route: str
+    record: Mapping[str, object],
+    iris: IrisSettings,
+    field: IrisFieldSpec,
+    route: str,
 ) -> ToxicityValue | str | None:
     """The field's value; a note if its text cannot be read exactly; None if there is none."""
     text = _text(record.get(field.field))
@@ -54,7 +57,9 @@ def _value(
 
 
 def iris_values(
-    record: Mapping[str, object], iris: IrisSettings, specs: Sequence[ToxicityValueSpec]
+    record: Mapping[str, object],
+    iris: IrisSettings,
+    specs: Sequence[ToxicityValueSpec],
 ) -> tuple[dict[str, ToxicityValue], list[str]]:
     """Read the configured chronic values of one endpoint record.
 
@@ -76,7 +81,10 @@ def iris_values(
 
 
 def disagreement(
-    key: str, endpoint: ToxicityValue, toxval: ToxicityValue | None, tolerance: float
+    key: str,
+    endpoint: ToxicityValue,
+    toxval: ToxicityValue | None,
+    tolerance: float,
 ) -> str | None:
     """A note if ToxVal's IRIS value differs from the endpoint's by more than ``tolerance``.
 

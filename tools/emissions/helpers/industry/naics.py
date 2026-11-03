@@ -18,7 +18,11 @@ _BIG = 10**9
 
 def _none(warnings: Sequence[str]) -> FacilityIndustry:
     return FacilityIndustry(
-        naics_code=None, naics_title=None, code_origin=None, source=None, warnings=list(warnings)
+        naics_code=None,
+        naics_title=None,
+        code_origin=None,
+        source=None,
+        warnings=list(warnings),
     )
 
 
@@ -47,8 +51,11 @@ class _Primary:
     placeholders: frozenset[str]
 
 
-def _primary(rows: Sequence[Row], settings: IndustrySettings) -> _Primary:
-    """Choose the primary row with the lowest sequence number; note other codes and placeholders."""
+def _coded(
+    rows: Sequence[Row],
+    settings: IndustrySettings,
+) -> tuple[list[tuple[int, str, Row]], set[str]]:
+    """Rows with a real code, sorted by sequence then code, and the placeholder codes seen."""
     real: list[tuple[int, str, Row]] = []
     placeholders: set[str] = set()
     for row in rows:
@@ -60,10 +67,19 @@ def _primary(rows: Sequence[Row], settings: IndustrySettings) -> _Primary:
         else:
             real.append((_sequence(row, settings), code, row))
     real.sort(key=lambda item: item[:2])
+    return real, placeholders
+
+
+def _primary(rows: Sequence[Row], settings: IndustrySettings) -> _Primary:
+    """Choose the primary row with the lowest sequence number; note other codes and placeholders."""
+    real, placeholders = _coded(rows, settings)
     first = real[0] if real else None
     codes = frozenset(code for _, code, _ in real)
     return _Primary(
-        first[1] if first else None, first[2] if first else None, codes, frozenset(placeholders)
+        first[1] if first else None,
+        first[2] if first else None,
+        codes,
+        frozenset(placeholders),
     )
 
 
@@ -96,16 +112,18 @@ def _notes(code: str, title: str | None, origin: str | None, codes: Collection[s
     notes: list[str] = []
     if origin == "assigned":
         notes.append(
-            f"EPA assigned NAICS code {code} (the facility did not report it), so it may be generic"
+            f"EPA assigned NAICS code {code} (the facility did not report it), "
+            "so it may be generic",
         )
     if len(codes) > 1:
         notes.append(
-            f"the submission lists {len(codes)} primary NAICS codes; {code}, the first, is returned"
+            f"the submission lists {len(codes)} primary NAICS codes; "
+            f"{code}, the first, is returned",
         )
     if title is None:
         notes.append(
             f"no title was found for NAICS code {code}; the title is needed before the SCC "
-            "process search can be used"
+            "process search can be used",
         )
     return notes
 
@@ -129,7 +147,9 @@ def _fetch_rows(doc: str, client: EfserviceClient, settings: IndustrySettings) -
 
 
 def submission_industry(
-    doc_ctrl_num: str | int, client: EfserviceClient, settings: IndustrySettings
+    doc_ctrl_num: str | int,
+    client: EfserviceClient,
+    settings: IndustrySettings,
 ) -> FacilityIndustry:
     """Look up the primary NAICS code of a TRI submission and the title of that code.
 
@@ -151,7 +171,7 @@ def submission_industry(
     rows = _fetch_rows(doc, client, settings)
     if rows is None:
         return _none(
-            [f"the industry of submission {doc} could not be looked up (TRI is unreachable)"]
+            [f"the industry of submission {doc} could not be looked up (TRI is unreachable)"],
         )
     pick = _primary(rows, settings)
     if pick.code is None or pick.row is None:
@@ -160,7 +180,10 @@ def submission_industry(
 
 
 def _result(
-    code: str, pick: _Primary, client: EfserviceClient, settings: IndustrySettings
+    code: str,
+    pick: _Primary,
+    client: EfserviceClient,
+    settings: IndustrySettings,
 ) -> FacilityIndustry:
     title = _title(code, client, settings)
     origin = _origin(pick.row, settings) if pick.row is not None else None

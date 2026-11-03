@@ -50,7 +50,9 @@ class Run:
 
         client = httpx.Client(transport=httpx.MockTransport(record))
         self.fetcher = TriFetcher(
-            settings, EfserviceClient(EFSERVICE, client, self.sleeps.append), CURRENT_YEAR
+            settings,
+            EfserviceClient(EFSERVICE, client, self.sleeps.append),
+            CURRENT_YEAR,
         )
 
     def go(self, medium: str = "AIR STACK") -> bool:

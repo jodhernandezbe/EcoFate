@@ -34,7 +34,10 @@ class SccRetriever:
     """Finds SCC process descriptions similar to an industry (NAICS) description."""
 
     def __init__(
-        self, settings: SccIndexSettings, embedding: EmbeddingSettings, embeddings: Embeddings
+        self,
+        settings: SccIndexSettings,
+        embedding: EmbeddingSettings,
+        embeddings: Embeddings,
     ) -> None:
         """Args: index settings, embedding settings (for the fingerprint), embeddings."""
         self._index = index = VectorIndex(

@@ -108,7 +108,9 @@ class StackSettings:
 
 
 def _per_quantity[T](
-    table: dict[str, object], name: str, parse: Callable[[dict[str, object], str, str], T]
+    table: dict[str, object],
+    name: str,
+    parse: Callable[[dict[str, object], str, str], T],
 ) -> Mapping[str, T]:
     """Parse a table that must hold exactly one entry per stack quantity."""
     unknown = sorted(set(table) - set(STACK_QUANTITIES))
@@ -161,7 +163,7 @@ def _merge_digits(table: dict[str, object]) -> int:
     digits = require_number(table, "merge_significant_digits", minimum=1, name="stack.nei")
     if digits > _MAX_SIGNIFICANT_DIGITS or digits != int(digits):
         raise ValueError(
-            f"stack.nei.merge_significant_digits must be 1 to {_MAX_SIGNIFICANT_DIGITS}"
+            f"stack.nei.merge_significant_digits must be 1 to {_MAX_SIGNIFICANT_DIGITS}",
         )
     return int(digits)
 
@@ -173,6 +175,11 @@ def _file_template(table: dict[str, object]) -> str:
     return template
 
 
+def _nei_names(table: dict[str, object], name: str, key: str) -> Mapping[str, str]:
+    """One string per quantity from the ``[stack.nei.<key>]`` subtable."""
+    return _per_quantity(subtable(table, key, name), f"{name}.{key}", require_str)
+
+
 def _parse_nei(stack: dict[str, object]) -> NeiSettings:
     table = subtable(stack, "nei", "stack")
     name = "stack.nei"
@@ -181,15 +188,13 @@ def _parse_nei(stack: dict[str, object]) -> NeiSettings:
         file_template=_file_template(table),
         prefix_digits=require_int(table, "prefix_digits", minimum=1, name=name),
         id_column=require_str(table, "id_column", name).strip(),
-        columns=_per_quantity(subtable(table, "columns", name), f"{name}.columns", require_str),
-        units=_per_quantity(subtable(table, "units", name), f"{name}.units", require_str),
+        columns=_nei_names(table, name, "columns"),
+        units=_nei_names(table, name, "units"),
         max_candidates=require_int(table, "max_candidates", minimum=1, name=name),
         merge_significant_digits=_merge_digits(table),
         raw_path=project_path(table, "raw_path", name),
         raw_id_column=require_str(table, "raw_id_column", name).strip(),
-        raw_columns=_per_quantity(
-            subtable(table, "raw_columns", name), f"{name}.raw_columns", require_str
-        ),
+        raw_columns=_nei_names(table, name, "raw_columns"),
     )
 
 
@@ -218,11 +223,15 @@ def load_stack_settings(path: Path | None = None) -> StackSettings:
         pstk=_parse_pstk(stack),
         nei=_parse_nei(stack),
         target_units=_per_quantity(
-            subtable(stack, "target_units", "stack"), "stack.target_units", require_str
+            subtable(stack, "target_units", "stack"),
+            "stack.target_units",
+            require_str,
         ),
         ranges=_per_quantity(subtable(stack, "ranges", "stack"), "stack.ranges", _range),
         global_fallback=_per_quantity(
-            subtable(stack, "global_fallback", "stack"), "stack.global_fallback", _positive
+            subtable(stack, "global_fallback", "stack"),
+            "stack.global_fallback",
+            _positive,
         ),
     )
     _check_fallback_in_range(settings)

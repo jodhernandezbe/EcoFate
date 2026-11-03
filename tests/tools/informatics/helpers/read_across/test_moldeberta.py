@@ -61,7 +61,7 @@ class _Tokenizer:
     def __call__(self, smiles: str, **kwargs: object) -> BatchEncoding:
         self.kwargs = kwargs
         return BatchEncoding(
-            {"input_ids": torch.tensor([[5, 6]]), "attention_mask": torch.tensor([[1, 0]])}
+            {"input_ids": torch.tensor([[5, 6]]), "attention_mask": torch.tensor([[1, 0]])},
         )
 
 

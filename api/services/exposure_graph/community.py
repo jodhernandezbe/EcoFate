@@ -63,7 +63,9 @@ def _peak_distance(facility: Facility, exposure: ExposureRanges) -> float | None
 
 
 def _air_quantities(
-    facility: Facility, exposure: ExposureRanges, text: GraphText
+    facility: Facility,
+    exposure: ExposureRanges,
+    text: GraphText,
 ) -> list[GraphQuantity]:
     peak = exposure.concentration_worst
     weather = facility.meteorology
@@ -92,7 +94,11 @@ def _air_node(facility: Facility, exposure: ExposureRanges, text: GraphText) -> 
 
 
 def _band_node(
-    band: str, share: float, dose: float | None, people: Receptors, text: GraphText
+    band: str,
+    share: float,
+    dose: float | None,
+    people: Receptors,
+    text: GraphText,
 ) -> GraphNode:
     return GraphNode(
         id=f"{LANE}:band:{band}",

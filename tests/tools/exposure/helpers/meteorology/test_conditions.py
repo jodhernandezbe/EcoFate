@@ -61,7 +61,11 @@ class Run:
         self.client = RetryingClient(SETTINGS.policy, http, lambda _s: None)
 
     def at(
-        self, lat: float = 41.5, lon: float = -71.2, year: int | None = 2000, today: date = TODAY
+        self,
+        lat: float = 41.5,
+        lon: float = -71.2,
+        year: int | None = 2000,
+        today: date = TODAY,
     ) -> Meteorology:
         return meteorology_for(lat, lon, year, SETTINGS, self.client, None, today)
 
@@ -196,7 +200,10 @@ def test_throttled_then_success() -> None:
     ],
 )
 def test_invalid_input_makes_no_request(
-    lat: object, lon: object, year: object, fragment: str
+    lat: object,
+    lon: object,
+    year: object,
+    fragment: str,
 ) -> None:
     run = Run(_ok(_row()))
     result = meteorology_for(lat, lon, year, SETTINGS, run.client, None, TODAY)  # type: ignore[arg-type]

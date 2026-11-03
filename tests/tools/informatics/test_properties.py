@@ -39,7 +39,10 @@ FIELDS = (
 
 
 def _prop(
-    name: str, unit: str, value: float | None, predicted: float | None = None
+    name: str,
+    unit: str,
+    value: float | None,
+    predicted: float | None = None,
 ) -> dict[str, object]:
     return {
         "propName": name,
@@ -118,7 +121,10 @@ def _run(
     client = httpx.Client(transport=httpx.MockTransport(respond))
     settings = settings or get_comptox_settings()
     comptox = ComptoxLookup(
-        settings, client, sleep=lambda _: None, environ=ENV if env is None else env
+        settings,
+        client,
+        sleep=lambda _: None,
+        environ=ENV if env is None else env,
     )
     aliases = get_unit_settings().aliases
     result = lookup_chemical_properties(cas, comptox, settings, aliases, inputs=inputs)
@@ -260,7 +266,8 @@ def test_molecular_weight_is_converted_from_the_configured_unit() -> None:
 
 def test_molecular_weight_in_an_incompatible_unit_is_rejected() -> None:
     settings = replace(
-        get_comptox_settings(), molecular_weight=MolecularWeightSpec("averageMass", "mmHg", "g/mol")
+        get_comptox_settings(),
+        molecular_weight=MolecularWeightSpec("averageMass", "mmHg", "g/mol"),
     )
     result, _ = _run(mass=12.5, settings=settings)
     assert result["molecular_weight"] is None
@@ -479,7 +486,8 @@ NO_IUR = [t for t in FULL_TOX if t["toxvalType"] != "cancer unit risk"]
 
 
 def _answers(
-    supplied: dict[str, float] | None = None, declined: frozenset[str] = frozenset()
+    supplied: dict[str, float] | None = None,
+    declined: frozenset[str] = frozenset(),
 ) -> UserValueInputs:
     return UserValueInputs(
         settings=get_user_value_settings(),

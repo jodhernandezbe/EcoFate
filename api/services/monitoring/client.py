@@ -93,7 +93,9 @@ class _ApiQuery:
         since = datetime.now(UTC) - timedelta(hours=window_hours)
         try:
             result = await self._client.query_json_rows(
-                sql=sql, min_timestamp=since, limit=self._max_rows
+                sql=sql,
+                min_timestamp=since,
+                limit=self._max_rows,
             )
         except _FAILURES as error:
             raise _translate(error) from error
@@ -102,7 +104,8 @@ class _ApiQuery:
 
 @asynccontextmanager
 async def logfire_query(
-    token: SecretStr, settings: TelemetrySettings
+    token: SecretStr,
+    settings: TelemetrySettings,
 ) -> AsyncGenerator[LogfireQuery]:
     """Open the Logfire query API with the read token and the configured time limit."""
     timeout = httpx.Timeout(settings.query_timeout_seconds)

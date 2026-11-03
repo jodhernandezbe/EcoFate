@@ -56,7 +56,9 @@ def _nei(record: EmissionRecord, steps: Steps, notes: list[str]) -> StackChoice 
 
 
 def _title(
-    record: EmissionRecord, steps: Steps, notes: list[str]
+    record: EmissionRecord,
+    steps: Steps,
+    notes: list[str],
 ) -> tuple[str | None, FacilityIndustry | None]:
     """The industry in words: from the inventory, else from TRI's tables, else None."""
     if record["naics_title"]:
@@ -70,7 +72,10 @@ def _title(
 
 
 def _pstk(
-    title: str, steps: Steps, settings: AssessmentSettings, notes: list[str]
+    title: str,
+    steps: Steps,
+    settings: AssessmentSettings,
+    notes: list[str],
 ) -> tuple[list[StackParameters], list[SccMatch]]:
     """Distinct PSTK stacks of the best SCC matches above the score floor."""
     lookup = steps.scc(title)
@@ -92,7 +97,10 @@ def _pstk(
 
 
 def _no_pstk(
-    title: str, matches: list[SccMatch], good: list[SccMatch], settings: AssessmentSettings
+    title: str,
+    matches: list[SccMatch],
+    good: list[SccMatch],
+    settings: AssessmentSettings,
 ) -> str:
     if not matches:
         return f"no SCC process matched the industry {title!r}"
@@ -106,7 +114,9 @@ def _no_pstk(
 
 
 def choose_stacks(
-    record: EmissionRecord, steps: Steps, settings: AssessmentSettings
+    record: EmissionRecord,
+    steps: Steps,
+    settings: AssessmentSettings,
 ) -> StackChoice:
     """The best available stacks of a facility; never empty (the global default is last)."""
     notes: list[str] = []

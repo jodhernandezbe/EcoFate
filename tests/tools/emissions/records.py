@@ -6,7 +6,10 @@ from tools.schemas import EmissionRecord
 
 
 def emission_record(
-    frs_id: str, rate: float, state: str | None = "TX", city: str | None = "Houston"
+    frs_id: str,
+    rate: float,
+    state: str | None = "TX",
+    city: str | None = "Houston",
 ) -> EmissionRecord:
     return {
         "frs_id": frs_id,

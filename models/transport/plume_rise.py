@@ -91,23 +91,37 @@ def final_plume_rise(
         ValueError: If the class is unknown, a value is not positive, or the gradient is
             missing for a stable class.
     """
-    cls = stability_class.strip().upper()
-    if cls not in "ABCDEF" or len(cls) != 1:
-        raise ValueError(f"stability_class must be one of A-F, got {stability_class!r}")
+    cls = _stability_class(stability_class)
     _positive(wind_speed_m_per_s, "wind_speed_m_per_s")
     _positive(ambient_temperature_k, "ambient_temperature_k")
-    flux = buoyancy_flux_m4_per_s3
-    if isinstance(flux, bool) or not math.isfinite(flux) or flux < 0:
-        raise ValueError(f"buoyancy_flux_m4_per_s3 must be finite and >= 0, got {flux!r}")
+    flux = _flux(buoyancy_flux_m4_per_s3)
     if flux == 0:
         return 0.0
     if cls in STABLE_CLASSES:
         return _stable_rise(
-            flux, wind_speed_m_per_s, ambient_temperature_k, potential_temperature_gradient_k_per_m
+            flux,
+            wind_speed_m_per_s,
+            ambient_temperature_k,
+            potential_temperature_gradient_k_per_m,
         )
     if flux < _FLUX_REGIME_BOUNDARY:
         return _LOW_FLUX_COEFFICIENT * flux**0.75 / wind_speed_m_per_s
     return _HIGH_FLUX_COEFFICIENT * flux**0.6 / wind_speed_m_per_s
+
+
+def _stability_class(stability_class: str) -> str:
+    """The class as one upper-case letter A to F."""
+    cls = stability_class.strip().upper()
+    if cls not in "ABCDEF" or len(cls) != 1:
+        raise ValueError(f"stability_class must be one of A-F, got {stability_class!r}")
+    return cls
+
+
+def _flux(flux: float) -> float:
+    """The buoyancy flux, in m^4/s^3: a finite number that is not negative."""
+    if isinstance(flux, bool) or not math.isfinite(flux) or flux < 0:
+        raise ValueError(f"buoyancy_flux_m4_per_s3 must be finite and >= 0, got {flux!r}")
+    return flux
 
 
 def _stable_rise(
@@ -155,5 +169,6 @@ def stack_tip_downwash(
     if ratio >= _DOWNWASH_RATIO:
         return stack_height_m
     return max(
-        0.0, stack_height_m + _DOWNWASH_FACTOR * (ratio - _DOWNWASH_RATIO) * stack_diameter_m
+        0.0,
+        stack_height_m + _DOWNWASH_FACTOR * (ratio - _DOWNWASH_RATIO) * stack_diameter_m,
     )

@@ -72,7 +72,9 @@ def test_notes_are_deduplicated_and_capped() -> None:
 def test_the_view_ranks_by_worst_hq_and_counts_tiers_and_gaps() -> None:
     skipped = [NotAssessed(frs_id="X", reason="not in the inventory")]
     view = assessment_view(
-        _findings(full=[_full("LOW", 1), _full("HIGH", 3)], skipped=skipped), 4, 2
+        _findings(full=[_full("LOW", 1), _full("HIGH", 3)], skipped=skipped),
+        4,
+        2,
     )
     assert [f["frs_id"] for f in view["facilities"]] == ["HIGH", "LOW"]
     assert (view["assessed"], view["facilities_found"], view["stack_tiers"]) == (2, 10, {"NEI": 2})
@@ -84,7 +86,9 @@ def test_screening_counts_the_closest_call_and_the_note() -> None:
     tiers = split(items, True, replace(SETTINGS, max_facilities=1))
     worst = [worst_case_only(i, None) for i in tiers.worst_only]
     view = assessment_view(
-        _findings(full=[_full("A", 1)], worst_only=worst, screened_out=tiers.screened_out), 4, 2
+        _findings(full=[_full("A", 1)], worst_only=worst, screened_out=tiers.screened_out),
+        4,
+        2,
     )
     screening = view["screening"]
     assert screening is not None and screening["possible"]

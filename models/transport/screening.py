@@ -87,9 +87,28 @@ class ScreeningResult:
 
 
 def effective_release_height(
-    stack: Stack, wind_speed_stack_m_per_s: float, stability_class: str, atmosphere: Atmosphere
+    stack: Stack,
+    wind_speed_stack_m_per_s: float,
+    stability_class: str,
+    atmosphere: Atmosphere,
 ) -> float:
     """Downwash-corrected stack height plus final buoyant plume rise, in meters (m)."""
+    corrected = stack_tip_downwash(
+        stack.height_m,
+        stack.diameter_m,
+        stack.exit_velocity_m_per_s,
+        wind_speed_stack_m_per_s,
+    )
+    return corrected + _plume_rise(stack, wind_speed_stack_m_per_s, stability_class, atmosphere)
+
+
+def _plume_rise(
+    stack: Stack,
+    wind_speed_stack_m_per_s: float,
+    stability_class: str,
+    atmosphere: Atmosphere,
+) -> float:
+    """Final buoyant plume rise above the stack top, in meters (m), for the stability class."""
     flux = buoyancy_flux(
         stack.exit_velocity_m_per_s,
         stack.diameter_m,
@@ -98,14 +117,12 @@ def effective_release_height(
     )
     stable = stability_class in STABLE_CLASSES
     gradient = atmosphere.potential_temperature_gradient.get(stability_class) if stable else None
-    rise = final_plume_rise(
-        flux, wind_speed_stack_m_per_s, stability_class, atmosphere.ambient_temperature_k, gradient
-    )
-    return (
-        stack_tip_downwash(
-            stack.height_m, stack.diameter_m, stack.exit_velocity_m_per_s, wind_speed_stack_m_per_s
-        )
-        + rise
+    return final_plume_rise(
+        flux,
+        wind_speed_stack_m_per_s,
+        stability_class,
+        atmosphere.ambient_temperature_k,
+        gradient,
     )
 
 
@@ -117,7 +134,7 @@ def _check_distances(distances_m: Sequence[float] | np.ndarray) -> np.ndarray:
     if not np.all(np.isfinite(x)) or outside:
         raise ValueError(
             f"every distance must be within {MIN_DISTANCE_M:g} to {MAX_DISTANCE_M:g} m, "
-            "the validity range of the dispersion coefficients"
+            "the validity range of the dispersion coefficients",
         )
     return x
 
@@ -265,7 +282,12 @@ def _best_at(
     atmosphere: Atmosphere,
 ) -> ScreeningResult:
     values, wind_stack, height = _concentrations(
-        emission_rate_g_per_s, stack, stability_class, wind_speed_10m_m_per_s, x, atmosphere
+        emission_rate_g_per_s,
+        stack,
+        stability_class,
+        wind_speed_10m_m_per_s,
+        x,
+        atmosphere,
     )
     index = int(np.argmax(values))
     return ScreeningResult(

@@ -62,7 +62,10 @@ def file_name(state: WorkspaceState, ctx: ReportContext, when: datetime) -> str:
 
 
 def build_report(
-    state: WorkspaceState, answer: str | None, ctx: ReportContext, when: datetime
+    state: WorkspaceState,
+    answer: str | None,
+    ctx: ReportContext,
+    when: datetime,
 ) -> bytes:
     """The ``.docx`` bytes of the report of ``state`` and the assistant's last ``answer``."""
     doc = new_document()

@@ -43,7 +43,8 @@ class Setup:
     ) -> None:
         self.categories = fakes.category_index(tmp_path, *categories)
         self.settings: ReadAcrossSettings = fakes.settings(
-            tmp_path, min_hybrid_score=min_hybrid_score
+            tmp_path,
+            min_hybrid_score=min_hybrid_score,
         )
         columns = fakes.catalog_columns(self.settings, extra=extra)
         fakes.write_catalog(self.settings, columns)
@@ -54,7 +55,11 @@ class Setup:
 
     def services(self) -> ReadAcrossServices:
         return ReadAcrossServices(
-            self.catalog, self.embedder, self.server.client, self.settings, self.categories
+            self.catalog,
+            self.embedder,
+            self.server.client,
+            self.settings,
+            self.categories,
         )
 
     def find(self, cas: str, **options: object) -> ReadAcrossMatch:

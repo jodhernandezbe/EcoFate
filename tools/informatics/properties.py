@@ -116,7 +116,7 @@ def _convert_checked(
     if not _positive(converted):
         out.warnings.append(
             f"{field}: rejected value {converted!r} {target} (must be a finite number "
-            "greater than zero)"
+            "greater than zero)",
         )
         return None
     return converted
@@ -220,7 +220,10 @@ def _collect_from_comptox(
 
 
 def _fill_from_pubchem(
-    out: _Collected, key: str, candidate: FieldValue, aliases: dict[str, str]
+    out: _Collected,
+    key: str,
+    candidate: FieldValue,
+    aliases: dict[str, str],
 ) -> None:
     """Add one PubChem value through the same checks as a CompTox value."""
     reported = (candidate.value, candidate.unit, _PUBCHEM)
@@ -230,7 +233,10 @@ def _fill_from_pubchem(
 
 
 def _complete_from_pubchem(
-    out: _Collected, cas: str, pubchem: PubchemFallback, aliases: dict[str, str]
+    out: _Collected,
+    cas: str,
+    pubchem: PubchemFallback,
+    aliases: dict[str, str],
 ) -> None:
     """Ask PubChem for the configured fields still None; never replaces a value."""
     wanted = [key for key in pubchem.fields if key in _PUBCHEM_FIELDS]
@@ -343,7 +349,9 @@ def _has(props: ChemicalProperties, quantity: str) -> bool:
 # plausible range of each. It is read by the confirmation node, not by the model, so it is not in
 # the tool description.
 def _with_user_values(
-    props: ChemicalProperties, cas: str, answers: UserValueInputs
+    props: ChemicalProperties,
+    cas: str,
+    answers: UserValueInputs,
 ) -> ChemicalProperties:
     """Fill a missing value from the user's answer, or list it as asked for."""
     missing = []

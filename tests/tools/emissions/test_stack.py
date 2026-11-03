@@ -29,7 +29,7 @@ def test_nei_schema_and_description() -> None:
 
 def _nei_settings(tmp_path: Path, rows: str) -> StackSettings:
     (tmp_path / "nei_stacks_1.csv.gz").write_bytes(
-        gzip.compress(("eis_id,stkhgt,stkdiam,stkvel,stktemp\n" + rows).encode())
+        gzip.compress(("eis_id,stkhgt,stkdiam,stkvel,stktemp\n" + rows).encode()),
     )
     base = load_stack_settings()
     return replace(base, nei=replace(base.nei, directory=tmp_path, prefix_digits=1))
@@ -51,18 +51,21 @@ def test_nei_tool_end_to_end(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) ->
 
 
 def test_nei_tool_uses_the_eis_ids_given_without_a_request(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def fail(request: httpx.Request) -> httpx.Response:
         raise AssertionError("no request expected")
 
     monkeypatch.setattr(
-        stack, "_open_client", lambda: httpx.Client(transport=httpx.MockTransport(fail))
+        stack,
+        "_open_client",
+        lambda: httpx.Client(transport=httpx.MockTransport(fail)),
     )
     nei = _nei_settings(tmp_path, "1000001,10,3,10,200\n")
     monkeypatch.setattr(stack, "get_stack_settings", lambda: nei)
     result = fetch_stack_parameters_from_nei.invoke(
-        {"frs_id": "999999999999", "eis_ids": ["1000001"]}
+        {"frs_id": "999999999999", "eis_ids": ["1000001"]},
     )
     assert result["eis_ids"] == ["1000001"]
     assert len(result["candidates"]) == 1
@@ -71,13 +74,16 @@ def test_nei_tool_uses_the_eis_ids_given_without_a_request(
 
 @pytest.mark.parametrize("frs", ["abc", ""])
 def test_nei_tool_with_invalid_frs_id_makes_no_request(
-    frs: str, monkeypatch: pytest.MonkeyPatch
+    frs: str,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def fail(request: httpx.Request) -> httpx.Response:
         raise AssertionError("no request expected")
 
     monkeypatch.setattr(
-        stack, "_open_client", lambda: httpx.Client(transport=httpx.MockTransport(fail))
+        stack,
+        "_open_client",
+        lambda: httpx.Client(transport=httpx.MockTransport(fail)),
     )
     result = fetch_stack_parameters_from_nei.invoke({"frs_id": frs})
     assert result["candidates"] == []
@@ -122,7 +128,9 @@ def test_scc_is_optional_in_the_schema() -> None:
 
 @pytest.mark.parametrize("code", ["99900001", " 99900001 ", 99900001])
 def test_scc_tool_accepts_text_or_number(
-    code: str | int, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    code: str | int,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     path = tmp_path / "pstk.csv"
     path.write_text("fips,scc,stkhgt,stkdiam,stkvel,stktemp\n0,99900001,10,1,5,400\n")

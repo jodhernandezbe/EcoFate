@@ -167,7 +167,8 @@ def read_shards(settings: ReadAcrossSettings) -> Columns:
     paths = settings.shard_paths()
     if not paths:
         raise FileNotFoundError(
-            f"read-across catalog not found in {settings.directory}; build it with: {BUILD_COMMAND}"
+            f"read-across catalog not found in {settings.directory}; "
+            f"build it with: {BUILD_COMMAND}",
         )
     merged: Columns = {}
     for path in paths:
@@ -258,7 +259,9 @@ def _unique(cas: Sequence[str], reader: _Reader, column: str) -> None:
 
 
 def _corrected(
-    embeddings: NDArray[np.float64], reader: _Reader, column: str
+    embeddings: NDArray[np.float64],
+    reader: _Reader,
+    column: str,
 ) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
     """The catalog's mean embedding and its centred, re-normalized rows (isotropy correction).
 
@@ -338,7 +341,10 @@ def _naics_mask(catalog: Catalog, prefix: str) -> NDArray[np.bool_] | None:
 
 
 def _narrow(
-    catalog: Catalog, keep: NDArray[np.bool_] | None, label: str, warnings: list[str]
+    catalog: Catalog,
+    keep: NDArray[np.bool_] | None,
+    label: str,
+    warnings: list[str],
 ) -> Catalog:
     """Apply ``keep``; when it is missing or keeps nothing, warn and keep every row."""
     if keep is None:
@@ -351,7 +357,10 @@ def _narrow(
 
 
 def filter_candidates(
-    catalog: Catalog, *, require_benchmarks: bool, naics_prefix: str | None
+    catalog: Catalog,
+    *,
+    require_benchmarks: bool,
+    naics_prefix: str | None,
 ) -> tuple[Catalog, list[str]]:
     """Narrow the candidate surrogates.
 

@@ -78,7 +78,10 @@ WEATHER = Meteorology(
     warnings=[],
 )
 PEOPLE = Population(
-    total_population=100, age_distribution={"18-64": 100.0}, source="Synthetic census", warnings=[]
+    total_population=100,
+    age_distribution={"18-64": 100.0},
+    source="Synthetic census",
+    warnings=[],
 )
 
 
@@ -98,7 +101,10 @@ def _entry(values: list[float]) -> dict[str, float | int]:
 
 
 def _result(
-    number: int, params: StackParameters, hq: float, risk: float | None
+    number: int,
+    params: StackParameters,
+    hq: float,
+    risk: float | None,
 ) -> dict[str, object]:
     """One synthetic stack result with every key of the real one (values are placeholders)."""
     return {
@@ -125,7 +131,10 @@ def _result(
 
 
 def exposure_of(
-    rate: float, stacks: list[StackParameters], temperature: float, toxicity: Toxicity
+    rate: float,
+    stacks: list[StackParameters],
+    temperature: float,
+    toxicity: Toxicity,
 ) -> FacilityExposure:
     """Synthetic results: concentration = HQ, cancer risk = HQ x 1e-6 when there is an IUR."""
     hqs = [hq_of(rate, s["stack_height"] or 1.0, temperature) for s in stacks]
@@ -161,7 +170,7 @@ class FakeSteps:
     """Scripted steps that log every call; unknown inputs get empty answers."""
 
     nei_stacks: dict[str, list[StackParameters]] = field(
-        default_factory=dict[str, list[StackParameters]]
+        default_factory=dict[str, list[StackParameters]],
     )
     titles: dict[str, str | None] = field(default_factory=dict[str, str | None])
     matches: list[SccMatch] = field(default_factory=list[SccMatch])
@@ -172,7 +181,10 @@ class FakeSteps:
         self.calls.append(("nei", (frs_id, tuple(eis_ids))))
         found = self.nei_stacks.get(frs_id, [])
         return NeiStackResult(
-            eis_ids=eis_ids, candidates=found, total_candidates=len(found), warnings=[]
+            eis_ids=eis_ids,
+            candidates=found,
+            total_candidates=len(found),
+            warnings=[],
         )
 
     def industry(self, doc: str) -> FacilityIndustry:

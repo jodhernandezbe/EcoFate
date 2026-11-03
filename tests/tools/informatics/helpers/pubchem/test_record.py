@@ -40,8 +40,8 @@ def test_later_headings_must_be_direct_children() -> None:
 def test_repeated_sections_are_all_returned_in_order() -> None:
     body = {
         "Record": {
-            "Section": [section("A", entries=[info("1")]), section("A", entries=[info("2")])]
-        }
+            "Section": [section("A", entries=[info("1")]), section("A", entries=[info("2")])],
+        },
     }
     assert [s.text for s in statements(find_sections(body, ("A",)))] == ["1", "2"]
 

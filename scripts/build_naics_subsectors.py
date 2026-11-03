@@ -94,7 +94,9 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     titles = merge(books)
     write_table(
-        titles, args.output, (settings.subsectors_code_column, settings.subsectors_title_column)
+        titles,
+        args.output,
+        (settings.subsectors_code_column, settings.subsectors_title_column),
     )
     print(f"wrote {len(titles)} subsectors from {len(books)} workbook(s) to {args.output}")
     return 0

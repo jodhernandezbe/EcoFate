@@ -71,7 +71,9 @@ class ScriptedChatModel(BaseChatModel):
     _classifier: ScriptedChatModel | None = PrivateAttr(default=None)
 
     def __init__(
-        self, script: Sequence[AIMessage], classifier: Sequence[AIMessage] | None = None
+        self,
+        script: Sequence[AIMessage],
+        classifier: Sequence[AIMessage] | None = None,
     ) -> None:
         super().__init__()
         self._script = list(script)
@@ -96,7 +98,11 @@ class ScriptedChatModel(BaseChatModel):
         return self._classifier
 
     def with_structured_output(  # pyright: ignore[reportIncompatibleMethodOverride]
-        self, schema: Any, *, include_raw: bool = False, **kwargs: Any
+        self,
+        schema: Any,
+        *,
+        include_raw: bool = False,
+        **kwargs: Any,
     ) -> Runnable[Any, Any]:
         def parse(message: AIMessage) -> dict[str, Any]:
             try:
@@ -154,13 +160,15 @@ class ScriptedChatModel(BaseChatModel):
                 for i, c in enumerate(message.tool_calls)
             ]
             yield ChatGenerationChunk(
-                message=AIMessageChunk(content="", id=message.id, tool_call_chunks=calls)  # pyright: ignore[reportArgumentType]
+                message=AIMessageChunk(content="", id=message.id, tool_call_chunks=calls),  # pyright: ignore[reportArgumentType]
             )
         if message.usage_metadata:
             yield ChatGenerationChunk(
                 message=AIMessageChunk(
-                    content="", id=message.id, usage_metadata=message.usage_metadata
-                )
+                    content="",
+                    id=message.id,
+                    usage_metadata=message.usage_metadata,
+                ),
             )
 
 
@@ -181,7 +189,9 @@ def scripted(*texts: str) -> ScriptedChatModel:
 
 
 def verdict(
-    in_scope: bool, reply_text: str = "", usage: tuple[int, int] | None = None
+    in_scope: bool,
+    reply_text: str = "",
+    usage: tuple[int, int] | None = None,
 ) -> AIMessage:
     """A scripted classifier answer: the JSON the scope check parses."""
     body = json.dumps({"in_scope": in_scope, "reply": reply_text})

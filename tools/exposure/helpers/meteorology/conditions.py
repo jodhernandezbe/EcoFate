@@ -45,7 +45,11 @@ def _year_problem(year: object, window: YearWindow, today: date) -> str | None:
 
 
 def input_problem(
-    latitude: object, longitude: object, year: object, window: YearWindow, today: date
+    latitude: object,
+    longitude: object,
+    year: object,
+    window: YearWindow,
+    today: date,
 ) -> str | None:
     """Return why the request cannot be made, or None when the inputs are valid."""
     return point_problem(latitude, longitude) or _year_problem(year, window, today)
@@ -111,12 +115,12 @@ def _notes(summary: HourlySummary, excluded: int, minimum: float) -> list[str]:
     if excluded:
         total = summary.hours + excluded
         notes.append(
-            f"{excluded} of {total} hours were left out: a value was missing or impossible"
+            f"{excluded} of {total} hours were left out: a value was missing or impossible",
         )
     if summary.mean_wind_speed < minimum:
         notes.append(
             f"the mean wind speed {summary.mean_wind_speed:.2f} m/s is below the minimum; "
-            f"{minimum:g} m/s is reported"
+            f"{minimum:g} m/s is reported",
         )
     return notes
 
@@ -130,7 +134,9 @@ def _summary_result(
 ) -> Meteorology:
     rules = settings.summary
     summary = summarize_hours(
-        hours, minimum_wind_speed=rules.minimum_wind_speed, sector_width=rules.sector_width
+        hours,
+        minimum_wind_speed=rules.minimum_wind_speed,
+        sector_width=rules.sector_width,
     )
     warnings = _notes(summary, excluded, rules.minimum_wind_speed)
     temperature = _temperature_k(summary.temperature, settings, aliases, warnings)

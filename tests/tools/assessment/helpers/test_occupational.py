@@ -55,10 +55,10 @@ def test_box_model_for_both_tiers() -> None:
     result = occupational_exposure(_record(), _profile(), TOX, _workplace())
     generation = 1000 * 1e6 / (250 * 16 * 3600)
     assert result["baseline"]["workplace_concentration_mg_m3"] == pytest.approx(
-        generation / (BASELINE_Q * 0.5)
+        generation / (BASELINE_Q * 0.5),
     )
     assert result["worst_case"]["workplace_concentration_mg_m3"] == pytest.approx(
-        generation / (WORST_Q * 0.1)
+        generation / (WORST_Q * 0.1),
     )
     base, worst = result["baseline"], result["worst_case"]
     assert base["workplace_concentration_mg_m3"] is not None
@@ -101,7 +101,10 @@ def test_a_reported_zero_is_acceptable_when_there_is_a_benchmark() -> None:
 
 def test_no_benchmark_leaves_only_the_hq_and_risk_that_have_one() -> None:
     result = occupational_exposure(
-        _record(), _profile(), Toxicity(rfc=1.0, iur=None), _workplace(oel=None)
+        _record(),
+        _profile(),
+        Toxicity(rfc=1.0, iur=None),
+        _workplace(oel=None),
     )
     tier = result["baseline"]
     assert tier["oel_ratio"] is None and tier["hq"] is not None and tier["cancer_risk"] is None
@@ -111,7 +114,10 @@ def test_no_benchmark_leaves_only_the_hq_and_risk_that_have_one() -> None:
 
 def test_nothing_to_compare_gives_no_tier() -> None:
     result = occupational_exposure(
-        _record(), _profile(), Toxicity(rfc=None, iur=None), _workplace(oel=None)
+        _record(),
+        _profile(),
+        Toxicity(rfc=None, iur=None),
+        _workplace(oel=None),
     )
     assert result["risk_tier"] is None and result["baseline"]["twa_mg_m3"] is not None
 

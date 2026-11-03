@@ -31,7 +31,9 @@ CAS = "50-00-0"
 
 def _fetcher(transport: httpx.MockTransport, settings: TriSettings = SETTINGS) -> TriFetcher:
     client = EfserviceClient(
-        load_efservice_settings(), httpx.Client(transport=transport), lambda _seconds: None
+        load_efservice_settings(),
+        httpx.Client(transport=transport),
+        lambda _seconds: None,
     )
     return TriFetcher(settings, client, YEAR)
 
@@ -40,12 +42,14 @@ def _serve(pages: Sequence[Sequence[Mapping[str, object]]]) -> httpx.MockTranspo
     queue = list(pages)
     # The fugitive medium is queried last; once the pages are served it has nothing to report.
     return httpx.MockTransport(
-        lambda request: httpx.Response(200, json=queue.pop(0) if queue else [])
+        lambda request: httpx.Response(200, json=queue.pop(0) if queue else []),
     )
 
 
 def _lookup(
-    fetcher: TriFetcher, settings: TriSettings = SETTINGS, year: int = YEAR
+    fetcher: TriFetcher,
+    settings: TriSettings = SETTINGS,
+    year: int = YEAR,
 ) -> list[EmissionRecord]:
     return lookup_emissions(CAS, settings, EMISSIONS, get_unit_settings().aliases, fetcher, year)
 

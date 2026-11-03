@@ -103,7 +103,8 @@ def _receptors(item: FacilityAssessment, result: StackExposure) -> Ranked:
     stack, weather = _stack_at(item, result["stack_number"]), _weather(result)
     if stack is None or weather is None:
         return Ranked(
-            [], "receptors were not evaluated: the scenario's stack or weather is missing"
+            [],
+            "receptors were not evaluated: the scenario's stack or weather is missing",
         )
     settings = get_scenario_settings()
     limits = (settings.receptor_fraction, settings.max_receptors)
@@ -123,7 +124,9 @@ def _factors(item: FacilityAssessment, result: StackExposure) -> list[ScenarioFa
 
 
 def _scenario(
-    item: FacilityAssessment, quantity: Quantity, settings: ScenarioSettings
+    item: FacilityAssessment,
+    quantity: Quantity,
+    settings: ScenarioSettings,
 ) -> WorstCaseScenario | None:
     result = _top(item, quantity)
     value = None if result is None else result[quantity]

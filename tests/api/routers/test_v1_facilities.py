@@ -25,7 +25,8 @@ def _threads_with_facility() -> ThreadStore:
 
 def test_returns_the_facility_of_the_thread(app: FastAPI) -> None:
     body = _client(app, _threads_with_facility()).get(
-        "/api/v1/facilities/A", params={"thread_id": "t1"}
+        "/api/v1/facilities/A",
+        params={"thread_id": "t1"},
     )
     assert body.status_code == 200
     assert body.json()["frs_id"] == "A"
@@ -34,14 +35,16 @@ def test_returns_the_facility_of_the_thread(app: FastAPI) -> None:
 
 def test_an_unknown_facility_is_404(app: FastAPI) -> None:
     response = _client(app, _threads_with_facility()).get(
-        "/api/v1/facilities/Z", params={"thread_id": "t1"}
+        "/api/v1/facilities/Z",
+        params={"thread_id": "t1"},
     )
     assert response.status_code == 404
 
 
 def test_another_threads_facility_is_404(app: FastAPI) -> None:
     response = _client(app, _threads_with_facility()).get(
-        "/api/v1/facilities/A", params={"thread_id": "t2"}
+        "/api/v1/facilities/A",
+        params={"thread_id": "t2"},
     )
     assert response.status_code == 404
 

@@ -66,7 +66,10 @@ def _fields(settings: TriListSettings) -> tuple[str, ...]:
 
 
 def _page(
-    start: int, client: RetryingClient, efservice: EfserviceSettings, settings: TriListSettings
+    start: int,
+    client: RetryingClient,
+    efservice: EfserviceSettings,
+    settings: TriListSettings,
 ) -> list[Row]:
     url = efservice.url(settings.page_path(start))
     try:
@@ -76,7 +79,9 @@ def _page(
 
 
 def fetch_rows(
-    client: RetryingClient, efservice: EfserviceSettings, settings: TriListSettings
+    client: RetryingClient,
+    efservice: EfserviceSettings,
+    settings: TriListSettings,
 ) -> list[Row]:
     """Read every row of the TRI list, page by page, while pages come back full.
 

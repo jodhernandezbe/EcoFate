@@ -56,7 +56,8 @@ def test_expired_entry_is_ignored_and_replaced(tmp_path: Path) -> None:
 
 
 def test_corrupt_file_is_a_miss_with_one_warning(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     path = tmp_path / "c.sqlite"
     path.write_bytes(b"this is not a database" * 50)
@@ -180,7 +181,9 @@ def test_throttled_once_then_success(tmp_path: Path) -> None:
 
 def test_retry_after_is_honoured(tmp_path: Path) -> None:
     run = _build(
-        tmp_path, httpx.Response(503, headers={"Retry-After": "3"}), httpx.Response(200, json={})
+        tmp_path,
+        httpx.Response(503, headers={"Retry-After": "3"}),
+        httpx.Response(200, json={}),
     )
     run.client.get_json(URL)
     assert run.waits[1] == min(3.0, run.settings.timeout_seconds)
@@ -206,7 +209,10 @@ def test_not_found_is_final_and_cached(tmp_path: Path) -> None:
 
 def test_disabled_cache_creates_no_file(tmp_path: Path) -> None:
     run = _build(
-        tmp_path, httpx.Response(200, json={}), httpx.Response(200, json={}), enabled=False
+        tmp_path,
+        httpx.Response(200, json={}),
+        httpx.Response(200, json={}),
+        enabled=False,
     )
     run.client.get_json(URL)
     run.client.get_json(URL)

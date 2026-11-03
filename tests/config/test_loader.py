@@ -214,7 +214,8 @@ def test_comptox_certificate_waiver_must_be_a_boolean(tmp_path: Path) -> None:
         _load(
             tmp_path,
             COMPTOX.replace(
-                "accept_expired_certificate = false", 'accept_expired_certificate = "yes"'
+                "accept_expired_certificate = false",
+                'accept_expired_certificate = "yes"',
             ),
         )
     with pytest.raises(ValueError, match="comptox.accept_expired_certificate"):

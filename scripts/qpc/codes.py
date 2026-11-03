@@ -70,7 +70,8 @@ def parse_codes(cell: str | int | float) -> tuple[str, ...]:
 
 
 def four_digit_codes(
-    codes: tuple[str, ...], children: Mapping[str, tuple[str, ...]]
+    codes: tuple[str, ...],
+    children: Mapping[str, tuple[str, ...]],
 ) -> tuple[str, ...]:
     """The four-digit codes the row covers entirely.
 

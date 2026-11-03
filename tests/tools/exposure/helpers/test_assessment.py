@@ -182,7 +182,8 @@ def test_both_benchmarks_missing_still_gives_concentrations() -> None:
 
 
 @pytest.mark.parametrize(
-    "field", ["stack_height", "stack_diameter", "exit_velocity", "exit_temperature"]
+    "field",
+    ["stack_height", "stack_diameter", "exit_velocity", "exit_temperature"],
 )
 def test_a_stack_with_a_missing_value_gives_nulls_and_a_warning(field: str) -> None:
     result = _run(stack=_stack(**{field: None}))

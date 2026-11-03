@@ -102,13 +102,14 @@ def fetch_nothing(cas: str) -> str:
 
 def _call(name: str, call_id: str) -> AIMessage:
     return AIMessage(
-        content="", tool_calls=[{"name": name, "args": {"cas": "71-43-2"}, "id": call_id}]
+        content="",
+        tool_calls=[{"name": name, "args": {"cas": "71-43-2"}, "id": call_id}],
     )
 
 
 def test_turn_stops_with_a_request_when_a_tool_reports_missing() -> None:
     model = FakeToolModel(
-        messages=iter([_call("fetch_benchmark", "c1"), AIMessage(content="never")])
+        messages=iter([_call("fetch_benchmark", "c1"), AIMessage(content="never")]),
     )
     agent = build_agent(model, tools=[fetch_benchmark])
     result = agent.invoke({"messages": [HumanMessage(content="assess")]})
@@ -120,7 +121,7 @@ def test_turn_stops_with_a_request_when_a_tool_reports_missing() -> None:
 
 def test_turn_continues_when_nothing_is_missing() -> None:
     model = FakeToolModel(
-        messages=iter([_call("fetch_nothing", "c1"), AIMessage(content="the answer")])
+        messages=iter([_call("fetch_nothing", "c1"), AIMessage(content="the answer")]),
     )
     agent = build_agent(model, tools=[fetch_nothing])
     result = agent.invoke({"messages": [HumanMessage(content="assess")]})

@@ -71,7 +71,10 @@ def test_efservice_default_file_loads() -> None:
     ],
 )
 def test_efservice_invalid_values_name_the_key(
-    tmp_path: Path, line: str, bad: str, key: str
+    tmp_path: Path,
+    line: str,
+    bad: str,
+    key: str,
 ) -> None:
     with pytest.raises(ValueError, match=f"efservice.{key}"):
         _ef(tmp_path, TEXT.replace(line, bad))

@@ -99,7 +99,10 @@ def _thresholds(table: dict[str, object]) -> Thresholds:
 
 def _check(table: dict[str, object]) -> None:
     if require_number(table, "shift_inhalation_m3", minimum=1e-9, name=NAME) > require_number(
-        table, "daily_inhalation_m3", minimum=1e-9, name=NAME
+        table,
+        "daily_inhalation_m3",
+        minimum=1e-9,
+        name=NAME,
     ):
         raise ValueError(f"{NAME}.shift_inhalation_m3 must not exceed daily_inhalation_m3")
     if require_number(table, "worker_days_per_year", minimum=1e-9, name=NAME) > 365.0:

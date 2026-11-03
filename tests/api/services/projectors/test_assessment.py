@@ -61,7 +61,10 @@ def _exposure(stacks: list[dict[str, object]], hq_high: float) -> dict[str, obje
 
 
 def _item(
-    frs_id: str, rate: float, stacks: list[dict[str, object]], **over: object
+    frs_id: str,
+    rate: float,
+    stacks: list[dict[str, object]],
+    **over: object,
 ) -> dict[str, object]:
     return {
         "record": record(frs_id, rate=rate),
@@ -80,7 +83,10 @@ def _item(
 
 def _assessed(*items: dict[str, object]) -> list[BaseMessage]:
     return exchange(
-        "assess_facilities", {"cas_number": "1-1-1"}, {"assessed": len(items)}, artifact=list(items)
+        "assess_facilities",
+        {"cas_number": "1-1-1"},
+        {"assessed": len(items)},
+        artifact=list(items),
     )
 
 
@@ -153,7 +159,10 @@ def _tiered(
         "not_assessed": not_assessed or [],
     }
     return exchange(
-        "assess_facilities", {"cas_number": "1-1-1"}, {"assessed": 1}, artifact=artifact
+        "assess_facilities",
+        {"cas_number": "1-1-1"},
+        {"assessed": 1},
+        artifact=artifact,
     )
 
 
@@ -179,7 +188,12 @@ def test_a_fully_assessed_facility_says_so_with_its_bound() -> None:
 
 def test_a_worst_case_only_facility_has_its_risk_but_no_weather_or_residents() -> None:
     item = _item(
-        "F1", 1.0, [stack(10.0)], level="worst case only", meteorology=None, population=None
+        "F1",
+        1.0,
+        [stack(10.0)],
+        level="worst case only",
+        meteorology=None,
+        population=None,
     )
     facility = _build(_tiered([item], [])).facilities[0]
     assert facility.screening is not None and facility.screening.outcome == "worst_case_only"
@@ -211,7 +225,7 @@ def test_an_invalid_screened_out_item_is_left_out_and_a_bad_shape_is_skipped() -
 
 def test_a_facility_not_assessed_carries_its_reason_and_no_status() -> None:
     left: list[dict[str, object]] = [
-        {"frs_id": "F0", "reason": "more than 5 facilities reach a threshold"}
+        {"frs_id": "F0", "reason": "more than 5 facilities reach a threshold"},
     ]
     state = _build(inventory(record("F0")), _tiered([], [], left))
     screening = state.facilities[0].screening

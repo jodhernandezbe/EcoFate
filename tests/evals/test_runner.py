@@ -30,7 +30,8 @@ def _settings(recursion_limit: int) -> AgentSettings:
 
 def _call(call_id: str, name: str = "abc") -> AIMessage:
     return AIMessage(
-        content="", tool_calls=[{"name": "lookup", "args": {"name": name}, "id": call_id}]
+        content="",
+        tool_calls=[{"name": "lookup", "args": {"name": name}, "id": call_id}],
     )
 
 

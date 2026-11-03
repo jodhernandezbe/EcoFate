@@ -47,7 +47,8 @@ def test_fallback_reads_butane_weight_and_pressure_and_refuses_its_density(
     settings: PubchemSettings,
 ) -> None:
     offered = _lookup(settings).candidates(
-        BUTANE_CAS, ["molecular_weight", "vapor_pressure", "density"]
+        BUTANE_CAS,
+        ["molecular_weight", "vapor_pressure", "density"],
     )
     assert offered.problem is None
     assert offered.values["molecular_weight"].value == pytest.approx(58.12, abs=0.01)

@@ -45,5 +45,5 @@ PROJECTORS: Mapping[str, Projector] = MappingProxyType(
         "get_population_receptors": project_population,
         "calculate_exposure_metrics": project_exposure,
         "assess_facilities": project_assessment,
-    }
+    },
 )

@@ -99,7 +99,8 @@ def _dataset(record: RunRecord, checks: Sequence[Check], judges: Sequence[Descri
     tests = [ColumnTest(c, eq(PASS_LABEL), alias=f"{c} test") for c in verdicts]
     summary = TestSummary(success_all=True, alias="all tests passed")
     definition = DataDefinition(
-        text_columns=["query", _REPORT, *reasons], categorical_columns=verdicts
+        text_columns=["query", _REPORT, *reasons],
+        categorical_columns=verdicts,
     )
     descriptors: list[Descriptor] = [*tests, *judges, summary]
     return Dataset.from_pandas(frame, data_definition=definition, descriptors=descriptors)
@@ -117,7 +118,9 @@ def _check_outcomes(row: Mapping[str, object], checks: Sequence[Check]) -> list[
 
 
 def _judge_outcomes(
-    row: Mapping[str, object], judges: Sequence[Judge], error: str | None
+    row: Mapping[str, object],
+    judges: Sequence[Judge],
+    error: str | None,
 ) -> list[Outcome]:
     if error is not None:
         return [Outcome(_JUDGE + j.name, False, error) for j in judges]

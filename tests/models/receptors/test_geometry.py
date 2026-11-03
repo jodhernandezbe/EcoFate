@@ -30,7 +30,7 @@ def test_the_same_point_is_zero_distance_and_zero_bearing() -> None:
 
 def test_distance_is_symmetric() -> None:
     assert distance_m(18.0, -65.0, 18.2, -65.3) == pytest.approx(
-        distance_m(18.2, -65.3, 18.0, -65.0)
+        distance_m(18.2, -65.3, 18.0, -65.0),
     )
 
 

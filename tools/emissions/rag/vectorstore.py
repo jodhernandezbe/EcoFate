@@ -191,7 +191,9 @@ class VectorIndex:
         try:
             collection = self._open().get_collection(self._name, embedding_function=None)
             result = collection.query(
-                query_embeddings=[vector], n_results=k, include=["metadatas", "distances"]
+                query_embeddings=[vector],
+                n_results=k,
+                include=["metadatas", "distances"],
             )
         except _STORE_ERRORS as exc:
             raise VectorStoreError(f"vector index {self._name} query failed: {exc}") from exc

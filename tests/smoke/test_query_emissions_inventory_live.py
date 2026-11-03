@@ -31,7 +31,7 @@ def records() -> list[EmissionRecord]:
     try:
         call = {"type": "tool_call", "id": "c1", "name": "query_emissions_inventory"}
         return query_emissions_inventory.invoke(
-            {**call, "args": {"cas_number": "50-00-0"}}
+            {**call, "args": {"cas_number": "50-00-0"}},
         ).artifact
     finally:
         patch.undo()

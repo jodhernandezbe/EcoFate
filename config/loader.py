@@ -345,7 +345,9 @@ def _comptox_paths(section: dict[str, object]) -> dict[str, str]:
         "dtxsid_by_cas_path": _require_template(section, "dtxsid_by_cas_path", "{casrn}"),
         "detail_by_dtxsid_path": _require_template(section, "detail_by_dtxsid_path", "{dtxsid}"),
         "properties_by_dtxsid_path": _require_template(
-            section, "properties_by_dtxsid_path", "{dtxsid}"
+            section,
+            "properties_by_dtxsid_path",
+            "{dtxsid}",
         ),
         "toxval_by_dtxsid_path": _require_template(section, "toxval_by_dtxsid_path", "{dtxsid}"),
     }
@@ -503,7 +505,7 @@ def load_emissions_settings(path: Path | None = None) -> EmissionsSettings:
     hours = _require_number(section, "operating_hours_per_year", minimum=0, name="emissions")
     if not 0 < hours <= _MAX_HOURS_PER_YEAR:
         raise ValueError(
-            f"emissions.operating_hours_per_year must be > 0 and <= {_MAX_HOURS_PER_YEAR}"
+            f"emissions.operating_hours_per_year must be > 0 and <= {_MAX_HOURS_PER_YEAR}",
         )
     return EmissionsSettings(operating_hours_per_year=hours)
 

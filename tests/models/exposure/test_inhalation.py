@@ -39,7 +39,7 @@ def test_continuous_exposure_equals_the_air_concentration() -> None:
 
 def test_resident_non_cancer_exposure_concentration() -> None:
     assert exposure_concentration(10.0, 24.0, 350.0, 26.0, 26.0) == pytest.approx(
-        10.0 * 350.0 / 365.0
+        10.0 * 350.0 / 365.0,
     )
 
 
@@ -116,7 +116,12 @@ def test_children_have_the_higher_dose() -> None:
 
 def test_absent_bands_are_omitted() -> None:
     doses = doses_by_age_band(
-        10.0, {"0-4": 0.0, "5-17": 0.0, "18-64": 60.0, "65+": 40.0}, RATES, WEIGHTS, 350.0, 26.0
+        10.0,
+        {"0-4": 0.0, "5-17": 0.0, "18-64": 60.0, "65+": 40.0},
+        RATES,
+        WEIGHTS,
+        350.0,
+        26.0,
     )
     assert set(doses) == {"18-64", "65+"}
 

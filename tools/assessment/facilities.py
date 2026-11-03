@@ -15,7 +15,7 @@ from commons.cas import format_cas
 from config.assessment import AssessmentSettings, get_assessment_settings
 from config.occupational import get_occupational_settings
 from config.read_across import get_read_across_settings
-from tools.assessment.helpers.chain import assess_all, refine_all, worst_case_only
+from tools.assessment.helpers.chain import Refined, assess_all, refine_all, worst_case_only
 from tools.assessment.helpers.occupational import Workplace, no_limits
 from tools.assessment.helpers.scenarios import drivers_of
 from tools.assessment.helpers.screening import can_screen, unit_bound
@@ -37,6 +37,7 @@ from tools.schemas import (
     AssessmentResult,
     ChemicalProperties,
     EmissionRecord,
+    FacilityAssessment,
     FacilityExposure,
     Meteorology,
     NeiStackResult,
@@ -107,7 +108,9 @@ def default_steps() -> Steps:
 
 
 def _given(
-    cas: str, given: Toxicity, config: RunnableConfig | None
+    cas: str,
+    given: Toxicity,
+    config: RunnableConfig | None,
 ) -> tuple[Toxicity, str, list[str], ChemicalProperties | None]:
     """The benchmarks passed in; the chemical is still looked up for its workplace information.
 
@@ -123,7 +126,9 @@ def _given(
 
 
 def _toxicity(
-    cas: str, given: Toxicity | None, config: RunnableConfig | None = None
+    cas: str,
+    given: Toxicity | None,
+    config: RunnableConfig | None = None,
 ) -> tuple[Toxicity, str, list[str], ChemicalProperties | None]:
     """The benchmarks passed in, else the chemical's own from CompTox, with the properties read.
 
@@ -175,7 +180,8 @@ def _once_per_title(scc: Callable[[str], SccLookupResult]) -> Callable[[str], Sc
 
 
 def _chosen(
-    records: list[EmissionRecord], frs_ids: list[str]
+    records: list[EmissionRecord],
+    frs_ids: list[str],
 ) -> tuple[list[EmissionRecord], list[NotAssessed]]:
     """The facilities asked for that are in the inventory, and those that are not."""
     wanted = list(dict.fromkeys(i.strip() for i in frs_ids if i.strip()))
@@ -212,20 +218,38 @@ class _Call:
     workplace: Workplace
 
 
-def _by_id(call: _Call, frs_ids: list[str]) -> Findings:
-    """The facilities asked for, without screening: the first ``max_facilities`` fully assessed."""
-    chosen, skipped = _chosen(call.records, frs_ids)
-    candidates = [(r, None) for r in _resolved(chosen)]
-    refined = refine_all(candidates, call.toxicity, call.steps, call.settings)
+def _up_to_cap(
+    call: _Call,
+    refined: list[Refined],
+) -> tuple[list[FacilityAssessment], list[FacilityAssessment]]:
+    """The first ``max_facilities`` through the full chain; the rest at the worst case only."""
     cap = call.settings.max_facilities
     args = (call.toxicity, call.radius_km, call.steps, call.settings)
     full = assess_all(refined[:cap], *args, call.workplace)
     worst = [
         worst_case_only(i, call.radius_km, call.workplace, call.toxicity) for i in refined[cap:]
     ]
+    return full, worst
+
+
+def _by_id(call: _Call, frs_ids: list[str]) -> Findings:
+    """The facilities asked for, without screening: the first ``max_facilities`` fully assessed."""
+    chosen, skipped = _chosen(call.records, frs_ids)
+    candidates = [(r, None) for r in _resolved(chosen)]
+    refined = refine_all(candidates, call.toxicity, call.steps, call.settings)
+    full, worst = _up_to_cap(call, refined)
     tox = (call.toxicity, call.source)
     return Findings(
-        call.cas, tox, len(call.records), full, worst, [], None, True, skipped, call.warnings
+        call.cas,
+        tox,
+        len(call.records),
+        full,
+        worst,
+        [],
+        None,
+        True,
+        skipped,
+        call.warnings,
     )
 
 
@@ -306,7 +330,10 @@ def _estimate_note(cas: str, analogue: str, match: ReadAcrossMatch) -> str:
 
 
 def _stand_in(
-    cas: str, analogue: str, match: ReadAcrossMatch, warnings: list[str]
+    cas: str,
+    analogue: str,
+    match: ReadAcrossMatch,
+    warnings: list[str],
 ) -> tuple[Toxicity, str, list[str]] | None:
     """The analogue's benchmarks with their label and note, or None if it has none."""
     found = fetch_chemical_properties.invoke({"cas_number": analogue})
@@ -318,7 +345,10 @@ def _stand_in(
 
 
 def _analogue_toxicity(
-    cas: str, tox: Toxicity, source: str, warnings: list[str]
+    cas: str,
+    tox: Toxicity,
+    source: str,
+    warnings: list[str],
 ) -> tuple[Toxicity, str, list[str]]:
     """When the chemical has no benchmark of its own, the nearest TRI analogue's, if in domain.
 
@@ -342,7 +372,8 @@ def _threshold() -> float:
 
 
 def _keep_larger(
-    found: dict[tuple[str, str], EmissionRecord], records: list[EmissionRecord]
+    found: dict[tuple[str, str], EmissionRecord],
+    records: list[EmissionRecord],
 ) -> int:
     """Add each record to ``found`` (one per facility and medium, the larger release kept).
 
@@ -363,7 +394,8 @@ def _keep_larger(
 
 
 def category_records(
-    cas: str, place: tuple[str | None, str | None]
+    cas: str,
+    place: tuple[str | None, str | None],
 ) -> tuple[list[EmissionRecord], list[str]]:
     """The facilities of the TRI categories listing ``cas``, with a note saying so (else none)."""
     categories = get_category_index().lookup(cas).categories
@@ -374,18 +406,19 @@ def category_records(
     named = "; ".join(f"{c.code} ({c.name})" for c in categories)
     notes = [
         f"{cas} has no TRI release of its own: its facilities are those of TRI category {named}, "
-        "whose releases cover every member of the category together, not this chemical alone"
+        "whose releases cover every member of the category together, not this chemical alone",
     ]
     if shared:
         notes.append(
             f"{shared} facility record(s) report under more than one of these categories; the "
-            "larger release of each is kept"
+            "larger release of each is kept",
         )
     return list(found.values()), notes
 
 
 def _inventory(
-    cas: str, place: tuple[str | None, str | None]
+    cas: str,
+    place: tuple[str | None, str | None],
 ) -> tuple[list[EmissionRecord], list[str]]:
     """The chemical's own TRI facilities; if TRI has none, those of its categories."""
     _, own = inventory_listing(cas, *place)

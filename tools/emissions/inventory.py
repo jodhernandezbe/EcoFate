@@ -81,7 +81,9 @@ def _frs_locator(client: httpx.Client) -> FrsLocator:
 
 @tool(response_format="content_and_artifact")
 def query_emissions_inventory(
-    cas_number: str, state: str | None = None, city: str | None = None
+    cas_number: str,
+    state: str | None = None,
+    city: str | None = None,
 ) -> tuple[InventoryResult, list[EmissionRecord]]:
     """List facilities that reported emitting a chemical, with their latest reported release.
 
@@ -198,13 +200,14 @@ def _unread(state: str | None, city: str | None, reason: str) -> Listing:
 
 Listing = tuple[InventoryResult, list[EmissionRecord]]
 _LISTINGS: TtlCache[tuple[str, str | None, str | None, int], Listing] = TtlCache(
-    get_assessment_settings().inventory_cache_seconds
+    get_assessment_settings().inventory_cache_seconds,
 )
 
 
 # FRS ID -> (EIS IDs, note); a lookup FRS could not answer is not remembered.
 _EIS: TtlCache[str, tuple[list[str], str | None]] = TtlCache(
-    get_frs_eis_settings().cache_seconds, max_entries=50_000
+    get_frs_eis_settings().cache_seconds,
+    max_entries=50_000,
 )
 
 
@@ -215,7 +218,9 @@ def clear_inventory_cache() -> None:
 
 
 def inventory_listing(
-    cas_number: str, state: str | None = None, city: str | None = None
+    cas_number: str,
+    state: str | None = None,
+    city: str | None = None,
 ) -> Listing:
     """The model's view and the complete matching list of a chemical's inventory.
 

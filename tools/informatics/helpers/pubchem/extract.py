@@ -58,7 +58,9 @@ def _agreed(values: list[float], ratio: float) -> float | str:
 
 
 def _candidates(
-    record: object, spec: FieldSpec, aliases: Mapping[str, str]
+    record: object,
+    spec: FieldSpec,
+    aliases: Mapping[str, str],
 ) -> tuple[list[float], list[str]]:
     values: list[float] = []
     refused: list[str] = []
@@ -73,7 +75,10 @@ def _candidates(
 
 
 def extract_field(
-    record: object, spec: FieldSpec, ratio: float, aliases: Mapping[str, str]
+    record: object,
+    spec: FieldSpec,
+    ratio: float,
+    aliases: Mapping[str, str],
 ) -> Lookup[FieldValue]:
     """Read one configured field from a record.
 

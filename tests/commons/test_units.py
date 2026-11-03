@@ -70,6 +70,9 @@ def test_alias_added_later() -> None:
     ],
 )
 def test_absolute_temperature_and_length(
-    value: float, source: str, target: str, expected: float
+    value: float,
+    source: str,
+    target: str,
+    expected: float,
 ) -> None:
     assert convert(value, source, target) == pytest.approx(expected, abs=1e-3)

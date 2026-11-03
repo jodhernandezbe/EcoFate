@@ -67,7 +67,8 @@ def test_an_unavailable_keychain_provides_nothing_and_does_not_fail() -> None:
 def test_ask_gives_the_agents_tools_the_stored_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("agent.graph.get_all_tools", lambda: [probe_all])
     monkeypatch.setattr(
-        "app.run.completion_guard", lambda: None
+        "app.run.completion_guard",
+        lambda: None,
     )  # the scripted model has no reviewer
     call = AIMessage(content="", tool_calls=[ToolCall(name="probe_all", args={}, id="c1")])
     model = ScriptedChatModel([call, AIMessage(content="final answer")])
@@ -109,7 +110,9 @@ def test_run_config_adds_the_callbacks_only_when_there_are_some() -> None:
 
 
 def test_ask_records_one_session_with_the_runs_usage(
-    monkeypatch: pytest.MonkeyPatch, monitoring: TelemetrySettings, exporter: TestExporter
+    monkeypatch: pytest.MonkeyPatch,
+    monitoring: TelemetrySettings,
+    exporter: TestExporter,
 ) -> None:
     _enabled(monkeypatch, monitoring)
     call = AIMessage(
@@ -118,7 +121,7 @@ def test_ask_records_one_session_with_the_runs_usage(
         usage_metadata=_usage(10, 3),
     )
     model = FakeToolModel(
-        messages=iter([call, AIMessage(content="done", usage_metadata=_usage(20, 2))])
+        messages=iter([call, AIMessage(content="done", usage_metadata=_usage(20, 2))]),
     )
     keys = default_service_keys(_store(OPENAI_ENTRY, CENSUS_ENTRY, COMPTOX_ENTRY))
     result = ask("Assess CAS 71-43-2", model, keys)
@@ -135,7 +138,9 @@ def test_ask_records_one_session_with_the_runs_usage(
 
 
 def test_a_failed_run_is_recorded_with_the_calls_made_before_it(
-    monkeypatch: pytest.MonkeyPatch, monitoring: TelemetrySettings, exporter: TestExporter
+    monkeypatch: pytest.MonkeyPatch,
+    monitoring: TelemetrySettings,
+    exporter: TestExporter,
 ) -> None:
     _enabled(monkeypatch, monitoring)
     call = AIMessage(
@@ -153,7 +158,8 @@ def test_a_failed_run_is_recorded_with_the_calls_made_before_it(
 
 
 def test_a_disabled_monitoring_leaves_the_run_unrecorded(
-    monkeypatch: pytest.MonkeyPatch, exporter: TestExporter
+    monkeypatch: pytest.MonkeyPatch,
+    exporter: TestExporter,
 ) -> None:
     monkeypatch.setattr("app.run.completion_guard", lambda: None)
     monkeypatch.setattr("agent.graph.get_all_tools", lambda: [probe_all])

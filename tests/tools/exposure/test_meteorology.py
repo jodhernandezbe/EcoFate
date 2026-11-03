@@ -78,7 +78,7 @@ def test_returns_conditions(requests_seen: list[httpx.Request]) -> None:
 
 def test_year_argument_is_used(requests_seen: list[httpx.Request]) -> None:
     result = get_meteorological_boundary.invoke(
-        {"latitude": 41.5, "longitude": -71.2, "reporting_year": 2010}
+        {"latitude": 41.5, "longitude": -71.2, "reporting_year": 2010},
     )
     assert result["source"].endswith("2010")
     assert requests_seen[0].url.params["start_date"] == "2010-01-01"

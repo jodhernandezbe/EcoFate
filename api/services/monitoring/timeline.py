@@ -53,7 +53,10 @@ def _milliseconds(seconds: float | None) -> int | None:
 
 
 def _step(
-    row: Row, turn_start: datetime, settings: TelemetrySettings, labels: Mapping[str, str]
+    row: Row,
+    turn_start: datetime,
+    settings: TelemetrySettings,
+    labels: Mapping[str, str],
 ) -> tuple[datetime, SessionStep] | None:
     started = instant(row, "start_timestamp")
     if started is None:

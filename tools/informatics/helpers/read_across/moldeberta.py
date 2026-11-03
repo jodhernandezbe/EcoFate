@@ -103,7 +103,7 @@ class MolDebertaEmbedder:
         if vector.shape != (self._settings.embedding_width,):
             raise ValueError(
                 f"model {self._settings.name} gives width {vector.shape[0]}, "
-                f"configured {self._settings.embedding_width}"
+                f"configured {self._settings.embedding_width}",
             )
         return vector
 
@@ -126,7 +126,8 @@ def default_embedder(settings: ModelSettings) -> MolDebertaEmbedder:
         AutoTokenizer.from_pretrained(settings.name, revision=settings.revision),
     )
     model = cast(
-        "PreTrainedModel", AutoModel.from_pretrained(settings.name, revision=settings.revision)
+        "PreTrainedModel",
+        AutoModel.from_pretrained(settings.name, revision=settings.revision),
     )
     model.eval()
     torch.nn.Module.to(model, torch.device(device))  # in place; the model's own .to is untyped

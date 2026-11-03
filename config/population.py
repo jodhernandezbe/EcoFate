@@ -105,7 +105,7 @@ def _radii(table: dict[str, object]) -> tuple[float, float, float]:
     high = require_number(table, "max_radius_km", minimum=1e-9, name=name)
     if not low <= default <= high:
         raise ValueError(
-            "population radii must satisfy min_radius_km <= default_radius_km <= max_radius_km"
+            "population radii must satisfy min_radius_km <= default_radius_km <= max_radius_km",
         )
     return low, default, high
 

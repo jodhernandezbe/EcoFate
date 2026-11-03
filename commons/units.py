@@ -69,7 +69,7 @@ def convert(
         result = _pint_convert(value, _resolve(from_unit, table), _resolve(to_unit, table))
     except _CONVERSION_ERRORS as exc:
         raise UnitConversionError(
-            f"cannot convert from {from_unit!r} to {to_unit!r}: {exc}"
+            f"cannot convert from {from_unit!r} to {to_unit!r}: {exc}",
         ) from exc
     if not math.isfinite(result):
         raise UnitConversionError(f"conversion from {from_unit!r} to {to_unit!r} overflowed")

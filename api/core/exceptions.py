@@ -44,7 +44,8 @@ async def _validation(request: Request, exc: RequestValidationError) -> JSONResp
 
 async def _http(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     return JSONResponse(
-        error_body(str(exc.detail), new_correlation_id()), status_code=exc.status_code
+        error_body(str(exc.detail), new_correlation_id()),
+        status_code=exc.status_code,
     )
 
 

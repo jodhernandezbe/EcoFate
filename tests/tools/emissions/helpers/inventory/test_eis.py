@@ -44,7 +44,11 @@ def _reg(frs_id: str, eis: object) -> Row:
 
 
 def _site(
-    frs_id: str, name: str = "PLANT ONE", state: str = "TX", lat: float = 30.0, lon: object = -95.0
+    frs_id: str,
+    name: str = "PLANT ONE",
+    state: str = "TX",
+    lat: float = 30.0,
+    lon: object = -95.0,
 ) -> Row:
     return {
         "registry_id": frs_id,
@@ -99,7 +103,9 @@ class Service:
 
     def resolve(self, *frs_ids: str) -> list[EmissionRecord]:
         client = EfserviceClient(
-            EF, httpx.Client(transport=httpx.MockTransport(self.handle)), lambda _: None
+            EF,
+            httpx.Client(transport=httpx.MockTransport(self.handle)),
+            lambda _: None,
         )
         return EisResolver(client, SETTINGS)([emission_record(i, 1.0) for i in frs_ids])
 
@@ -143,13 +149,15 @@ def test_a_record_without_registration_says_so_when_it_has_no_twin() -> None:
 def test_the_ids_of_the_one_nearby_twin_with_registrations_are_borrowed() -> None:
     twins = [_site(B), _site(TWIN, lat=30.001), _site(FAR, lat=30.1)]
     service = Service(
-        {TWIN: ["77"], FAR: ["88"]}, sites={B: _site(B)}, twins={("PLANT ONE", "TX"): twins}
+        {TWIN: ["77"], FAR: ["88"]},
+        sites={B: _site(B)},
+        twins={("PLANT ONE", "TX"): twins},
     )
     record = service.resolve(B)[0]
     assert record["eis_ids"] == ["77"]
     assert record["eis_note"] is not None
     assert record["eis_note"].startswith(
-        f"EIS IDs are those of FRS ID {TWIN}, the same site name 111 m away"
+        f"EIS IDs are those of FRS ID {TWIN}, the same site name 111 m away",
     )
     assert f"since FRS ID {B} has no EIS registration" in record["eis_note"]
     assert f"/eis/{TWIN}" in service.paths and FAR not in "".join(
@@ -193,7 +201,9 @@ def test_the_twins_of_several_facilities_have_their_registrations_read_together(
 def test_two_twins_with_registrations_are_ambiguous_and_none_is_used() -> None:
     twins = [_site(TWIN, lat=30.001), _site(C, lat=30.002)]
     service = Service(
-        {TWIN: ["77"], C: ["99"]}, sites={B: _site(B)}, twins={("PLANT ONE", "TX"): twins}
+        {TWIN: ["77"], C: ["99"]},
+        sites={B: _site(B)},
+        twins={("PLANT ONE", "TX"): twins},
     )
     record = service.resolve(B)[0]
     assert record["eis_ids"] == []
@@ -202,7 +212,9 @@ def test_two_twins_with_registrations_are_ambiguous_and_none_is_used() -> None:
 
 def test_a_twin_without_registrations_gives_nothing() -> None:
     service = Service(
-        {}, sites={B: _site(B)}, twins={("PLANT ONE", "TX"): [_site(TWIN, lat=30.001)]}
+        {},
+        sites={B: _site(B)},
+        twins={("PLANT ONE", "TX"): [_site(TWIN, lat=30.001)]},
     )
     record = service.resolve(B)[0]
     assert record["eis_ids"] == [] and "none has one" in (record["eis_note"] or "")
@@ -237,11 +249,14 @@ def test_the_inputs_are_not_changed() -> None:
 def test_rows_for_ids_not_asked_or_without_digits_are_ignored() -> None:
     def handle(request: httpx.Request) -> httpx.Response:
         return httpx.Response(
-            200, json=[_reg(C, "5"), _reg(A, "x"), _reg(A, None), {"registry_id": A}]
+            200,
+            json=[_reg(C, "5"), _reg(A, "x"), _reg(A, None), {"registry_id": A}],
         )
 
     client = EfserviceClient(
-        EF, httpx.Client(transport=httpx.MockTransport(handle)), lambda _: None
+        EF,
+        httpx.Client(transport=httpx.MockTransport(handle)),
+        lambda _: None,
     )
     records = EisResolver(client, SETTINGS)([emission_record(A, 1.0)])
     assert records[0]["eis_ids"] == []

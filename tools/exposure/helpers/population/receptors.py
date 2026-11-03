@@ -85,7 +85,8 @@ def _tally(
 
 
 def _bands_and_notes(
-    tally: _Tally, settings: PopulationSettings
+    tally: _Tally,
+    settings: PopulationSettings,
 ) -> tuple[dict[str, float], list[str]]:
     c = tally.counts
     notes: list[str] = []
@@ -105,7 +106,11 @@ def _tract_notes(listing: TractList) -> list[str]:
 
 
 def _result(
-    tally: _Tally, radius_km: float, settings: PopulationSettings, latitude: float, longitude: float
+    tally: _Tally,
+    radius_km: float,
+    settings: PopulationSettings,
+    latitude: float,
+    longitude: float,
 ) -> Population:
     circle_m2 = math.pi * (radius_km * _METERS_PER_KM) ** 2
     scaled = scale_to_circle(tally.counts.total, circle_m2, tally.land_area_m2)
@@ -167,7 +172,7 @@ def _locate(
 ) -> _Tally:
     if not api_key.strip():
         raise _Unusable(
-            f"the Census API key is not set (environment variable {settings.api_key_env_var})"
+            f"the Census API key is not set (environment variable {settings.api_key_env_var})",
         )
     tracts = fetch_tracts(latitude, longitude, radius_km * _METERS_PER_KM, settings, client)
     if not tracts:
@@ -176,7 +181,7 @@ def _locate(
     if len(counties) > settings.max_counties:
         raise _Unusable(
             f"the circle reaches {len(counties)} counties, "
-            f"above the limit of {settings.max_counties}"
+            f"above the limit of {settings.max_counties}",
         )
     tally = _tally(tracts, settings, client, api_key)
     if tally.used == 0:
@@ -201,5 +206,7 @@ def _estimate(
         return screening_default(settings, radius_km, f"census data unavailable: {exc}")
     except ValueError as exc:
         return screening_default(
-            settings, radius_km, f"the census estimates are inconsistent ({exc})"
+            settings,
+            radius_km,
+            f"the census estimates are inconsistent ({exc})",
         )

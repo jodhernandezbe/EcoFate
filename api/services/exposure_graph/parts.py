@@ -63,12 +63,16 @@ def joined(items: Sequence[str]) -> str | None:
 def edge(lane: str, source: str, target: str, carried: GraphQuantity | None = None) -> GraphEdge:
     """A connection from ``source`` to ``target`` in ``lane``, with the quantity it carries."""
     return GraphEdge(
-        id=f"{source}->{target}", source=source, target=target, lane=lane, quantity=carried
+        id=f"{source}->{target}",
+        source=source,
+        target=target,
+        lane=lane,
+        quantity=carried,
     )
 
 
 def unavailable(text: GraphText, lane: str) -> LaneParts:
     """A lane drawn empty, with the configured reason."""
     return LaneParts(
-        lane=GraphLane(id=lane, label=text.lanes[lane], available=False, reason=text.reasons[lane])
+        lane=GraphLane(id=lane, label=text.lanes[lane], available=False, reason=text.reasons[lane]),
     )

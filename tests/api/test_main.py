@@ -20,7 +20,9 @@ BODY = {"api_key": "sk-" + "a" * 20}  # pragma: allowlist secret
 
 def test_foreign_origin_is_rejected(client: TestClient) -> None:
     response = client.post(
-        "/api/v1/settings/openai-key", json=BODY, headers={"Origin": "https://example.com"}
+        "/api/v1/settings/openai-key",
+        json=BODY,
+        headers={"Origin": "https://example.com"},
     )
     assert response.status_code == 403
 
@@ -47,7 +49,9 @@ def test_rebinding_host_is_rejected(app: FastAPI) -> None:
 
 def test_validation_errors_do_not_echo_values(client: TestClient) -> None:
     response = client.post(
-        "/api/v1/settings/openai-key", json={"api_key": 5, "other": KEY}, headers={"Origin": ORIGIN}
+        "/api/v1/settings/openai-key",
+        json={"api_key": 5, "other": KEY},
+        headers={"Origin": ORIGIN},
     )
     assert response.status_code == 422
     assert KEY not in response.text
@@ -55,7 +59,8 @@ def test_validation_errors_do_not_echo_values(client: TestClient) -> None:
 
 
 def test_unhandled_errors_are_generic_and_logged_redacted(
-    app: FastAPI, caplog: pytest.LogCaptureFixture
+    app: FastAPI,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     @app.get("/api/boom")
     def boom() -> None:

@@ -25,7 +25,10 @@ ENVIRON = {SETTINGS.read_token_env_var: TOKEN}
 
 def _service(query: FakeQuery, environ: dict[str, str] | None = None) -> MonitoringService:
     return MonitoringService(
-        SETTINGS, labels(), ENVIRON if environ is None else environ, opener(query)
+        SETTINGS,
+        labels(),
+        ENVIRON if environ is None else environ,
+        opener(query),
     )
 
 
@@ -63,7 +66,9 @@ async def test_a_row_without_identity_is_skipped_not_listed() -> None:
     ],
 )
 async def test_a_logfire_failure_is_a_state_with_no_sessions(
-    failure: Exception, state: str, message: str
+    failure: Exception,
+    state: str,
+    message: str,
 ) -> None:
     answer = await _service(FakeQuery(failure=failure)).sessions()
     assert (answer.state, answer.message, answer.sessions) == (state, message, [])

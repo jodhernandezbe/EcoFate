@@ -26,7 +26,7 @@ SCHEMA = pa.schema(
         ("source_title", pa.string()),
         ("release_year", pa.int16()),
         ("release_quarter", pa.int8()),
-    ]
+    ],
 )
 
 
@@ -50,7 +50,8 @@ def build_table(extraction: Extraction, release: Release, provenance: Provenance
     )
     columns = list(zip(*rows, strict=True)) if rows else [[] for _ in SCHEMA]
     table = pa.Table.from_arrays(
-        [pa.array(c, type=f.type) for c, f in zip(columns, SCHEMA, strict=True)], schema=SCHEMA
+        [pa.array(c, type=f.type) for c, f in zip(columns, SCHEMA, strict=True)],
+        schema=SCHEMA,
     )
     meta = {
         "qpc.release": release.label,
@@ -77,7 +78,10 @@ def write_atomic(table: pa.Table, path: Path) -> None:
 
 
 def write_baseline(
-    extraction: Extraction, release: Release, provenance: Provenance, path: Path
+    extraction: Extraction,
+    release: Release,
+    provenance: Provenance,
+    path: Path,
 ) -> None:
     """Build the table and write it to ``path``; the old file survives any failure."""
     write_atomic(build_table(extraction, release, provenance), path)

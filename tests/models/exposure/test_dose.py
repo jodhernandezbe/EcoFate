@@ -10,13 +10,13 @@ from models.exposure.dose import average_daily_dose, lifetime_average_daily_dose
 
 def test_add() -> None:
     assert average_daily_dose(2.0, 20.0, 350.0, 30.0, 70.0, 10950.0) == pytest.approx(
-        2.0 * 20.0 * 350.0 * 30.0 / (70.0 * 10950.0)
+        2.0 * 20.0 * 350.0 * 30.0 / (70.0 * 10950.0),
     )
 
 
 def test_ladd_uses_lifetime() -> None:
     assert lifetime_average_daily_dose(1.0, 20.0, 350.0, 30.0, 70.0) == pytest.approx(
-        average_daily_dose(1.0, 20.0, 350.0, 30.0, 70.0, 70 * 365)
+        average_daily_dose(1.0, 20.0, 350.0, 30.0, 70.0, 70 * 365),
     )
 
 

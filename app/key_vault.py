@@ -158,7 +158,7 @@ def default_service_keys(store: CredentialStore = keyring) -> ServiceKeys:
                 store=store,
             )
             for name in KEY_NAMES
-        }
+        },
     )
 
 

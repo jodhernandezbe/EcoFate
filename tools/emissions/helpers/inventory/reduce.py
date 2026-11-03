@@ -428,12 +428,15 @@ class LatestReports:
                 key[1]
                 for key, slot in self._slots.items()
                 if slot.location is None and slot.quantity is not None and slot.unit is not None
-            )
+            ),
         )
         return locate(missing) if locate is not None and missing else {}
 
     def _located(
-        self, facility_id: str, slot: Slot, located: Mapping[str, Location]
+        self,
+        facility_id: str,
+        slot: Slot,
+        located: Mapping[str, Location],
     ) -> Location | None:
         """Return the slot's coordinates, or those ``locate`` found when TRI gave none."""
         if slot.location is not None:
@@ -446,7 +449,10 @@ class LatestReports:
         return found
 
     def _amount(
-        self, facility_id: str, slot: Slot, located: Mapping[str, Location]
+        self,
+        facility_id: str,
+        slot: Slot,
+        located: Mapping[str, Location],
     ) -> _Amount | None:
         """Return the slot's quantity, unit and location, or count why it is unusable."""
         if slot.quantity is None or slot.unit is None:
@@ -530,7 +536,11 @@ def _industry(slot: Slot) -> _Industry:
 
 
 def _reported(
-    key: tuple[str, str], slot: Slot, amount: _Amount, rate: float, hours: OperatingHours
+    key: tuple[str, str],
+    slot: Slot,
+    amount: _Amount,
+    rate: float,
+    hours: OperatingHours,
 ) -> _Reported:
     medium, facility_id = key
     return {

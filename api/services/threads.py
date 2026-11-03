@@ -118,7 +118,10 @@ class ThreadStore:
         return dict(self._supplied.get(thread_id, {})), frozenset(self._declined.get(thread_id, ()))
 
     def record_answers(
-        self, thread_id: str, supplied: Mapping[str, float], declined: Iterable[str]
+        self,
+        thread_id: str,
+        supplied: Mapping[str, float],
+        declined: Iterable[str],
     ) -> None:
         """Keep the user's answers for the thread; a value already supplied is never replaced."""
         self._supplied.setdefault(thread_id, {}).update(
@@ -126,7 +129,7 @@ class ThreadStore:
                 key: value
                 for key, value in supplied.items()
                 if key not in self._supplied.get(thread_id, {})
-            }
+            },
         )
         self._declined.setdefault(thread_id, set()).update(declined)
 

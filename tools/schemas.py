@@ -395,7 +395,10 @@ class ReadAcrossMatch(TypedDict):
     mw_scaling_factor: float | None  # query_mw / surrogate_mw; reported, never applied
     within_applicability_domain: bool  # hybrid score >= the configured threshold
     resolution_method: Literal[
-        "direct_tri_catalog_match", "tri_category_member", "hybrid_read_across", "unresolved"
+        "direct_tri_catalog_match",
+        "tri_category_member",
+        "hybrid_read_across",
+        "unresolved",
     ]
     query_categories: list[CategoryRef]  # TRI categories that list the query chemical (often none)
     surrogate_category: CategoryRef | None  # category TRI reports the surrogate under, if any

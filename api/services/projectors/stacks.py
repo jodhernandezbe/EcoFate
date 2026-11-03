@@ -53,12 +53,16 @@ def dose_of(result: StackExposurePayload) -> Dose | None:
     if not result.add_by_band:
         return None
     return Dose(
-        highest_mg_kg_day=result.add, highest_band=result.add_band, by_band=dict(result.add_by_band)
+        highest_mg_kg_day=result.add,
+        highest_band=result.add_band,
+        by_band=dict(result.add_by_band),
     )
 
 
 def _provenance(
-    source: str | None, scc: str | None, lookups: Mapping[str, SccMatchPayload]
+    source: str | None,
+    scc: str | None,
+    lookups: Mapping[str, SccMatchPayload],
 ) -> dict[str, object]:
     tier = TIERS.get(source or "")
     match = lookups.get(scc) if scc else None
@@ -73,7 +77,9 @@ def _provenance(
 
 
 def _from_candidate(
-    candidate: StackPayload, result: StackExposurePayload | None, ledger: Ledger
+    candidate: StackPayload,
+    result: StackExposurePayload | None,
+    ledger: Ledger,
 ) -> Stack:
     stack = Stack(
         height_m=candidate.stack_height,
@@ -83,7 +89,7 @@ def _from_candidate(
         warnings=list(candidate.warnings),
     )
     stack = stack.model_copy(
-        update=_provenance(candidate.source, candidate.scc, ledger.scc_matches)
+        update=_provenance(candidate.source, candidate.scc, ledger.scc_matches),
     )
     return stack if result is None else _with_result(stack, result)
 
@@ -96,7 +102,7 @@ def _with_result(stack: Stack, result: StackExposurePayload) -> Stack:
             "representative": _scenario(result.representative),
             "dose": dose_of(result),
             "warnings": [*stack.warnings, *result.warnings],
-        }
+        },
     )
 
 
@@ -119,7 +125,9 @@ def _from_result(result: StackExposurePayload, ledger: Ledger) -> Stack:
 
 
 def facility_stacks(
-    candidates: list[StackPayload], exposure: ExposurePayload | None, ledger: Ledger
+    candidates: list[StackPayload],
+    exposure: ExposurePayload | None,
+    ledger: Ledger,
 ) -> list[Stack]:
     """NEI candidates first (with their results when evaluated), then other evaluated stacks."""
     results = list(exposure.results) if exposure else []

@@ -43,6 +43,7 @@ class Steps:
     weather: Callable[[float, float, int | None], Meteorology]
     people: Callable[[float, float, float | None], Population]
     exposure: Callable[
-        [float, list[StackParameters], Meteorology, Population, Toxicity], FacilityExposure
+        [float, list[StackParameters], Meteorology, Population, Toxicity],
+        FacilityExposure,
     ]
     prefetch: Callable[[Sequence[str]], None] = lambda titles: None

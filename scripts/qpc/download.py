@@ -36,7 +36,13 @@ def _status_error(response: httpx.Response, release: Release, url: str) -> QpcDo
 
 
 def fetch_workbook(
-    url: str, release: Release, *, client: httpx.Client, host: str, timeout: float, max_bytes: int
+    url: str,
+    release: Release,
+    *,
+    client: httpx.Client,
+    host: str,
+    timeout: float,
+    max_bytes: int,
 ) -> bytes:
     """Download ``url`` and return the workbook bytes.
 

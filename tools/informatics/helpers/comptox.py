@@ -122,7 +122,8 @@ def _record_content(record: Mapping[str, object]) -> tuple[str, float, str] | No
 
 
 def _toxicity_candidate(
-    record: Mapping[str, object], spec: ToxicityValueSpec
+    record: Mapping[str, object],
+    spec: ToxicityValueSpec,
 ) -> ToxicityValue | None:
     """Return ``record`` as a value if it matches ``spec`` by type, route and content."""
     content = _record_content(record)
@@ -236,7 +237,8 @@ class ComptoxLookup:
         """
         self._settings = settings or get_comptox_settings()
         self._client = client or httpx.Client(
-            timeout=self._settings.timeout_seconds, verify=tls_verification(self._settings)
+            timeout=self._settings.timeout_seconds,
+            verify=tls_verification(self._settings),
         )
         self._sleep = sleep
         self._environ = os.environ if environ is None else environ
@@ -396,7 +398,12 @@ class ComptoxLookup:
         return chemical, definitive
 
     def _get_json(
-        self, url: str, headers: Mapping[str, str], what: str, *, miss_on_zero_results: bool = False
+        self,
+        url: str,
+        headers: Mapping[str, str],
+        what: str,
+        *,
+        miss_on_zero_results: bool = False,
     ) -> tuple[object | None, bool]:
         """Return (parsed JSON or None, definitive); definitive False means a transient failure."""
         response = self._request(url, headers, what)
@@ -436,7 +443,10 @@ class ComptoxLookup:
         return min(requested, self._settings.timeout_seconds)
 
     def _parse(
-        self, response: httpx.Response, what: str, miss_on_zero_results: bool
+        self,
+        response: httpx.Response,
+        what: str,
+        miss_on_zero_results: bool,
     ) -> tuple[object | None, bool]:
         status = response.status_code
         if status == 404 or (
@@ -498,7 +508,9 @@ class ComptoxLookup:
         return _number(detail.get(self._settings.molecular_weight.field)), True
 
     def _fetch_summary(
-        self, dtxsid: str, headers: Mapping[str, str]
+        self,
+        dtxsid: str,
+        headers: Mapping[str, str],
     ) -> tuple[Sequence[Mapping[str, object]] | None, bool]:
         url = self._settings.properties_by_dtxsid_url.format(dtxsid=quote(dtxsid, safe=""))
         payload, definitive = self._get_json(url, headers, "property search")
@@ -511,7 +523,9 @@ class ComptoxLookup:
         return entries, True
 
     def _fetch_toxval(
-        self, dtxsid: str, headers: Mapping[str, str]
+        self,
+        dtxsid: str,
+        headers: Mapping[str, str],
     ) -> tuple[Sequence[Mapping[str, object]] | None, bool]:
         url = self._settings.toxval_by_dtxsid_url.format(dtxsid=quote(dtxsid, safe=""))
         payload, definitive = self._get_json(url, headers, "ToxVal search")
@@ -527,13 +541,17 @@ class ComptoxLookup:
         return own, True
 
     def _fetch_iris(
-        self, dtxsid: str, headers: Mapping[str, str]
+        self,
+        dtxsid: str,
+        headers: Mapping[str, str],
     ) -> tuple[Mapping[str, object] | None, bool]:
         template = self._settings.iris_by_dtxsid_url
         if template is None:
             return None, True
         payload, definitive = self._get_json(
-            template.format(dtxsid=quote(dtxsid, safe="")), headers, "IRIS search"
+            template.format(dtxsid=quote(dtxsid, safe="")),
+            headers,
+            "IRIS search",
         )
         entries = _entries(payload) if payload is not None else None
         if payload is not None and entries is None:
@@ -543,7 +561,9 @@ class ComptoxLookup:
         return (own[0] if own else None), definitive
 
     def _toxicity_of(
-        self, dtxsid: str, headers: Mapping[str, str]
+        self,
+        dtxsid: str,
+        headers: Mapping[str, str],
     ) -> tuple[dict[str, ToxicityValue], list[str], bool]:
         """(values, notes, definitive): the IRIS endpoint's chronic values ahead of ToxVal's."""
         records, toxval_done = self._fetch_toxval(dtxsid, headers)
@@ -586,7 +606,8 @@ class ComptoxLookup:
         return result
 
     def _extract_toxicity(
-        self, records: Sequence[Mapping[str, object]]
+        self,
+        records: Sequence[Mapping[str, object]],
     ) -> dict[str, ToxicityValue]:
         result: dict[str, ToxicityValue] = {}
         for spec in self._settings.toxicity_values:

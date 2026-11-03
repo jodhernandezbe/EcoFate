@@ -90,7 +90,8 @@ def test_status_is_only_a_boolean(app: FastAPI, store: FakeCredentialStore) -> N
 
 
 def test_saving_never_echoes_or_logs_the_key(
-    client: TestClient, caplog: pytest.LogCaptureFixture
+    client: TestClient,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     response = client.post("/api/v1/settings/openai-key", json={"api_key": KEY}, headers=OWN)
     assert KEY not in response.text
@@ -98,7 +99,8 @@ def test_saving_never_echoes_or_logs_the_key(
 
 
 def test_no_get_endpoint_returns_any_of_the_three_keys(
-    app: FastAPI, store: FakeCredentialStore
+    app: FastAPI,
+    store: FakeCredentialStore,
 ) -> None:
     secrets = {
         "openai": KEY,

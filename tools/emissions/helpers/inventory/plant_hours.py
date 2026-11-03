@@ -69,7 +69,9 @@ def _valid_code(value: object, settings: PlantHoursSettings) -> str | None:
 
 
 def _rows(
-    codes: list[object], hours: list[object], settings: PlantHoursSettings
+    codes: list[object],
+    hours: list[object],
+    settings: PlantHoursSettings,
 ) -> tuple[dict[str, float], int]:
     """Valid code -> h/week rows, and how many rows were ignored."""
     seen = Counter(code for code in codes if isinstance(code, str))
@@ -129,7 +131,10 @@ class PlantHours:
     """Resolves a facility's NAICS code to operating hours per year (callable)."""
 
     def __init__(
-        self, baseline: Baseline, settings: PlantHoursSettings, default_hours_per_year: float
+        self,
+        baseline: Baseline,
+        settings: PlantHoursSettings,
+        default_hours_per_year: float,
     ) -> None:
         self._baseline = baseline
         self._settings = settings
@@ -143,7 +148,9 @@ class PlantHours:
         if code is None or not MIN_CODE_DIGITS <= len(code) <= self._settings.max_digits:
             return self._fallback("no usable NAICS code")
         hit = longest_prefix(
-            self._baseline.hours_per_week, code, min_length=self._settings.min_digits
+            self._baseline.hours_per_week,
+            code,
+            min_length=self._settings.min_digits,
         )
         return self._matched(hit) if hit else self._fallback(f"no QPC match for {code}")
 

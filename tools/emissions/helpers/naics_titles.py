@@ -42,12 +42,15 @@ def naics_titles(settings: IndustrySettings) -> Mapping[str, str]:
         ValueError: If it lacks the configured columns.
     """
     return read_titles(
-        settings.titles_path, settings.titles_code_column, settings.titles_title_column
+        settings.titles_path,
+        settings.titles_code_column,
+        settings.titles_title_column,
     )
 
 
 def with_titles(
-    records: Sequence[EmissionRecord], titles: Mapping[str, str]
+    records: Sequence[EmissionRecord],
+    titles: Mapping[str, str],
 ) -> list[EmissionRecord]:
     """Copies of ``records`` with ``naics_title`` filled from ``titles`` where the code is known.
 

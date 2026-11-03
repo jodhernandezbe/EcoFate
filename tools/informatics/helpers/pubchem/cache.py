@@ -95,7 +95,8 @@ class ResponseCache:
         try:
             with closing(self._connect()) as db:
                 row = db.execute(
-                    "SELECT status, body, fetched_at FROM responses WHERE url = ?", (url,)
+                    "SELECT status, body, fetched_at FROM responses WHERE url = ?",
+                    (url,),
                 ).fetchone()
         except _CACHE_ERRORS as exc:
             self._warn(f"cannot read the cache ({exc})")

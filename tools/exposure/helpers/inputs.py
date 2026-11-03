@@ -23,5 +23,7 @@ def coordinate_problem(value: object, name: str, limit: float) -> str | None:
 def point_problem(latitude: object, longitude: object) -> str | None:
     """Return why the point is invalid, or None when both coordinates are valid."""
     return coordinate_problem(latitude, "latitude", MAX_LATITUDE) or coordinate_problem(
-        longitude, "longitude", MAX_LONGITUDE
+        longitude,
+        "longitude",
+        MAX_LONGITUDE,
     )

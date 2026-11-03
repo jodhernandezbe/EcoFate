@@ -152,7 +152,8 @@ def test_invalid_entries_name_the_key(tmp_path: Path, old: str, new: str, key: s
 
 
 @pytest.mark.parametrize(
-    "table", ["[population.fields]", "[population.variables]", "[population.screening_default]"]
+    "table",
+    ["[population.fields]", "[population.variables]", "[population.screening_default]"],
 )
 def test_missing_subtable(tmp_path: Path, table: str) -> None:
     head, tail = TEXT.split(table, 1)

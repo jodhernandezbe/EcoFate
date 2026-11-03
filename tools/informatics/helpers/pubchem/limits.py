@@ -28,7 +28,10 @@ def _unit(raw: str, settings: LimitsSettings) -> str | None:
 
 
 def _to_mg_m3(
-    value: float, unit: str, weight: float | None, settings: LimitsSettings
+    value: float,
+    unit: str,
+    weight: float | None,
+    settings: LimitsSettings,
 ) -> tuple[float, bool] | str:
     """The value in mg/m^3 and whether it came from ppm, or why it cannot be used."""
     if value <= 0:
@@ -55,7 +58,10 @@ def _match(spec: LimitSpec, name: str | None, text: str) -> re.Match[str] | None
 
 
 def _candidates(
-    record: object, spec: LimitSpec, weight: float | None, settings: LimitsSettings
+    record: object,
+    spec: LimitSpec,
+    weight: float | None,
+    settings: LimitsSettings,
 ) -> tuple[list[tuple[float, bool]], list[str]]:
     values: list[tuple[float, bool]] = []
     refused: list[str] = []
@@ -76,7 +82,11 @@ def _candidates(
 
 
 def _one(
-    record: object, spec: LimitSpec, weight: float | None, settings: LimitsSettings, ratio: float
+    record: object,
+    spec: LimitSpec,
+    weight: float | None,
+    settings: LimitsSettings,
+    ratio: float,
 ) -> LimitValue | str:
     values, refused = _candidates(record, spec, weight, settings)
     if not values:
@@ -94,7 +104,8 @@ def _one(
 
 
 def _benchmark(
-    limits: Mapping[str, LimitValue], priority: Sequence[str]
+    limits: Mapping[str, LimitValue],
+    priority: Sequence[str],
 ) -> tuple[float | None, str | None]:
     for key in priority:
         if key in limits:
@@ -105,12 +116,19 @@ def _benchmark(
 def empty_limits(reason: str) -> OccupationalLimits:
     """No limits at all, with the reason (no record, or not looked up)."""
     return OccupationalLimits(
-        oel_twa_mg_m3=None, oel_source=None, limits={}, reasons={}, warnings=[reason]
+        oel_twa_mg_m3=None,
+        oel_source=None,
+        limits={},
+        reasons={},
+        warnings=[reason],
     )
 
 
 def read_limits(
-    record: object, weight: float | None, settings: LimitsSettings, ratio: float
+    record: object,
+    weight: float | None,
+    settings: LimitsSettings,
+    ratio: float,
 ) -> OccupationalLimits:
     """Read every configured limit from a PUG View record.
 
@@ -135,5 +153,9 @@ def read_limits(
     value, source = _benchmark(found, settings.twa_priority)
     warnings = [] if value is not None else ["PubChem lists no usable 8-hour TWA limit"]
     return OccupationalLimits(
-        oel_twa_mg_m3=value, oel_source=source, limits=found, reasons=reasons, warnings=warnings
+        oel_twa_mg_m3=value,
+        oel_source=source,
+        limits=found,
+        reasons=reasons,
+        warnings=warnings,
     )

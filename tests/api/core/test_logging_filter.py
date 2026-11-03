@@ -183,7 +183,8 @@ def test_a_masked_key_echoed_by_the_provider_loses_its_visible_end(
 ) -> None:
     logger, stream = captured
     logger.warning(
-        "Error code: 401 - Incorrect API key provided: %s. You can find your key", MASKED
+        "Error code: 401 - Incorrect API key provided: %s. You can find your key",
+        MASKED,
     )
     assert "p8UA" not in stream.getvalue() and "****" not in stream.getvalue()
     assert REDACTED in stream.getvalue()

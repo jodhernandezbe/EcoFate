@@ -61,7 +61,9 @@ def _prompt(pending: ConfirmationRequest | None) -> ConfirmationPrompt | None:
 
 
 def thread_snapshot(
-    threads: ThreadStore, thread_id: str, pricing: Mapping[str, ModelPrice]
+    threads: ThreadStore,
+    thread_id: str,
+    pricing: Mapping[str, ModelPrice],
 ) -> ThreadSnapshot | None:
     """The snapshot of a held thread, or None when the program does not hold it."""
     if not threads.holds(thread_id):

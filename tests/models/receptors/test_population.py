@@ -96,7 +96,8 @@ def test_large_counts() -> None:
     ],
 )
 def test_bands_reject_impossible_counts(
-    args: tuple[float, float, float, float], match: str
+    args: tuple[float, float, float, float],
+    match: str,
 ) -> None:
     with pytest.raises(ValueError, match=match):
         age_bands(*args)

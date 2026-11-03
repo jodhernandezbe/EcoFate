@@ -80,7 +80,7 @@ def _factor(key: str, block: dict[str, object]) -> FactorSpec:
 def _factors(table: dict[str, object]) -> Mapping[str, FactorSpec]:
     block = subtable(table, "factors", NAME)
     return MappingProxyType(
-        {key: _factor(key, subtable(block, key, f"{NAME}.factors")) for key in block}
+        {key: _factor(key, subtable(block, key, f"{NAME}.factors")) for key in block},
     )
 
 

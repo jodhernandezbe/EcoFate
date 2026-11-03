@@ -21,7 +21,8 @@ def _open_client() -> httpx.Client:
 
 @tool
 def fetch_stack_parameters_from_nei(
-    frs_id: str | int, eis_ids: list[str] | None = None
+    frs_id: str | int,
+    eis_ids: list[str] | None = None,
 ) -> NeiStackResult:
     """Fetch a facility's own stacks (height, diameter, exit velocity and temperature) from the NEI.
 

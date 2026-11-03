@@ -24,7 +24,8 @@ def requests_seen(monkeypatch: pytest.MonkeyPatch) -> list[httpx.Request]:
         if "REF_NAICS" in request.url.path:
             code = request.url.path.split("/NAICS_CODE/")[1].split("/")[0]
             return httpx.Response(
-                200, json=[{"naics_code": code, "naics_desc": f"Title of {code}"}]
+                200,
+                json=[{"naics_code": code, "naics_desc": f"Title of {code}"}],
             )
         # A path of the form /sub/{code}/... reports that code; the default is a listed one.
         parts = request.url.path.split("/sub/")
@@ -63,7 +64,8 @@ def test_returns_the_title_in_words(requests_seen: list[httpx.Request]) -> None:
 
 
 def test_a_code_the_local_lists_lack_is_looked_up_in_the_reference_table(
-    requests_seen: list[httpx.Request], monkeypatch: pytest.MonkeyPatch
+    requests_seen: list[httpx.Request],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(industry, "get_industry_settings", lambda: _only_submission("123456"))
     result = fetch_facility_industry.invoke({"doc_ctrl_num": DOC})

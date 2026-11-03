@@ -36,10 +36,10 @@ def test_counts_are_plausible(town: Population) -> None:
 
 def test_a_bigger_circle_has_more_people() -> None:
     small = get_population_receptors.invoke(
-        {"latitude": 41.70, "longitude": -71.15, "radius_km": 1.0}
+        {"latitude": 41.70, "longitude": -71.15, "radius_km": 1.0},
     )
     large = get_population_receptors.invoke(
-        {"latitude": 41.70, "longitude": -71.15, "radius_km": 4.0}
+        {"latitude": 41.70, "longitude": -71.15, "radius_km": 4.0},
     )
     assert large["total_population"] > small["total_population"] > 0
 
@@ -52,7 +52,7 @@ def test_open_water_gets_the_labelled_default() -> None:
 
 def test_an_oversized_radius_is_refused_without_a_request() -> None:
     result = get_population_receptors.invoke(
-        {"latitude": 41.70, "longitude": -71.15, "radius_km": 500.0}
+        {"latitude": 41.70, "longitude": -71.15, "radius_km": 500.0},
     )
     assert result["source"] == "screening default"
     assert "radius" in result["warnings"][0]

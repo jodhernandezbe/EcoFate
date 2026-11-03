@@ -24,7 +24,7 @@ def _check_pair(query: NDArray[np.generic], catalog: NDArray[np.generic], kind: 
     if catalog.shape[1] != query.shape[0]:
         raise ValueError(
             f"{kind}: width mismatch, query has {query.shape[0]} entries and catalog rows "
-            f"have {catalog.shape[1]}"
+            f"have {catalog.shape[1]}",
         )
 
 
@@ -84,7 +84,7 @@ def centered(values: NDArray[np.floating], mean: NDArray[np.floating]) -> NDArra
     if values.ndim not in (1, 2) or values.shape[-1] != mean.shape[0]:
         raise ValueError(
             f"centered: width mismatch, mean has {mean.shape[0]} entries and values "
-            f"{values.shape[-1]}"
+            f"{values.shape[-1]}",
         )
     _check_finite(values, "centered")
     _check_finite(mean, "centered")
@@ -183,7 +183,9 @@ def best_index(scores: Scores) -> int:
 
 
 def leave_one_out_scores(
-    embeddings: NDArray[np.floating], bits: NDArray[np.generic], alpha: float
+    embeddings: NDArray[np.floating],
+    bits: NDArray[np.generic],
+    alpha: float,
 ) -> Scores:
     """Each catalog row's best hybrid score against every other row.
 

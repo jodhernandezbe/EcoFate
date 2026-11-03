@@ -63,7 +63,11 @@ def _in_range(quantity: str, value: float, settings: UserValueSettings) -> str |
 
 
 def _to_target(
-    quantity: str, number: float, unit: str, settings: UserValueSettings, aliases: Mapping[str, str]
+    quantity: str,
+    number: float,
+    unit: str,
+    settings: UserValueSettings,
+    aliases: Mapping[str, str],
 ) -> float | CheckedValue:
     """Return the converted number, or the rejection when the conversion fails."""
     target = settings.units[quantity][0]
@@ -115,7 +119,10 @@ def entry_id(quantity: str, subject: str) -> str:
 
 
 def missing_entry(
-    quantity: str, subject: str, purpose: str, settings: UserValueSettings
+    quantity: str,
+    subject: str,
+    purpose: str,
+    settings: UserValueSettings,
 ) -> MissingEntry:
     """Describe one missing value so the user can be asked for it."""
     bounds = settings.ranges[quantity]

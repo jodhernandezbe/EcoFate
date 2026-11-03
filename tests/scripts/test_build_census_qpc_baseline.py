@@ -64,13 +64,14 @@ GOOD = (
 
 
 def test_builds_the_parquet_for_the_release_two_quarters_back(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     seen: list[str] = []
     code, out = _run(tmp_path, _client(_book(*GOOD), seen))
     assert code == 0
     assert seen == [
-        "https://www2.census.gov/programs-surveys/qpc/tables/2026/2026-qtr-table-final-q2.xlsx"
+        "https://www2.census.gov/programs-surveys/qpc/tables/2026/2026-qtr-table-final-q2.xlsx",
     ]
     rows = read_rows(out)
     assert [(r["naics_code"], r["avg_plant_hours_per_week"]) for r in rows] == [
@@ -89,7 +90,8 @@ def test_second_quarter_looks_at_the_previous_year(tmp_path: Path) -> None:
 
 
 def test_404_leaves_the_existing_file_alone(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     out = tmp_path / "out" / "q.parquet"
     out.parent.mkdir()

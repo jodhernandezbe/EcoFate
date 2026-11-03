@@ -20,7 +20,7 @@ BEARER_PATTERN = re.compile(r"(?i)\b(Bearer\s+)[A-Za-z0-9._~+/=-]{8,}")
 QUERY_PATTERN = re.compile(r"(?i)([?&](?:key|api_?key|access_token|token)=)[^&\s'\")]+")
 ASSIGNMENT_PATTERN = re.compile(
     r"(?i)\b((?:x-)?api[_-]?key|access[_-]?token|auth[_-]?token|secret|password)"
-    r"(['\"]?\s*[:=]\s*['\"]?)[^\s'\",})]{8,}"
+    r"(['\"]?\s*[:=]\s*['\"]?)[^\s'\",})]{8,}",
 )
 
 KEY_PATTERNS: tuple[re.Pattern[str], ...] = (

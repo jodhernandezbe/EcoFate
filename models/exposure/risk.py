@@ -7,7 +7,8 @@ _S_PER_HOUR: float = 3600.0
 
 
 def calculate_emission_rate(
-    annual_mass_kg: float, operating_hours_per_year: float = 8760.0
+    annual_mass_kg: float,
+    operating_hours_per_year: float = 8760.0,
 ) -> float:
     """Convert an annual release mass to a steady-state emission rate.
 

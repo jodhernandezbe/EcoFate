@@ -28,7 +28,9 @@ from tests.fakes import ScriptedChatModel, verdict
 
 REDIRECT = "I can't help with that, but I can explore releases or the map with you."
 GUARD = ScopeGuard(
-    classifier_prompt="CLASSIFY", fallback_reply="FALLBACK REDIRECT", history_window=4
+    classifier_prompt="CLASSIFY",
+    fallback_reply="FALLBACK REDIRECT",
+    history_window=4,
 )
 TOOL_CALLS: list[str] = []
 
@@ -51,7 +53,9 @@ def _model(*verdicts: AIMessage, answers: tuple[str, ...] = ("agent answer",)) -
 
 
 def _converse(
-    model: ScriptedChatModel, history: Sequence[AnyMessage], guard: ScopeGuard | None = GUARD
+    model: ScriptedChatModel,
+    history: Sequence[AnyMessage],
+    guard: ScopeGuard | None = GUARD,
 ) -> AgentState:
     state: AgentState = {"messages": list(history)}
     return cast(AgentState, build_agent(model, scope_guard=guard).invoke(state))
@@ -290,7 +294,9 @@ class _RefusingModel(ScriptedChatModel):
         super().__init__([])
 
     def with_structured_output(  # type: ignore[override]
-        self, *args: object, **kwargs: object
+        self,
+        *args: object,
+        **kwargs: object,
     ) -> RunnableLambda[object, object]:
         return RunnableLambda(_refuse)
 

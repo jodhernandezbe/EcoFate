@@ -28,7 +28,7 @@ def test_shipped_settings_load_every_chemistry_quantity() -> None:
 def test_no_stack_quantity_is_listed() -> None:
     settings = load_user_value_settings()
     assert not {"stack_height", "stack_diameter", "exit_velocity", "exit_temperature"} & set(
-        settings.units
+        settings.units,
     )
 
 

@@ -31,7 +31,7 @@ def requests_seen(monkeypatch: pytest.MonkeyPatch) -> list[httpx.Request]:
 
     def handler(request: httpx.Request) -> httpx.Response:
         if "mv_new_geo_best_picks" in str(request.url) or "frs_program_facility" in str(
-            request.url
+            request.url,
         ):
             return httpx.Response(200, json=[])  # FRS has no point, and no EIS registration
         if "AIR%20FUG" in str(request.url):
@@ -40,7 +40,9 @@ def requests_seen(monkeypatch: pytest.MonkeyPatch) -> list[httpx.Request]:
         return httpx.Response(200, json=ROWS)
 
     monkeypatch.setattr(
-        inventory, "_open_client", lambda: httpx.Client(transport=httpx.MockTransport(handler))
+        inventory,
+        "_open_client",
+        lambda: httpx.Client(transport=httpx.MockTransport(handler)),
     )
     settings = replace(get_efservice_settings(), delay_seconds=0.0, backoff_seconds=0.0)
     monkeypatch.setattr(inventory, "get_efservice_settings", lambda: settings)
@@ -56,7 +58,7 @@ def _default_hours(_code: str | None) -> OperatingHours:
 
 def _call(args: dict[str, object]) -> ToolMessage:
     return query_emissions_inventory.invoke(
-        {"type": "tool_call", "id": "c1", "name": "query_emissions_inventory", "args": args}
+        {"type": "tool_call", "id": "c1", "name": "query_emissions_inventory", "args": args},
     )
 
 
@@ -109,7 +111,7 @@ def test_returns_latest_records_with_rates(requests_seen: list[httpx.Request]) -
     assert by_id["110000307864"]["reporting_year"] == 2009
     assert by_id["110000307864"]["unit"] == "Pounds"
     assert by_id["110000307864"]["emission_rate"] == pytest.approx(
-        31070 * 453.59237 / (8760 * 3600)
+        31070 * 453.59237 / (8760 * 3600),
     )
     assert by_id["110000307864"]["operating_hours_per_year"] == 8760.0
 
@@ -121,7 +123,9 @@ def test_bare_cas_is_accepted(requests_seen: list[httpx.Request]) -> None:
 
 @pytest.mark.parametrize("bad", ["", "abc", "50-00-1", "1-2-3", "50-00-0; DROP", "N999", "N4200"])
 def test_invalid_cas_makes_no_request(
-    requests_seen: list[httpx.Request], caplog: pytest.LogCaptureFixture, bad: str
+    requests_seen: list[httpx.Request],
+    caplog: pytest.LogCaptureFixture,
+    bad: str,
 ) -> None:
     with caplog.at_level(logging.WARNING):
         assert _view({"cas_number": bad})["facilities"] == []
@@ -145,7 +149,8 @@ def test_a_cas_number_has_no_category_note(requests_seen: list[httpx.Request]) -
 
 
 def test_a_facility_that_stopped_reporting_long_ago_is_not_returned(
-    requests_seen: list[httpx.Request], monkeypatch: pytest.MonkeyPatch
+    requests_seen: list[httpx.Request],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """In 2026 only 2024 and 2025 count; the fixture's last report is 2009."""
     monkeypatch.setattr(inventory, "_current_year", lambda: 2026)
@@ -161,7 +166,8 @@ def test_every_record_carries_its_submission_control_number(
 
 
 def test_listed_facilities_carry_their_eis_ids(
-    requests_seen: list[httpx.Request], monkeypatch: pytest.MonkeyPatch
+    requests_seen: list[httpx.Request],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     view = _view({"cas_number": "50-00-0"})
     listed = view["facilities"]
@@ -176,7 +182,8 @@ def test_description_explains_the_window_and_the_control_number() -> None:
 
 
 def test_the_model_is_told_the_largest_facilities_and_how_many_there_are(
-    requests_seen: list[httpx.Request], monkeypatch: pytest.MonkeyPatch
+    requests_seen: list[httpx.Request],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _list_at_most(monkeypatch, 3)
     view = _view({"cas_number": "50-00-0"})
@@ -190,18 +197,21 @@ def test_the_model_is_told_the_largest_facilities_and_how_many_there_are(
 
 
 def test_the_program_gets_every_facility_even_when_the_model_sees_few(
-    requests_seen: list[httpx.Request], monkeypatch: pytest.MonkeyPatch
+    requests_seen: list[httpx.Request],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _list_at_most(monkeypatch, 1)
     every = _all({"cas_number": "50-00-0"})
     assert len(every) == _view({"cas_number": "50-00-0"})["total_found"]
     assert [f["emission_rate"] for f in every] == sorted(
-        (f["emission_rate"] for f in every), reverse=True
+        (f["emission_rate"] for f in every),
+        reverse=True,
     )
 
 
 def test_the_artifact_is_never_part_of_the_text_the_model_reads(
-    requests_seen: list[httpx.Request], monkeypatch: pytest.MonkeyPatch
+    requests_seen: list[httpx.Request],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _list_at_most(monkeypatch, 2)
     message = _call({"cas_number": "50-00-0"})
@@ -284,7 +294,8 @@ def test_eis_ids_are_remembered_but_an_unreachable_frs_is_not() -> None:
 
 
 def test_each_facility_gets_the_hours_of_its_industry(
-    requests_seen: list[httpx.Request], monkeypatch: pytest.MonkeyPatch
+    requests_seen: list[httpx.Request],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def by_industry(code: str | None) -> OperatingHours:
         return OperatingHours(4380.0, f"test hours for {code}")
@@ -310,12 +321,13 @@ def test_the_real_resolver_uses_the_committed_baseline_and_the_default() -> None
 def test_the_release_request_joins_the_activity_table(requests_seen: list[httpx.Request]) -> None:
     _all({"cas_number": "50-00-0"})
     assert "/tri_submission_naics/tri_chem_activity/cas_registry_number/50-00-0/" in str(
-        requests_seen[0].url
+        requests_seen[0].url,
     )
 
 
 def test_the_program_gets_each_facilitys_conditions_of_use(
-    requests_seen: list[httpx.Request], monkeypatch: pytest.MonkeyPatch
+    requests_seen: list[httpx.Request],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     rows = [r | {"reactant": "1", "ancillary": "1", "produce": 0} for r in ROWS]
     monkeypatch.setattr("tests.tools.emissions.test_inventory.ROWS", rows)
@@ -344,13 +356,15 @@ def test_unreadable_tri_is_never_reported_as_no_releases(monkeypatch: pytest.Mon
 
     def handler(request: httpx.Request) -> httpx.Response:
         if "mv_new_geo_best_picks" in str(request.url) or "frs_program_facility" in str(
-            request.url
+            request.url,
         ):
             return httpx.Response(200, json=[])
         return httpx.Response(500)
 
     monkeypatch.setattr(
-        inventory, "_open_client", lambda: httpx.Client(transport=httpx.MockTransport(handler))
+        inventory,
+        "_open_client",
+        lambda: httpx.Client(transport=httpx.MockTransport(handler)),
     )
     settings = replace(get_efservice_settings(), delay_seconds=0.0, backoff_seconds=0.0)
     monkeypatch.setattr(inventory, "get_efservice_settings", lambda: settings)

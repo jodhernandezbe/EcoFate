@@ -97,7 +97,10 @@ def _log_failure(error: Exception) -> None:
 
 
 def classify(
-    model: BaseChatModel, guard: ScopeGuard, messages: Sequence[BaseMessage], config: RunnableConfig
+    model: BaseChatModel,
+    guard: ScopeGuard,
+    messages: Sequence[BaseMessage],
+    config: RunnableConfig,
 ) -> ScopeVerdict | None:
     """Ask the model for a verdict on the latest turn; None when it cannot give a usable one.
 

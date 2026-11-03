@@ -81,7 +81,8 @@ def workbook(sheets: dict[str, list[Row]]) -> bytes:
             f'<workbook xmlns="{MAIN}" xmlns:r="{REL}"><sheets>{names}</sheets></workbook>',
         )
         book.writestr(
-            "xl/_rels/workbook.xml.rels", f'<Relationships xmlns="{PKG}">{rels}</Relationships>'
+            "xl/_rels/workbook.xml.rels",
+            f'<Relationships xmlns="{PKG}">{rels}</Relationships>',
         )
         book.writestr("xl/sharedStrings.xml", f'<sst xmlns="{MAIN}">{items}</sst>')
         for name, xml in parts.items():

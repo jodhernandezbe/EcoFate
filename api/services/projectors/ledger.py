@@ -65,29 +65,29 @@ class Ledger:
     facilities: dict[str, EmissionPayload] = field(default_factory=dict[str, EmissionPayload])
     facility_cas: dict[str, str] = field(default_factory=dict[str, str])
     industries: list[tuple[str, IndustryPayload]] = field(
-        default_factory=list[tuple[str, IndustryPayload]]
+        default_factory=list[tuple[str, IndustryPayload]],
     )
     nei: list[tuple[str, list[StackPayload]]] = field(
-        default_factory=list[tuple[str, list[StackPayload]]]
+        default_factory=list[tuple[str, list[StackPayload]]],
     )
     scc_stacks: list[StackPayload] = field(default_factory=list[StackPayload])
     scc_matches: dict[str, SccMatchPayload] = field(default_factory=dict[str, SccMatchPayload])
     properties: tuple[str, PropertiesPayload] | None = None
     read_across: tuple[str, ReadAcrossPayload] | None = None
     meteorology: list[Located[MeteorologyPayload]] = field(
-        default_factory=list[Located[MeteorologyPayload]]
+        default_factory=list[Located[MeteorologyPayload]],
     )
     population: list[Receptor] = field(default_factory=list[Receptor])
     # Keyed by the emission rate the model passed, or by FRS ID (batch assessment).
     exposures: list[tuple[float | str, ExposurePayload]] = field(
-        default_factory=list[tuple[float | str, ExposurePayload]]
+        default_factory=list[tuple[float | str, ExposurePayload]],
     )
     # FRS ID -> the worker screening and the operational profile of the batch assessment.
     worker: dict[str, OccupationalPayload] = field(default_factory=dict[str, OccupationalPayload])
     profiles: dict[str, ProfilePayload] = field(default_factory=dict[str, ProfilePayload])
     # FRS ID -> the worst-case scenarios of the batch assessment.
     scenarios: dict[str, list[WorstCaseScenarioPayload]] = field(
-        default_factory=dict[str, list[WorstCaseScenarioPayload]]
+        default_factory=dict[str, list[WorstCaseScenarioPayload]],
     )
     # FRS ID -> how the batch assessment screened that facility.
     screening: dict[str, Screening] = field(default_factory=dict[str, Screening])

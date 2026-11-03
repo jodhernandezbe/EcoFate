@@ -60,7 +60,12 @@ def _offline(monkeypatch: pytest.MonkeyPatch) -> FakeSteps:
 
 def _run(frs_ids: list[str] | None = None, toxicity: Toxicity | None = None):  # noqa: ANN202
     return run_assessment(
-        "50-00-0", frs_ids, (None, None), None, toxicity, facilities.default_steps()
+        "50-00-0",
+        frs_ids,
+        (None, None),
+        None,
+        toxicity,
+        facilities.default_steps(),
     )
 
 
@@ -91,7 +96,9 @@ def test_beyond_the_full_cap_facilities_are_kept_at_their_worst_case(
     from dataclasses import replace
 
     monkeypatch.setattr(
-        facilities, "get_assessment_settings", lambda: replace(SETTINGS, max_facilities=1)
+        facilities,
+        "get_assessment_settings",
+        lambda: replace(SETTINGS, max_facilities=1),
     )
     view, artifact = _run()
     assert _ids(view["facilities"]) == ["SMALL_LOW"]
@@ -150,7 +157,7 @@ def test_facilities_asked_for_by_id_are_assessed_without_screening(_offline: Fak
     assert [i["record"]["frs_id"] for i in artifact["assessed"]] == ["TINY", "MID"]
     assert all(i["level"] == "full" and i["bound"] is None for i in artifact["assessed"])
     assert view["not_assessed"] == [
-        {"frs_id": "NOPE", "reason": "not in the inventory of this chemical (and place)"}
+        {"frs_id": "NOPE", "reason": "not in the inventory of this chemical (and place)"},
     ]
     assert view["screening"] is None and artifact["screened_out"] == []
 
@@ -182,7 +189,9 @@ def test_over_the_safety_bound_the_rest_is_not_assessed_and_the_call_warns(
     from dataclasses import replace
 
     monkeypatch.setattr(
-        facilities, "get_assessment_settings", lambda: replace(SETTINGS, max_refined=1)
+        facilities,
+        "get_assessment_settings",
+        lambda: replace(SETTINGS, max_refined=1),
     )
     view, artifact = _run()
     assert len(artifact["not_assessed"]) >= 1
@@ -193,7 +202,8 @@ def test_over_the_safety_bound_the_rest_is_not_assessed_and_the_call_warns(
 
 
 def test_the_scc_search_is_made_once_per_industry_title(
-    monkeypatch: pytest.MonkeyPatch, _offline: FakeSteps
+    monkeypatch: pytest.MonkeyPatch,
+    _offline: FakeSteps,
 ) -> None:
     twins = [record(f"P{i}", emission_rate=5.0, naics_title="Same Industry") for i in range(3)]
 
@@ -212,7 +222,12 @@ def test_the_scc_search_is_made_once_per_industry_title(
 
 def test_an_invalid_cas_number_assesses_nothing() -> None:
     view, artifact = run_assessment(
-        "not-a-cas", None, (None, None), None, None, facilities.default_steps()
+        "not-a-cas",
+        None,
+        (None, None),
+        None,
+        None,
+        facilities.default_steps(),
     )
     assert artifact == {"assessed": [], "screened_out": [], "not_assessed": [], "drivers": []}
     assert view["assessed"] == 0 and "not a valid CAS" in view["warnings"][0]
@@ -226,7 +241,7 @@ def test_the_tool_gives_the_model_the_summary_and_the_program_every_detail() -> 
             "id": "c1",
             "name": "assess_facilities",
             "args": {"cas_number": "50-00-0"},
-        }
+        },
     )
     assert isinstance(message, ToolMessage)
     view = json.loads(str(message.content))
@@ -294,7 +309,12 @@ def test_member_without_own_releases_is_assessed_on_its_category(
         by_code={"N084": [record("PLANT_A", emission_rate=5.0)]},
     )
     view, artifact = run_assessment(
-        MEMBER, None, (None, None), None, None, facilities.default_steps()
+        MEMBER,
+        None,
+        (None, None),
+        None,
+        None,
+        facilities.default_steps(),
     )
     assert asked == [MEMBER, "N084", "N085"]
     assert _ids(view["facilities"]) == ["PLANT_A"]
@@ -304,7 +324,8 @@ def test_member_without_own_releases_is_assessed_on_its_category(
 
 
 def test_shared_facility_across_categories_keeps_the_larger_release(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
     _member_setup(
         monkeypatch,
@@ -321,7 +342,9 @@ def test_shared_facility_across_categories_keeps_the_larger_release(
 
 
 def test_own_releases_win_over_the_categories(
-    monkeypatch: pytest.MonkeyPatch, _offline: FakeSteps, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch,
+    _offline: FakeSteps,
+    tmp_path: Path,
 ) -> None:
     asked = _member_setup(
         monkeypatch,
@@ -374,7 +397,8 @@ def _no_own_benchmark(monkeypatch: pytest.MonkeyPatch, read: _Read) -> None:
 
 
 def test_in_domain_analogue_supplies_the_benchmarks_and_says_so(
-    monkeypatch: pytest.MonkeyPatch, _offline: FakeSteps
+    monkeypatch: pytest.MonkeyPatch,
+    _offline: FakeSteps,
 ) -> None:
     read = _Read(_hybrid(in_domain=True))
     _no_own_benchmark(monkeypatch, read)
@@ -387,7 +411,8 @@ def test_in_domain_analogue_supplies_the_benchmarks_and_says_so(
 
 
 def test_out_of_domain_analogue_is_not_used_and_the_threshold_is_named(
-    monkeypatch: pytest.MonkeyPatch, _offline: FakeSteps
+    monkeypatch: pytest.MonkeyPatch,
+    _offline: FakeSteps,
 ) -> None:
     _no_own_benchmark(monkeypatch, _Read(_hybrid(in_domain=False)))
     view, _ = _run()
@@ -397,7 +422,8 @@ def test_out_of_domain_analogue_is_not_used_and_the_threshold_is_named(
 
 
 def test_own_benchmark_is_never_replaced_by_an_analogue(
-    monkeypatch: pytest.MonkeyPatch, _offline: FakeSteps
+    monkeypatch: pytest.MonkeyPatch,
+    _offline: FakeSteps,
 ) -> None:
     read = _Read(_hybrid(in_domain=True))
     monkeypatch.setattr(facilities, "find_tri_read_across_surrogate", read)
@@ -407,7 +433,9 @@ def test_own_benchmark_is_never_replaced_by_an_analogue(
 
 
 def test_a_failed_tri_read_is_not_taken_for_no_releases(
-    monkeypatch: pytest.MonkeyPatch, _offline: FakeSteps, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch,
+    _offline: FakeSteps,
+    tmp_path: Path,
 ) -> None:
     """Regression: a failed TRI read must not fall back to the category, nor claim no releases."""
     from tools.emissions.helpers.inventory.lookup import TriReadError
@@ -423,7 +451,12 @@ def test_a_failed_tri_read_is_not_taken_for_no_releases(
     monkeypatch.setattr(facilities, "inventory_listing", listing)
     monkeypatch.setattr(facilities, "get_category_index", lambda: category_index(tmp_path, *_ROWS))
     view, artifact = run_assessment(
-        MEMBER, None, (None, None), None, None, facilities.default_steps()
+        MEMBER,
+        None,
+        (None, None),
+        None,
+        None,
+        facilities.default_steps(),
     )
     assert asked == [MEMBER]  # (a) the category route was never queried
     warnings = " ".join(view["warnings"])
@@ -434,7 +467,9 @@ def test_a_failed_tri_read_is_not_taken_for_no_releases(
 
 
 def test_a_failed_category_read_is_not_completed_either(
-    monkeypatch: pytest.MonkeyPatch, _offline: FakeSteps, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch,
+    _offline: FakeSteps,
+    tmp_path: Path,
 ) -> None:
     from tools.emissions.helpers.inventory.lookup import TriReadError
 
@@ -446,7 +481,12 @@ def test_a_failed_category_read_is_not_completed_either(
     monkeypatch.setattr(facilities, "inventory_listing", listing)
     monkeypatch.setattr(facilities, "get_category_index", lambda: category_index(tmp_path, *_ROWS))
     view, artifact = run_assessment(
-        MEMBER, None, (None, None), None, None, facilities.default_steps()
+        MEMBER,
+        None,
+        (None, None),
+        None,
+        None,
+        facilities.default_steps(),
     )
     assert "not completed" in " ".join(view["warnings"])
     assert view["assessed"] == 0 and artifact["screened_out"] == []
@@ -466,7 +506,7 @@ def test_every_assessed_facility_carries_community_worker_and_profile_results() 
 def test_screened_out_facilities_get_no_worker_result() -> None:
     _, artifact = _run()
     assert {s["record"]["frs_id"] for s in artifact["screened_out"]}.isdisjoint(
-        {a["record"]["frs_id"] for a in artifact["assessed"]}
+        {a["record"]["frs_id"] for a in artifact["assessed"]},
     )
 
 

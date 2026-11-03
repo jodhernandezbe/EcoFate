@@ -70,7 +70,8 @@ FULL_ASSESSMENT = Scenario(
         ExtraCall("find_tri_read_across_surrogate", {"cas_number": FULL_ASSESSMENT_CAS}),
         ExtraCall("get_meteorological_boundary", {"latitude": "33.2044", "longitude": "-92.6308"}),
         ExtraCall(
-            "get_meteorological_boundary", {"latitude": "40.631622", "longitude": "-80.54632"}
+            "get_meteorological_boundary",
+            {"latitude": "40.631622", "longitude": "-80.54632"},
         ),
         ExtraCall(
             "get_meteorological_boundary",

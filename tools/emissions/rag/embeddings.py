@@ -115,7 +115,9 @@ class _PerCallKey(Embeddings):
     """Builds the provider embeddings with the key current at each call; holds no key itself."""
 
     def __init__(
-        self, build: Callable[[SecretStr], Embeddings], resolve: Callable[[], SecretStr]
+        self,
+        build: Callable[[SecretStr], Embeddings],
+        resolve: Callable[[], SecretStr],
     ) -> None:
         self._build = build
         self._resolve = resolve
@@ -130,7 +132,8 @@ class _PerCallKey(Embeddings):
 
 
 def build_embeddings(
-    settings: EmbeddingSettings, environ: Mapping[str, str] | None = None
+    settings: EmbeddingSettings,
+    environ: Mapping[str, str] | None = None,
 ) -> Embeddings:
     """Build the configured provider's embeddings (the outer edge for this collaborator).
 

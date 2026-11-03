@@ -9,5 +9,7 @@ class ContractModel(BaseModel):
     """Frozen Pydantic model that forbids extra fields (validate at the boundary once)."""
 
     model_config = ConfigDict(
-        frozen=True, extra="forbid", json_schema_serialization_defaults_required=True
+        frozen=True,
+        extra="forbid",
+        json_schema_serialization_defaults_required=True,
     )

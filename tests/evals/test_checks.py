@@ -87,7 +87,8 @@ def test_site_inputs_per_assessed_facility() -> None:
     no_weather = _record(*[x for x in _full().calls if x.name != c.METEOROLOGY])
     assert not _passes(c.site_inputs_per_assessed_facility(), no_weather)
     elsewhere = _record(
-        *_full().calls[:2], _call(c.METEOROLOGY, {"latitude": 1.0, "longitude": 1.0})
+        *_full().calls[:2],
+        _call(c.METEOROLOGY, {"latitude": 1.0, "longitude": 1.0}),
     )
     assert not _passes(c.site_inputs_per_assessed_facility(), elsewhere)
     assert not _passes(c.site_inputs_per_assessed_facility(), _record())

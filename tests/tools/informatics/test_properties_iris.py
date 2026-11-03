@@ -22,7 +22,11 @@ NOTE = "rfc: the IRIS endpoint gives 0.2 mg/m3 but the ToxVal copy of IRIS gives
 def _run(notes: list[str]) -> ChemicalProperties:
     comptox = StubComptox(weight=50.0, toxicity={"rfc": RFC}, name="stub", notes=notes)
     return lookup_chemical_properties(
-        CAS, comptox, get_comptox_settings(), get_unit_settings().aliases, None
+        CAS,
+        comptox,
+        get_comptox_settings(),
+        get_unit_settings().aliases,
+        None,
     )
 
 

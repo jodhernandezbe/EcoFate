@@ -46,7 +46,8 @@ def test_path_needs_the_placeholder(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize(
-    "key", ["base_url", "path", "registry_field", "latitude_field", "longitude_field", "batch_size"]
+    "key",
+    ["base_url", "path", "registry_field", "latitude_field", "longitude_field", "batch_size"],
 )
 def test_each_key_is_required(tmp_path: Path, key: str) -> None:
     text = "\n".join(line for line in TEXT.splitlines() if not line.startswith(key))
@@ -58,7 +59,7 @@ def test_each_key_is_required(tmp_path: Path, key: str) -> None:
 def test_the_batch_size_must_be_a_positive_integer(tmp_path: Path, bad: str) -> None:
     with pytest.raises(ValueError, match="batch_size"):
         load_frs_point_settings(
-            _write(tmp_path, TEXT.replace("batch_size = 25", f"batch_size = {bad}"))
+            _write(tmp_path, TEXT.replace("batch_size = 25", f"batch_size = {bad}")),
         )
 
 

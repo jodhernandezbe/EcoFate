@@ -69,7 +69,9 @@ def resolve_compound_data(
     if record.value is None:
         return Compound(prepared.kind, prepared.query, cid.value, None, (record.reason or "",))
     if prepared.kind == "cas" and not confirms_cas(
-        record.value, prepared.query, settings.cas_heading
+        record.value,
+        prepared.query,
+        settings.cas_heading,
     ):
         warnings = (_unconfirmed(prepared.query),)
         return Compound(prepared.kind, prepared.query, cid.value, None, warnings)

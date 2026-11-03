@@ -46,10 +46,15 @@ def test_the_default_grid_and_distances_are_screen3s() -> None:
 def test_the_maximum_is_attained_and_nothing_exceeds_it() -> None:
     result = screening_maximum(Q, STACK, COMBINATIONS, DISTANCES, ATMOSPHERE)
     at_result, _, _ = centerline_concentrations(
-        Q, STACK, result.stability_class, result.wind_speed_10m_m_per_s, DISTANCES, ATMOSPHERE
+        Q,
+        STACK,
+        result.stability_class,
+        result.wind_speed_10m_m_per_s,
+        DISTANCES,
+        ATMOSPHERE,
     )
     assert result.concentration_ug_per_m3 == pytest.approx(
-        float(at_result[DISTANCES.index(result.distance_m)])
+        float(at_result[DISTANCES.index(result.distance_m)]),
     )
     brute = max(
         float(np.max(centerline_concentrations(Q, STACK, cls, u, DISTANCES, ATMOSPHERE)[0]))
@@ -90,7 +95,11 @@ def test_zero_emission_gives_zero() -> None:
 def test_a_taller_stack_does_not_raise_the_maximum(taller: float) -> None:
     base = screening_maximum(Q, STACK, COMBINATIONS, DISTANCES, ATMOSPHERE)
     higher = screening_maximum(
-        Q, Stack(taller, 2.0, 10.0, 400.0), COMBINATIONS, DISTANCES, ATMOSPHERE
+        Q,
+        Stack(taller, 2.0, 10.0, 400.0),
+        COMBINATIONS,
+        DISTANCES,
+        ATMOSPHERE,
     )
     assert higher.concentration_ug_per_m3 <= base.concentration_ug_per_m3
 

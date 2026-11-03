@@ -46,7 +46,7 @@ class SccDocument:
                 "level_three": self.level_three,
                 "level_four": self.level_four,
                 "sector": self.sector,
-            }
+            },
         )
 
     @classmethod
@@ -104,7 +104,8 @@ def _wanted(row: Mapping[str, str | None], settings: SccIndexSettings) -> bool:
 
 
 def _collect(
-    rows: Iterable[Mapping[str, str | None]], settings: SccIndexSettings
+    rows: Iterable[Mapping[str, str | None]],
+    settings: SccIndexSettings,
 ) -> tuple[SccDocument, ...]:
     """Keep wanted rows with an SCC and level four; the first row of each SCC wins."""
     documents: dict[str, SccDocument] = {}

@@ -24,7 +24,7 @@ def test_stacks_weather_receptors_and_concentrations() -> None:
 def test_facility_without_stacks_or_results() -> None:
     doc = new_document()
     bare = facility().model_copy(
-        update={"stacks": [], "exposure": None, "meteorology": None, "receptors": None}
+        update={"stacks": [], "exposure": None, "meteorology": None, "receptors": None},
     )
     write_exposure(doc, WorkspaceState(facilities=[bare]), context())
     text = lines(doc)
@@ -49,10 +49,10 @@ def test_dose_by_age_band_and_the_assumptions_behind_it() -> None:
         update={
             "facilities": [
                 base.facilities[0].model_copy(
-                    update={"exposure": ranges.model_copy(update={"dose": dose})}
-                )
-            ]
-        }
+                    update={"exposure": ranges.model_copy(update={"dose": dose})},
+                ),
+            ],
+        },
     )
     doc = new_document()
     write_exposure(doc, state, context())

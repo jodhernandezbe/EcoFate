@@ -111,7 +111,8 @@ def _category_code(raw: str) -> str | None:
 
 
 def _row_parts(
-    row: Mapping[str, str], settings: TriCategoriesSettings
+    row: Mapping[str, str],
+    settings: TriCategoriesSettings,
 ) -> tuple[str, Category, str] | str:
     """The (CAS, category, member name) of a row, or the reason it cannot be trusted."""
     cas = format_cas(row[settings.cas_column])
@@ -183,7 +184,9 @@ def load_index(settings: TriCategoriesSettings) -> CategoryIndex:
     }
     names = {c.code: c.name for member in members.values() for c in member.categories}
     return CategoryIndex(
-        MappingProxyType(members), MappingProxyType(names), MappingProxyType(dict(dropped))
+        MappingProxyType(members),
+        MappingProxyType(names),
+        MappingProxyType(dict(dropped)),
     )
 
 

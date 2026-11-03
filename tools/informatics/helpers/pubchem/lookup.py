@@ -52,7 +52,10 @@ class PubchemLookup:
     """Looks a CAS number up on PubChem and reads the configured fields; never raises on data."""
 
     def __init__(
-        self, client: JsonGetter, settings: PubchemSettings, aliases: Mapping[str, str]
+        self,
+        client: JsonGetter,
+        settings: PubchemSettings,
+        aliases: Mapping[str, str],
     ) -> None:
         """Create the lookup.
 
@@ -78,7 +81,10 @@ class PubchemLookup:
             keys: Fields wanted; those not configured are ignored.
         """
         compound = resolve_compound_data(
-            cas, client=self._client, settings=self._settings, kind="cas"
+            cas,
+            client=self._client,
+            settings=self._settings,
+            kind="cas",
         )
         if compound.record is None:
             return PubchemCandidates(problem="; ".join(compound.warnings))
@@ -94,12 +100,18 @@ class PubchemLookup:
             molecular_weight: Molecular weight, g/mol, for limits given in ppm; None if unknown.
         """
         compound = resolve_compound_data(
-            cas, client=self._client, settings=self._settings, kind="cas"
+            cas,
+            client=self._client,
+            settings=self._settings,
+            kind="cas",
         )
         if compound.record is None:
             return empty_limits("PubChem limits unavailable: " + "; ".join(compound.warnings))
         return read_limits(
-            compound.record, molecular_weight, self._settings.limits, self._settings.agreement_ratio
+            compound.record,
+            molecular_weight,
+            self._settings.limits,
+            self._settings.agreement_ratio,
         )
 
     def _read_fields(self, record: PugViewRecord, keys: Sequence[str]) -> PubchemCandidates:

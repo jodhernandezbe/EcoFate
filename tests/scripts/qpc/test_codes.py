@@ -31,7 +31,8 @@ def test_parse_codes(cell: str | int | float, expected: tuple[str, ...]) -> None
 
 
 @pytest.mark.parametrize(
-    "cell", ["abc", "3321,", "3111,77777", "33-2", "3111,x", "", "1/", "c  The rate"]
+    "cell",
+    ["abc", "3321,", "3111,77777", "33-2", "3111,x", "", "1/", "c  The rate"],
 )
 def test_garbage_is_rejected(cell: str) -> None:
     with pytest.raises(ValueError, match=r"."):

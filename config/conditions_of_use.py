@@ -49,7 +49,7 @@ def _pattern(table: dict[str, object]) -> re.Pattern[str]:
         compiled = re.compile(_text(table, "section_pattern"))
     except re.error as error:
         raise ValueError(
-            f"{NAME}.section_pattern is not a valid regular expression: {error}"
+            f"{NAME}.section_pattern is not a valid regular expression: {error}",
         ) from error
     if "section" not in compiled.groupindex:
         raise ValueError(f"{NAME}.section_pattern must have the named group 'section'")

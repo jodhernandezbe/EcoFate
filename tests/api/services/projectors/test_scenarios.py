@@ -69,7 +69,7 @@ def _scenario(value: float = 2.0, quantity: str = "hq", **over: object) -> dict[
                 "concentration": 0.9,
                 "fraction_of_maximum": 1.0,
                 "note": None,
-            }
+            },
         ],
         "receptors_note": None,
         "notes": [],
@@ -108,7 +108,10 @@ def _item(frs_id: str, scenarios: list[object]) -> dict[str, object]:
 
 def _build(*items: dict[str, object]) -> WorkspaceState:
     messages: list[BaseMessage] = exchange(
-        "assess_facilities", {"cas_number": "1-1-1"}, {"assessed": len(items)}, artifact=list(items)
+        "assess_facilities",
+        {"cas_number": "1-1-1"},
+        {"assessed": len(items)},
+        artifact=list(items),
     )
     return build_workspace(messages, RULES)
 

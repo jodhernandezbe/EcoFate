@@ -119,7 +119,8 @@ def _is_default(result: Population) -> bool:
 
 def test_half_covered_halves_the_count() -> None:
     service = Service(
-        [_tract(area=2 * CIRCLE_1KM_M2)], {"001": [_row("1000", "100", "300", "200")]}
+        [_tract(area=2 * CIRCLE_1KM_M2)],
+        {"001": [_row("1000", "100", "300", "200")]},
     )
     result = service.at()
     assert result["total_population"] == 500
@@ -130,7 +131,8 @@ def test_half_covered_halves_the_count() -> None:
 
 def test_circle_larger_than_the_tracts_returns_all_of_them() -> None:
     service = Service(
-        [_tract(area=CIRCLE_1KM_M2 / 4)], {"001": [_row("1000", "100", "300", "200")]}
+        [_tract(area=CIRCLE_1KM_M2 / 4)],
+        {"001": [_row("1000", "100", "300", "200")]},
     )
     assert service.at()["total_population"] == 1000
 
@@ -156,7 +158,7 @@ def test_only_the_intersecting_tracts_of_a_county_are_counted() -> None:
             "001": [
                 _row("100", "10", "30", "20", tract="000100"),
                 _row("900", "90", "270", "180", tract="000999"),
-            ]
+            ],
         },
     )
     assert service.at()["total_population"] == 100
@@ -164,7 +166,8 @@ def test_only_the_intersecting_tracts_of_a_county_are_counted() -> None:
 
 def test_default_radius_is_used_when_none_is_given() -> None:
     service = Service(
-        [_tract(area=2 * CIRCLE_1KM_M2)], {"001": [_row("1000", "100", "300", "200")]}
+        [_tract(area=2 * CIRCLE_1KM_M2)],
+        {"001": [_row("1000", "100", "300", "200")]},
     )
     result = service.at(radius=None)
     assert result["total_population"] == 500
@@ -195,7 +198,7 @@ def test_a_tract_without_an_estimate_is_left_out_and_reported() -> None:
             "001": [
                 _row("-666666666", "1", "3", "2", tract="000100"),
                 _row("1000", "100", "300", "200", tract="000200"),
-            ]
+            ],
         },
     )
     result = service.at()
@@ -335,7 +338,7 @@ def _two_tracts(near: tuple[object, object], far: tuple[object, object]) -> Serv
             "001": [
                 _row("1000", "100", "300", "200", tract="000100"),
                 _row("500", "50", "150", "100", tract="000200"),
-            ]
+            ],
         },
     )
 
@@ -365,7 +368,7 @@ def test_a_tract_without_a_point_is_counted_but_not_listed() -> None:
     assert result["total_population"] == 750
     assert [t["geoid"] for t in result.get("tracts", [])] == ["99001000200"]
     assert result["warnings"] == [
-        "1 tracts have no internal point and are not listed with a distance"
+        "1 tracts have no internal point and are not listed with a distance",
     ]
 
 

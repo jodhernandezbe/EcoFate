@@ -33,7 +33,7 @@ REPORT_RESPONSES: dict[int | str, dict[str, object]] = {
     200: {
         "description": "The thread's assessment as a Word document (attachment).",
         "content": {MEDIA_TYPE: {"schema": {"type": "string", "format": "binary"}}},
-    }
+    },
 }
 
 
@@ -100,13 +100,16 @@ def get_report(
         raise HTTPException(status_code=error.status, detail=error.detail) from error
     disposition = f'attachment; filename="{report.name}"'
     return Response(
-        report.content, media_type=MEDIA_TYPE, headers={"Content-Disposition": disposition}
+        report.content,
+        media_type=MEDIA_TYPE,
+        headers={"Content-Disposition": disposition},
     )
 
 
 @router.delete("/threads/{thread_id}", status_code=204)
 def reset_thread(
-    thread_id: ThreadId, threads: Annotated[ThreadStore, Depends(get_threads)]
+    thread_id: ThreadId,
+    threads: Annotated[ThreadStore, Depends(get_threads)],
 ) -> Response:
     """Forget a thread's history (new assessment)."""
     if not threads.reset(thread_id):

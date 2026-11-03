@@ -17,14 +17,20 @@ from config.agent import AgentSettings
 
 
 def _openai_chat(
-    model: str, api_key: SecretStr, timeout_seconds: float, temperature: float | None
+    model: str,
+    api_key: SecretStr,
+    timeout_seconds: float,
+    temperature: float | None,
 ) -> BaseChatModel:
     from langchain_openai import ChatOpenAI  # provider package: imported only here
 
     if temperature is None:  # the provider's own default
         return ChatOpenAI(model=model, api_key=api_key, timeout=timeout_seconds)
     return ChatOpenAI(
-        model=model, api_key=api_key, timeout=timeout_seconds, temperature=temperature
+        model=model,
+        api_key=api_key,
+        timeout=timeout_seconds,
+        temperature=temperature,
     )
 
 

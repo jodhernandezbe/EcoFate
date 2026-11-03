@@ -11,6 +11,10 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   `scoring.py` Evidently adapter, judges and report, `scenarios.py` catalogue,
   `__main__.py` CLI (`record <scenario>`, `run`).
 - Only `scoring.py` imports `evidently`, so a version change touches one file.
+- `scenarios.csv` is the reviewed question catalogue (`question,category,type`; type is
+  happy_path, varied_phrasing, edge_case, out_of_scope or breaking). A scripted `Scenario`
+  in `scenarios.py` takes its query from a row, or adds the row in the same change; the CSV
+  holds no expected answers. Its shape is checked by `tests/evals/test_scenarios_csv.py`.
 - Cassettes in `evals/cassettes/` are recorded from live tools with
   `uv run python -m evals record <scenario>`; never write or edit tool outputs by hand.
   A scenario lists `extra_calls` for routes the agent may take instead of the one it took (the

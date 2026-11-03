@@ -84,7 +84,7 @@ def test_columns_follow_quantity_order(tmp_path: Path) -> None:
 )
 def test_invalid_rows_are_dropped(tmp_path: Path, row: str) -> None:
     assert read_combinations(_zip(tmp_path, row + "2000002,A,30,3,500,7,x\n"), NEI) == {
-        "2000002": {("30", "3", "7", "500")}
+        "2000002": {("30", "3", "7", "500")},
     }
 
 
@@ -130,7 +130,8 @@ def _settings(tmp_path: Path) -> NeiSettings:
 
 
 def test_main_writes_shards_with_configured_headers(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     zip_path = _zip(tmp_path, ROWS)
     settings = replace(load_stack_settings(), nei=_settings(tmp_path))
@@ -161,7 +162,9 @@ def test_stale_shards_are_removed_but_other_files_kept(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize("rows", ["", "abc,A,10,1,300,5,x\n"])
 def test_main_with_no_usable_rows_writes_nothing(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, rows: str
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    rows: str,
 ) -> None:
     zip_path = _zip(tmp_path, rows)
     settings = replace(load_stack_settings(), nei=_settings(tmp_path))
@@ -171,7 +174,9 @@ def test_main_with_no_usable_rows_writes_nothing(
 
 
 def test_main_reports_missing_and_bad_files(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
 ) -> None:
     settings = replace(load_stack_settings(), nei=_settings(tmp_path))
     monkeypatch.setattr("scripts.compact_nei_stacks.get_stack_settings", lambda: settings)

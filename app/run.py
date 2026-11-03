@@ -43,7 +43,8 @@ def completion_guard() -> CompletionGuard | None:
 
 
 def run_config(
-    settings: AgentSettings, callbacks: Sequence[BaseCallbackHandler] = ()
+    settings: AgentSettings,
+    callbacks: Sequence[BaseCallbackHandler] = (),
 ) -> RunnableConfig:
     """LangGraph run configuration from the ``[agent]`` settings (the step limit) and the
     callbacks that observe the run, if any."""
@@ -107,7 +108,9 @@ def _invoke(agent: Agent, question: str, config: RunnableConfig, keys: ServiceKe
 
 
 def ask(
-    question: str, model: BaseChatModel | None = None, keys: ServiceKeys | None = None
+    question: str,
+    model: BaseChatModel | None = None,
+    keys: ServiceKeys | None = None,
 ) -> RunResult:
     """Run the agent on ``question`` and return its answer with the model calls it made.
 
@@ -129,7 +132,10 @@ def ask(
 
 
 def _traced_run(
-    agent: Agent, question: str, settings: AgentSettings, keys: ServiceKeys
+    agent: Agent,
+    question: str,
+    settings: AgentSettings,
+    keys: ServiceKeys,
 ) -> RunResult:
     """Run the agent inside the session span, metering every model call."""
     monitoring = get_telemetry_settings()

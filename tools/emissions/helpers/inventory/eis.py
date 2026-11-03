@@ -170,7 +170,8 @@ class EisResolver:
 
     def _single(self, name: str, state: str) -> str:
         return self._settings.twin_single_path.format(
-            name=quote(name, safe=""), state=quote(state, safe="")
+            name=quote(name, safe=""),
+            state=quote(state, safe=""),
         )
 
     def _batch_path(self, names: Sequence[str], state: str) -> str:
@@ -231,7 +232,9 @@ def _jobs(sites: Iterable[Site], size: int) -> list[tuple[str, tuple[str, ...]]]
 
 
 def _within(
-    site: Site, candidates: Sequence[Site], settings: FrsEisSettings
+    site: Site,
+    candidates: Sequence[Site],
+    settings: FrsEisSettings,
 ) -> list[tuple[Site, float]]:
     """The candidates other than the site itself within the twin distance, nearest first."""
     nearby: list[tuple[Site, float]] = []
@@ -245,7 +248,10 @@ def _within(
 
 
 def _pick(
-    frs_id: str, located: bool, nearby: list[tuple[Site, float]], registered: dict[str, EisIds]
+    frs_id: str,
+    located: bool,
+    nearby: list[tuple[Site, float]],
+    registered: dict[str, EisIds],
 ) -> Twin:
     """EIS IDs borrowed from the one FRS twin that has them, else none with the reason."""
     none = f"FRS ID {frs_id} has no EIS registration"

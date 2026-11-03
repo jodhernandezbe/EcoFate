@@ -54,6 +54,6 @@ def fold_fugitive(
         kilograms = _kilograms(found, aliases) if found is not None else None
         year = found["reporting_year"] if found is not None and kilograms is not None else None
         folded.append(
-            {**record, "fugitive_release_kg_per_year": kilograms, "fugitive_reporting_year": year}
+            {**record, "fugitive_release_kg_per_year": kilograms, "fugitive_reporting_year": year},
         )
     return folded

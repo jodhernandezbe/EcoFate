@@ -137,7 +137,10 @@ def _get(
 
 
 def _tract_params(
-    latitude: float, longitude: float, radius_m: float, fields: Mapping[str, str]
+    latitude: float,
+    longitude: float,
+    radius_m: float,
+    fields: Mapping[str, str],
 ) -> dict[str, str | int | float]:
     return {
         "geometry": f"{longitude},{latitude}",
@@ -211,7 +214,9 @@ def _columns(header: object, variables: Mapping[str, str]) -> dict[str, int]:
 
 
 def _row_counts(
-    row: Sequence[object], at: Mapping[str, int], variables: Mapping[str, str]
+    row: Sequence[object],
+    at: Mapping[str, int],
+    variables: Mapping[str, str],
 ) -> Counts | None:
     values = [_estimate(row[at[variables[key]]]) for key in ACS_VARIABLES]
     if any(value is None for value in values):

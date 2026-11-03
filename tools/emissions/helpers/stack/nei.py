@@ -51,7 +51,7 @@ def _read_shard(path: Path, nei: NeiSettings) -> Mapping[str, tuple[StackRow, ..
         _check_header(reader.fieldnames, nei)
         for row in reader:
             by_id.setdefault((row[nei.id_column] or "").strip(), []).append(
-                MappingProxyType(dict(row))
+                MappingProxyType(dict(row)),
             )
     return MappingProxyType({key: tuple(rows) for key, rows in by_id.items()})
 
@@ -116,13 +116,13 @@ def _notes(rejected: int, valid: int, total: int, kept: int) -> list[str]:
     notes: list[str] = []
     if rejected:
         notes.append(
-            f"{rejected} NEI stack row(s) were ignored: a value was missing or implausible"
+            f"{rejected} NEI stack row(s) were ignored: a value was missing or implausible",
         )
     merged = valid - total
     if merged or total > kept:
         notes.append(
             f"{total} distinct stack combinations found ({merged} near-identical merged); "
-            f"the {kept} lowest stacks are returned, {total - kept} taller omitted"
+            f"the {kept} lowest stacks are returned, {total - kept} taller omitted",
         )
     return notes
 

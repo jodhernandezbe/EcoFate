@@ -17,7 +17,12 @@ ZIP = b"PK\x03\x04" + b"0" * 20
 def _fetch(handler: httpx.MockTransport, max_bytes: int = 1000) -> bytes:
     with httpx.Client(transport=handler) as client:
         return fetch_workbook(
-            URL, RELEASE, client=client, host="h.example", timeout=5, max_bytes=max_bytes
+            URL,
+            RELEASE,
+            client=client,
+            host="h.example",
+            timeout=5,
+            max_bytes=max_bytes,
         )
 
 

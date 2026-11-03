@@ -82,7 +82,7 @@ def facility(frs_id: str = "110000000001", *, defaults: bool = True) -> Facility
                 lifecycle_stage="Manufacturing",
                 cou_category="Domestic manufacturing",
                 mapping_strength="direct",
-            )
+            ),
         ],
         industry=Industry(naics_code="325199", naics_title="Chemicals", source="Source N"),
         stacks=[
@@ -96,7 +96,7 @@ def facility(frs_id: str = "110000000001", *, defaults: bool = True) -> Facility
                 tier=1,
                 tier_label="Tier 1: Empirical NEI",
                 warnings=["stack note"],
-            )
+            ),
         ],
         receptors=Receptors(
             total_population=12345,

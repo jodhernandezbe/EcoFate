@@ -34,7 +34,7 @@ def _one_cid(payload: object, what: str) -> Lookup[int]:
     distinct = {cast(int, cid) for cid in cids}
     if len(distinct) > 1:
         return Lookup[int].missing(
-            f"PubChem matched {len(distinct)} compounds for {what}: ambiguous"
+            f"PubChem matched {len(distinct)} compounds for {what}: ambiguous",
         )
     return Lookup[int].found(distinct.pop())
 
@@ -83,7 +83,10 @@ def get_cid_by_identifier(
 
 
 def fetch_pubchem_pug_view_json(
-    cid: int, *, client: JsonGetter, settings: PubchemSettings
+    cid: int,
+    *,
+    client: JsonGetter,
+    settings: PubchemSettings,
 ) -> Lookup[PugViewRecord]:
     """Fetch the PUG View record of a compound.
 

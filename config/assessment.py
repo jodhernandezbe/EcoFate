@@ -101,21 +101,27 @@ def load_assessment_settings(path: Path | None = None) -> AssessmentSettings:
     """
     table = section(read_toml(path), _NAME)
     return AssessmentSettings(
-        max_facilities=require_int(table, "max_facilities", minimum=1, name=_NAME),
-        max_refined=require_int(table, "max_refined", minimum=1, name=_NAME),
-        max_workers=require_int(table, "max_workers", minimum=1, name=_NAME),
+        max_facilities=_count(table, "max_facilities"),
+        max_refined=_count(table, "max_refined"),
+        max_workers=_count(table, "max_workers"),
         scc_min_score=_score(table),
-        max_scc_stacks=require_int(table, "max_scc_stacks", minimum=1, name=_NAME),
+        max_scc_stacks=_count(table, "max_scc_stacks"),
         inventory_cache_seconds=require_number(
-            table, "inventory_cache_seconds", minimum=0, name=_NAME
+            table,
+            "inventory_cache_seconds",
+            minimum=0,
+            name=_NAME,
         ),
-        max_worst_case_listed=require_int(table, "max_worst_case_listed", minimum=1, name=_NAME),
-        max_screened_out_listed=require_int(
-            table, "max_screened_out_listed", minimum=1, name=_NAME
-        ),
+        max_worst_case_listed=_count(table, "max_worst_case_listed"),
+        max_screened_out_listed=_count(table, "max_screened_out_listed"),
         weather_cell_deg=require_number(table, "weather_cell_deg", minimum=1e-9, name=_NAME),
         screening=_screening(table),
     )
+
+
+def _count(table: dict[str, object], key: str) -> int:
+    """A positive integer cap from the ``[assessment]`` table."""
+    return require_int(table, key, minimum=1, name=_NAME)
 
 
 @lru_cache(maxsize=1)

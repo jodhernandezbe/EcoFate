@@ -60,7 +60,7 @@ def test_changed_table_rebuilds(tmp_path: Path) -> None:
     retriever = _retriever(tmp_path, embeddings)
     retriever.lookup("coal")
     (tmp_path / "scc.csv").write_text(
-        HEADER + ROWS.replace("Pulverized Coal Boiler", "Gas Turbine")
+        HEADER + ROWS.replace("Pulverized Coal Boiler", "Gas Turbine"),
     )
     lookup = retriever.lookup("gas turbine")
     assert embeddings.document_calls == 4
@@ -147,7 +147,9 @@ def test_a_bare_naics_code_is_refused_without_a_search(tmp_path: Path, query: st
     ],
 )
 def test_a_code_before_or_after_the_words_is_dropped_from_the_search(
-    tmp_path: Path, query: str, searched: str
+    tmp_path: Path,
+    query: str,
+    searched: str,
 ) -> None:
     embeddings = _Recording()
     lookup = _retriever(tmp_path, embeddings).lookup(query)

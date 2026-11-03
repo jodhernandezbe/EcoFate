@@ -35,7 +35,9 @@ def chat(app: FastAPI, keyed: FakeCredentialStore) -> Iterator[TestClient]:
 
 def _post(client: TestClient, thread: str = "t1") -> Response:
     return client.post(
-        "/api/v1/chat/stream", json={"thread_id": thread, "message": "hello"}, headers=OWN
+        "/api/v1/chat/stream",
+        json={"thread_id": thread, "message": "hello"},
+        headers=OWN,
     )
 
 
@@ -90,7 +92,8 @@ def test_no_key_streams_an_error_event(app: FastAPI) -> None:
 
 
 def test_stream_carries_the_configured_step_labels(
-    app: FastAPI, keyed: FakeCredentialStore
+    app: FastAPI,
+    keyed: FakeCredentialStore,
 ) -> None:
     from langchain_core.messages import AIMessage
     from langchain_core.tools import tool

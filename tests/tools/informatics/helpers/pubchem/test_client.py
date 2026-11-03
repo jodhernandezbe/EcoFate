@@ -33,7 +33,10 @@ def _name(query: str) -> str:
 
 def _cid(query: str, kind: str, answers: Mapping[str, object]) -> tuple[int | None, str | None]:
     result = get_cid_by_identifier(
-        query, cast(SearchType, kind), client=FakeJson(answers), settings=SETTINGS
+        query,
+        cast(SearchType, kind),
+        client=FakeJson(answers),
+        settings=SETTINGS,
     )
     return result.value, result.reason
 
@@ -146,7 +149,7 @@ def _world(cas_in_record: list[str], cid_body: object | None = None) -> FakeJson
             SETTINGS.smiles_url("CCCC"): _ids(BUTANE_CID),
             _name("butane"): _ids(BUTANE_CID),
             SETTINGS.record_url(BUTANE_CID): record(cas=cas_in_record),
-        }
+        },
     )
 
 

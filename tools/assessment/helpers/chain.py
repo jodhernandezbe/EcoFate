@@ -94,7 +94,9 @@ def cell(record: EmissionRecord, size_deg: float) -> Cell:
 
 
 def _shared_weather(
-    items: Sequence[Refined], steps: Steps, settings: AssessmentSettings
+    items: Sequence[Refined],
+    steps: Steps,
+    settings: AssessmentSettings,
 ) -> dict[Cell, Meteorology]:
     """One weather request per grid cell and year (any point of a cell gives its series)."""
     first: dict[Cell, EmissionRecord] = {}
@@ -109,7 +111,9 @@ def _shared_weather(
 
 
 def _worker_view(
-    item: Refined, toxicity: Toxicity, workplace: Workplace | None
+    item: Refined,
+    toxicity: Toxicity,
+    workplace: Workplace | None,
 ) -> tuple[OccupationalExposure, OperationalProfile]:
     """The worker screening and operational profile of a facility (if given a workplace)."""
     profile = operational_profile(item.record)
@@ -179,7 +183,7 @@ def assess_all(
                 "meteorology": here,
                 "population": people,
                 "exposure": exposure,
-            }
+            },
         )
 
     return in_pool(one, items, settings.max_workers)

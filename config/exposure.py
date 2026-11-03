@@ -91,18 +91,22 @@ def _speeds(table: dict[str, object], name: str) -> Mapping[str, tuple[float, ..
 
 
 def _per_class(
-    table: dict[str, object], name: str, classes: tuple[str, ...]
+    table: dict[str, object],
+    name: str,
+    classes: tuple[str, ...],
 ) -> Mapping[str, float]:
     unknown = sorted(set(table) - set(classes))
     if unknown:
         raise ValueError(f"{name} has unknown classes: {', '.join(unknown)}")
     return MappingProxyType(
-        {cls: require_number(table, cls, minimum=1e-9, name=name) for cls in classes}
+        {cls: require_number(table, cls, minimum=1e-9, name=name) for cls in classes},
     )
 
 
 def _atmosphere(
-    table: dict[str, object], key: str, classes: tuple[str, ...]
+    table: dict[str, object],
+    key: str,
+    classes: tuple[str, ...],
 ) -> Mapping[str, float]:
     return _per_class(subtable(table, key, "exposure"), f"exposure.{key}", classes)
 
@@ -157,18 +161,22 @@ def _age_bands(table: dict[str, object]) -> Mapping[str, AgeBandFactors]:
     unknown = sorted(set(block) - set(AGE_BANDS))
     if unknown:
         raise ValueError(f"{name} has unknown bands: {', '.join(unknown)}")
-    bands: dict[str, AgeBandFactors] = {}
-    for band in AGE_BANDS:
-        entry = as_table(block.get(band), f"{name}.{band}")
-        bands[band] = AgeBandFactors(
-            inhalation_rate_m3_per_day=require_number(
-                entry, "inhalation_rate_m3_per_day", minimum=1e-9, name=f"{name}.{band}"
-            ),
-            body_weight_kg=require_number(
-                entry, "body_weight_kg", minimum=1e-9, name=f"{name}.{band}"
-            ),
-        )
+    bands = {band: _age_band(block, f"{name}.{band}", band) for band in AGE_BANDS}
     return MappingProxyType(bands)
+
+
+def _age_band(block: dict[str, object], name: str, band: str) -> AgeBandFactors:
+    """One band's breathing rate (m^3/day) and body weight (kg), both positive."""
+    entry = as_table(block.get(band), name)
+    return AgeBandFactors(
+        inhalation_rate_m3_per_day=require_number(
+            entry,
+            "inhalation_rate_m3_per_day",
+            minimum=1e-9,
+            name=name,
+        ),
+        body_weight_kg=require_number(entry, "body_weight_kg", minimum=1e-9, name=name),
+    )
 
 
 def _annual_factor(table: dict[str, object]) -> float:
@@ -196,7 +204,9 @@ def load_exposure_settings(path: Path | None = None) -> ExposureSettings:
         wind_speeds=_speeds(subtable(table, "wind_speeds", "exposure"), "exposure.wind_speeds"),
         wind_exponent=_atmosphere(table, "wind_exponent", STABILITY_CLASSES),
         potential_temperature_gradient=_atmosphere(
-            table, "potential_temperature_gradient", STABLE_CLASSES
+            table,
+            "potential_temperature_gradient",
+            STABLE_CLASSES,
         ),
         factors=_factors(table),
         age_bands=_age_bands(table),

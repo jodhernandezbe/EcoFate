@@ -162,7 +162,9 @@ def _screened_summary(out: ScreenedOut) -> ScreenedOutSummary:
 
 
 def _closest(
-    out: Sequence[ScreenedOut], t: ScreeningSettings, limit: int
+    out: Sequence[ScreenedOut],
+    t: ScreeningSettings,
+    limit: int,
 ) -> list[ScreenedOutSummary]:
     """The screened-out facilities closest to a threshold, closest first, at most ``limit``."""
     ranked = sorted(out, key=lambda o: exceedance(o["hq"], o["cancer_risk"], t), reverse=True)
@@ -206,12 +208,16 @@ def _note(f: Findings) -> str | None:
 def _risk_first(items: Sequence[FacilityAssessment]) -> list[WorstCaseSummary]:
     rows = [worst_summary(item) for item in items]
     return sorted(
-        rows, key=lambda r: r["hq_worst"]["high"] if r["hq_worst"] else -1.0, reverse=True
+        rows,
+        key=lambda r: r["hq_worst"]["high"] if r["hq_worst"] else -1.0,
+        reverse=True,
     )
 
 
 def assessment_view(
-    f: Findings, max_worst_listed: int, max_screened_listed: int
+    f: Findings,
+    max_worst_listed: int,
+    max_screened_listed: int,
 ) -> AssessmentResult:
     """The model's view: the fully assessed (highest worst-case HQ first), the rest counted."""
     facilities = sorted((summarize(item) for item in f.full), key=_worst_hq, reverse=True)

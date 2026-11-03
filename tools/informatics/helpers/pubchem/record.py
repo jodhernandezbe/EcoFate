@@ -45,12 +45,15 @@ def _top_sections(record: object) -> list[dict[str, object]]:
 def has_record(payload: object) -> bool:
     """Whether ``payload`` is a JSON object with a ``Record`` object."""
     return isinstance(payload, dict) and isinstance(
-        cast(dict[str, object], payload).get("Record"), dict
+        cast(dict[str, object], payload).get("Record"),
+        dict,
     )
 
 
 def _descend(
-    sections: list[dict[str, object]], path: Sequence[str], found: list[dict[str, object]]
+    sections: list[dict[str, object]],
+    path: Sequence[str],
+    found: list[dict[str, object]],
 ) -> None:
     for section in sections:
         children = _dicts(section.get("Section"))
@@ -63,7 +66,9 @@ def _descend(
 
 
 def _chain(
-    sections: list[dict[str, object]], path: Sequence[str], found: list[dict[str, object]]
+    sections: list[dict[str, object]],
+    path: Sequence[str],
+    found: list[dict[str, object]],
 ) -> None:
     for section in sections:
         if section.get("TOCHeading") != path[0]:

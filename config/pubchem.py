@@ -170,7 +170,7 @@ def _delay(table: dict[str, object]) -> float:
     if delay < MIN_DELAY_SECONDS:
         raise ValueError(
             f"{_NAME}.delay_seconds must be at least {MIN_DELAY_SECONDS} "
-            "(PubChem allows at most 5 requests a second)"
+            "(PubChem allows at most 5 requests a second)",
         )
     return delay
 
@@ -260,21 +260,27 @@ def _units(table: dict[str, object]) -> Mapping[str, str]:
     return {k.lower().replace(" ", ""): require_str(block, k, name).strip() for k in block}
 
 
-def _limits(table: dict[str, object]) -> LimitsSettings:
-    name = f"{_NAME}.limits"
-    block = subtable(table, "limits", _NAME)
+def _limit_items(block: dict[str, object], name: str) -> tuple[LimitSpec, ...]:
+    """The listed limits, each with a unique key."""
     raw = block.get("items")
     if not isinstance(raw, list) or not raw:
         raise ValueError(f"{name}.items must be a non-empty list of tables")
     items = tuple(_limit(item, i) for i, item in enumerate(cast(list[object], raw)))
-    keys = {spec.key for spec in items}
+    if len({spec.key for spec in items}) != len(items):
+        raise ValueError(f"{name}.items: keys must be unique")
+    return items
+
+
+def _limits(table: dict[str, object]) -> LimitsSettings:
+    name = f"{_NAME}.limits"
+    block = subtable(table, "limits", _NAME)
+    items = _limit_items(block, name)
     priority = names(block, "twa_priority", name, allow_empty=False)
-    if len(keys) != len(items) or not set(priority) <= keys:
-        raise ValueError(f"{name}: keys must be unique and twa_priority must name listed keys")
+    if not set(priority) <= {spec.key for spec in items}:
+        raise ValueError(f"{name}.twa_priority must name listed keys")
+    molar_volume = require_number(block, "molar_volume_l_per_mol", minimum=1e-9, name=name)
     return LimitsSettings(
-        molar_volume_l_per_mol=require_number(
-            block, "molar_volume_l_per_mol", minimum=1e-9, name=name
-        ),
+        molar_volume_l_per_mol=molar_volume,
         twa_priority=priority,
         units=_units(block),
         items=items,
@@ -293,7 +299,7 @@ def _check_against_comptox(fields: tuple[FieldSpec, ...], path: Path | None) -> 
         if expected != spec.target_unit:
             raise ValueError(
                 f"{_NAME}.fields: {spec.key} target_unit {spec.target_unit!r} must equal "
-                f"the CompTox one, {expected!r}"
+                f"the CompTox one, {expected!r}",
             )
 
 

@@ -16,7 +16,11 @@ from api.schemas.exposure_graph import ExposureGraph, GraphStatus
 Status = GraphStatus
 Tier = Literal[1, 2, 3]
 ProvenanceKind = Literal[
-    "not_evaluated", "direct_tri_match", "tri_category_member", "read_across", "unresolved"
+    "not_evaluated",
+    "direct_tri_match",
+    "tri_category_member",
+    "read_across",
+    "unresolved",
 ]
 NOT_COMPUTED = "not yet computed"
 
@@ -93,7 +97,8 @@ class ExposureRanges(ContractModel):
     cancer_risk_representative: Extreme | None = None
     concentration_representative: Extreme | None = None
     dose: Dose | None = Field(
-        default=None, description="Per age band, the highest worst-case dose over the stacks."
+        default=None,
+        description="Per age band, the highest worst-case dose over the stacks.",
     )
     warnings: list[str] = Field(default_factory=list[str])
 

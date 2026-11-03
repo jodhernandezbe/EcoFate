@@ -45,7 +45,12 @@ def _site(item: AssessedPayload, ledger: Ledger) -> None:
 
 
 def _keep[T](
-    raw: object, model: type[T], store: dict[str, T], frs_id: str, ledger: Ledger, name: str
+    raw: object,
+    model: type[T],
+    store: dict[str, T],
+    frs_id: str,
+    ledger: Ledger,
+    name: str,
 ) -> None:
     """File ``raw`` as ``model``; an invalid one is left out alone, with a warning."""
     if raw is None:
@@ -85,7 +90,7 @@ def _scenarios(item: AssessedPayload, ledger: Ledger) -> None:
         parsed = validate(WorstCaseScenarioPayload, raw)
         if parsed is None:
             ledger.warnings.append(
-                f"Left out a worst-case scenario of facility {frs_id}: it was not valid."
+                f"Left out a worst-case scenario of facility {frs_id}: it was not valid.",
             )
         else:
             ledger.scenarios.setdefault(frs_id, []).append(parsed)

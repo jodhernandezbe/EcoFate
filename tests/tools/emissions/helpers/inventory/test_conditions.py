@@ -59,7 +59,7 @@ def test_one_activity_one_condition(tmp_path: Path) -> None:
             "lifecycle_stage": "Processing",
             "cou_category": "Cat reactant",
             "mapping_strength": "Direct",
-        }
+        },
     ]
     assert result.lifecycle_stages == ["Processing"] and result.note is None
 
@@ -93,7 +93,8 @@ def test_impurity_keeps_its_cdr_exempt_strength(tmp_path: Path) -> None:
 
 
 def test_unmapped_activity_is_dropped_and_warned_once(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     mapper = _mapper(tmp_path)
     with caplog.at_level(logging.WARNING):
@@ -132,7 +133,8 @@ def test_results_are_independent_copies(tmp_path: Path) -> None:
 
 
 def test_missing_file_makes_conditions_unavailable_with_one_warning(
-    tmp_path: Path, caplog: pytest.LogCaptureFixture
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     settings = dataclasses.replace(get_conditions_settings(), crosswalk_path=tmp_path / "none.csv")
     get_crosswalk.cache_clear()

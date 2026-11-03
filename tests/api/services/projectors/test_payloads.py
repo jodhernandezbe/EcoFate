@@ -74,7 +74,8 @@ PAIRS: list[tuple[type[BaseModel], type]] = [
 
 @pytest.mark.parametrize(("model", "result_type"), PAIRS, ids=lambda p: getattr(p, "__name__", ""))
 def test_every_field_read_still_exists_in_the_tool_result(
-    model: type[BaseModel], result_type: type
+    model: type[BaseModel],
+    result_type: type,
 ) -> None:
     unknown = set(model.model_fields) - set(result_type.__annotations__)
     assert not unknown

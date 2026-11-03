@@ -83,7 +83,9 @@ def _benchmark(quantity: Quantity) -> float:
 
 
 def _scenario(
-    item: FacilityAssessment, quantity: Quantity, settings: ScenarioSettings
+    item: FacilityAssessment,
+    quantity: Quantity,
+    settings: ScenarioSettings,
 ) -> WorstCaseScenario | None:
     work = item["occupational_exposure"]
     tier = work["worst_case"]

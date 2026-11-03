@@ -61,7 +61,9 @@ class FrsLocator:
             rows = self._client.get_rows(path)
         except EfserviceError as exc:
             logger.warning(
-                "FRS coordinates for %d facilities could not be read: %s", len(batch), exc
+                "FRS coordinates for %d facilities could not be read: %s",
+                len(batch),
+                exc,
             )
             return
         for row in rows:
