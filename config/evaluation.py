@@ -27,6 +27,8 @@ class EvaluationSettings:
         live_tools: Tools that need no network and run for real during replay.
         cassette_dir: Directory of recorded tool outputs.
         report_dir: Directory evaluation reports are written to.
+        catalogue: The reviewed question catalogue (CSV: question, category, type).
+        catalogue_results: File name of a catalogue run's results, inside its run folder.
     """
 
     judge_provider: str
@@ -35,6 +37,16 @@ class EvaluationSettings:
     live_tools: tuple[str, ...]
     cassette_dir: Path
     report_dir: Path
+    catalogue: Path
+    catalogue_results: str
+
+
+def _file_name(table: dict[str, object], key: str) -> str:
+    """A bare file name: non-empty, with no directory part."""
+    value = require_str(table, key, _NAME).strip()
+    if Path(value).name != value or value in {".", ".."}:
+        raise ValueError(f"{_NAME}.{key} must be a file name without a directory")
+    return value
 
 
 def load_evaluation_settings(path: Path | None = None) -> EvaluationSettings:
@@ -58,6 +70,8 @@ def load_evaluation_settings(path: Path | None = None) -> EvaluationSettings:
         live_tools=names(table, "live_tools", _NAME, allow_empty=True),
         cassette_dir=project_path(table, "cassette_dir", _NAME),
         report_dir=project_path(table, "report_dir", _NAME),
+        catalogue=project_path(table, "catalogue", _NAME),
+        catalogue_results=_file_name(table, "catalogue_results"),
     )
 
 

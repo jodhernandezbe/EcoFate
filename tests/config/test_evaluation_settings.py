@@ -17,6 +17,8 @@ judge_api_key_env_var = "TEST_KEY_VAR"  # pragma: allowlist secret
 live_tools = ["offline_tool"]
 cassette_dir = "evals/test_cassettes"
 report_dir = "/tmp/test_reports"
+catalogue = "evals/test_catalogue.csv"
+catalogue_results = "results.json"
 """
 
 
@@ -43,6 +45,18 @@ def test_relative_dir_resolved_against_project_root(tmp_path: Path) -> None:
     settings = load_evaluation_settings(_write(tmp_path, EVALUATION))
     assert settings.cassette_dir == PROJECT_ROOT / "evals/test_cassettes"
     assert settings.report_dir == Path("/tmp/test_reports")
+    assert settings.catalogue == PROJECT_ROOT / "evals/test_catalogue.csv"
+
+
+def test_catalogue_results_is_a_bare_file_name(tmp_path: Path) -> None:
+    settings = load_evaluation_settings(_write(tmp_path, EVALUATION))
+    assert settings.catalogue_results == "results.json"
+
+
+def test_shipped_catalogue_exists() -> None:
+    settings = get_evaluation_settings()
+    assert settings.catalogue.is_file()
+    assert settings.catalogue_results == "catalogue.json"
 
 
 def test_empty_live_tools_allowed(tmp_path: Path) -> None:
@@ -66,6 +80,10 @@ def test_shipped_settings_load() -> None:
         ("live_tools", 'live_tools = "x"', "evaluation.live_tools"),
         ("cassette_dir", "cassette_dir = 1", "evaluation.cassette_dir"),
         ("report_dir", 'report_dir = ""', "evaluation.report_dir"),
+        ("catalogue =", "catalogue = 7", "evaluation.catalogue"),
+        ("catalogue_results", 'catalogue_results = ""', "evaluation.catalogue_results"),
+        ("catalogue_results", 'catalogue_results = "a/b.json"', "evaluation.catalogue_results"),
+        ("catalogue_results", 'catalogue_results = ".."', "evaluation.catalogue_results"),
     ],
 )
 def test_invalid_entry_names_key(tmp_path: Path, line_start: str, new_line: str, key: str) -> None:

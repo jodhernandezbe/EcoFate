@@ -3,6 +3,7 @@
 uv run python -m evals record <scenario>   # run live, save the cassette
 uv run python -m evals record-extra <scenario>  # only its extra calls, added to the cassette
 uv run python -m evals run [<scenario> ...]  # replay, score, write reports
+uv run python -m evals catalogue  # every catalogue question live; answers, time, tokens, cost
 """
 
 from __future__ import annotations
@@ -11,7 +12,10 @@ import argparse
 
 from dotenv import load_dotenv
 
+from app.telemetry import configure_telemetry
 from config.evaluation import get_evaluation_settings
+from config.telemetry import get_telemetry_settings
+from evals.catalogue.run import run_from_settings
 from evals.scenarios import CATALOGUE, scenario
 from evals.scoring import new_run_dir
 from evals.suite import cassette_path, evaluate, record_extra_live, record_live
@@ -47,6 +51,12 @@ def _run(scenario_ids: list[str]) -> int:
     return 1 if failed else 0
 
 
+def _catalogue() -> int:
+    configure_telemetry(get_telemetry_settings())  # after load_dotenv: reads the Logfire token
+    run_from_settings()
+    return 0
+
+
 def main() -> int:
     """Parse the command and run it; returns the process exit code."""
     parser = argparse.ArgumentParser(prog="python -m evals", description="Agent evaluations")
@@ -56,12 +66,15 @@ def main() -> int:
     extra.add_argument("scenario")
     run = commands.add_parser("run", help="replay, score and report")
     run.add_argument("scenarios", nargs="*", help="scenario ids (default: all unblocked)")
+    commands.add_parser("catalogue", help="run every catalogue question through the live agent")
     args = parser.parse_args()
     load_dotenv()
     if args.command == "record":
         return _record(args.scenario)
     if args.command == "record-extra":
         return _record_extra(args.scenario)
+    if args.command == "catalogue":
+        return _catalogue()
     return _run(args.scenarios)
 
 

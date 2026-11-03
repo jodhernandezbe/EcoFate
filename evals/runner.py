@@ -19,7 +19,7 @@ from evals.cassette import UNRECORDED_KEY
 from evals.record import RunRecord, ToolCall
 
 # Failures that end a run early but still produce a record (the scenario then fails).
-_EXPECTED_ERRORS = (GraphRecursionError, openai.APIError)
+EXPECTED_ERRORS = (GraphRecursionError, openai.APIError)
 
 
 def _text(content: object) -> str:
@@ -91,6 +91,6 @@ def run_scenario(
             stream_mode="values",
         ):
             messages = list(state["messages"])
-    except _EXPECTED_ERRORS as exc:
+    except EXPECTED_ERRORS as exc:
         error = f"{type(exc).__name__}: {exc}"
     return RunRecord(scenario_id, query, extract_calls(messages), final_report(messages), error)

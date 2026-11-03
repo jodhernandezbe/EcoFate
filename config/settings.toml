@@ -952,6 +952,10 @@ judge_api_key_env_var = "OPENAI_API_KEY"  # pragma: allowlist secret
 live_tools = ["calculate_exposure_metrics"]
 cassette_dir = "evals/cassettes"
 report_dir = "evals/reports"
+# The reviewed question catalogue (`question,category,type`) that `python -m evals catalogue`
+# runs through the live agent, and the name of the results file it writes under `report_dir`.
+catalogue = "evals/catalogue/scenarios.csv"
+catalogue_results = "catalogue.json"
 
 # Local web interface (api/ + frontend/). The backend binds only to a loopback host and
 # serves the built frontend from `frontend_dist` (`npm --prefix frontend run build`).

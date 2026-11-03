@@ -96,9 +96,12 @@ When a write token is set, questions, tool arguments and results (chemical ident
 uv run python -m evals run                     # all unblocked scenarios: PASS/FAIL + reasons
 uv run python -m evals run chemical-name-only  # one scenario
 uv run python -m evals record full-assessment-with-nei-stacks  # re-record from live services
+uv run python -m evals catalogue                # every question in evals/catalogue/scenarios.csv, live
 ```
 
 Recording runs the scenario once against the live services (it needs the CompTox and Census keys too) and saves every network tool output; never edit a cassette by hand. Reports land in `evals/reports/<timestamp>/<scenario>.html`.
+
+`catalogue` sends every question of `evals/catalogue/scenarios.csv` (50 reviewed questions: happy paths, varied phrasing, edge cases, out-of-scope and breaking) to the live agent, one turn each, by the same path as `python -m app` (stored keys, step limit, metered usage). It needs the OpenAI key and, for complete answers, the Census and CompTox keys, and it costs tokens for every row. Each answer is saved with its execution time, token counts and estimated cost (from `[ui.pricing]`) to `evals/reports/<timestamp>/catalogue.json`; a row that fails on the step limit or a service error is recorded with the error and the run continues.
 
 ## Architecture
 

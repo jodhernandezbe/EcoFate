@@ -11,7 +11,16 @@ from evals.scoring import score_run
 
 
 def _settings(tmp_path: Path) -> EvaluationSettings:
-    return EvaluationSettings("openai", "unused-judge", "UNUSED_KEY_VAR", (), tmp_path, tmp_path)
+    return EvaluationSettings(
+        "openai",
+        "unused-judge",
+        "UNUSED_KEY_VAR",
+        (),
+        tmp_path,
+        tmp_path,
+        tmp_path / "scenarios.csv",
+        "catalogue.json",
+    )
 
 
 def test_checks_become_outcomes_and_a_report(tmp_path: Path) -> None:
