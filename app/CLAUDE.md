@@ -21,4 +21,6 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   OpenAI, Census and CompTox keys (`ServiceKeys`, one entry each from `[ui.keyring]`). A key
   leaves it only as a `SecretStr`: the OpenAI one to `build_chat_model(..., api_key=...)`, all
   of them to the tools through `run.stored_keys_provided`. The program uses the stored keys and
-  falls back to each key's environment variable for headless runs. `app` never imports `api`.
+  falls back to each key's environment variable for headless runs. `EnvironmentVault` (same
+  `KeyVault` protocol) reads a key from its variable and never stores one; the web program
+  uses it only in container mode. `app` never imports `api`.

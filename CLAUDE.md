@@ -14,10 +14,11 @@ assessments. Python 3.13, managed with uv.
     uv run python scripts/check_function_length.py --max 18 $(git ls-files 'agent/*.py' 'app/*.py' 'api/*.py' 'commons/*.py' 'config/*.py' 'evals/*.py' 'models/*.py' 'prompts/*.py' 'tools/*.py')   # function length
     uv run pytest -m eval  # agent evaluations (OpenAI key, costs tokens; not in pre-commit)
     npm --prefix frontend run check   # frontend (after `npm --prefix frontend ci`); `run build` then `uv run python -m api` serves the UI
+    make check / docker compose up    # all of the above at once / the containerised app (`make help`)
 
-Test, format, lint, pyright, bandit, function length and `npm --prefix frontend run check` must pass
-before work is done; pre-commit enforces them (`uv run pre-commit run --all-files`). Never bypass with
-`--no-verify`; never put secrets in code (detect-secrets guards `.secrets.baseline`).
+Test, format, lint, pyright, bandit, function length and the frontend check must pass before work is
+done; pre-commit enforces them (`uv run pre-commit run --all-files`). Never bypass with `--no-verify`;
+never put secrets in code or images (detect-secrets guards `.secrets.baseline`).
 
 ## Layout and boundaries
 
@@ -57,9 +58,8 @@ editing there:
 - `evals/CLAUDE.md`   agent evaluation harness, cassettes and scenarios.
 - `api/CLAUDE.md`, `frontend/CLAUDE.md` web backend (contract, keys, redaction) and browser app.
 
-When a new layer needs rules of its own, add a `CLAUDE.md` in its folder and list it here.
-Keep this root file under 80 lines (checked by `tests/test_claude_md.py`); put detail in
-folder `CLAUDE.md` files or `docs/`.
+A new layer with rules of its own gets a `CLAUDE.md` in its folder, listed here. Keep this file
+under 80 lines (`tests/test_claude_md.py`); put detail in folder `CLAUDE.md` files or `docs/`.
 
 ## Design principles
 

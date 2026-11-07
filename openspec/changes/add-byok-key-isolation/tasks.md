@@ -20,6 +20,7 @@
 - [ ] 3.2 `api/services/agent_runner.py`: decrypt the user's key once per turn, provide it to the chat model and `PROVIDER_KEY`, provide the operator keys to `CENSUS_KEY`/`COMPTOX_KEY`, protect all of them for the turn; delete `api/core/security_keyring.py` and stop importing `ServiceKeys` in `api/`.
 - [ ] 3.3 Account deletion removes `user_credentials` rows in the same transaction (with step 4's delete-account service).
 - [ ] 3.4 `app/telemetry.py`: span scrubbing uses the extended patterns and protected values.
+- [ ] 3.5 Container mode (from the archived `add-docker-compose-stack`): `create_app(keys_from_environment=True)` keeps reading only the operator keys (Census, CompTox) from the environment through `EnvironmentVault`; the OpenAI key always comes from the user's encrypted row, never `OPENAI_API_KEY`. Update `tests/api/test_container_keys.py` accordingly (environment OpenAI key ignored, operator keys still read) and the README's Docker section (only the operator keys go in `.env`).
 
 ## 4. Frontend
 

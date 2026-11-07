@@ -1,0 +1,35 @@
+# Keep secrets, caches and build output out of the Docker build context.
+
+# Secrets: only the template goes in
+.env
+.env.*
+!.env.example
+
+# Python environments and caches
+.venv/
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.cache/
+.logfire/
+
+# Frontend toolchain and build output (the image builds its own)
+**/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
+
+# Generated or downloaded data
+evals/reports/
+data/raw/
+
+# Repository and editor metadata
+.git/
+.github/
+.claude/
+.idea/
+.vscode/
+.DS_Store

@@ -67,7 +67,7 @@ A chat turn SHALL require the OpenAI key and SHALL start without the Census and 
 - **THEN** the turn ends with the missing-key message and no model is built, whatever the other keys
 
 ### Requirement: Keys read per request and shared by every call
-For each chat turn the system SHALL read each stored key from the credential store once, wrap it as a secret value, and use the same OpenAI value for every model call of the turn (the scope classifier and the agent). The command-line program SHALL use the same stored keys, falling back to the configured environment variable for each key the credential store does not hold.
+For each chat turn the system SHALL read each stored key from the credential store once, wrap it as a secret value, and use the same OpenAI value for every model call of the turn (the scope classifier and the agent). The command-line program SHALL use the same stored keys, falling back to the configured environment variable for each key the credential store does not hold. The web program launched with the container flag (where no credential store exists) SHALL instead read each key from its configured environment variable once per turn, in the same way.
 
 #### Scenario: One read per key per turn
 - **WHEN** a turn makes a classifier call and three agent model calls
@@ -84,6 +84,10 @@ For each chat turn the system SHALL read each stored key from the credential sto
 #### Scenario: CLI without stored key
 - **WHEN** the command-line program runs with no stored key and the environment variable set
 - **THEN** the environment variable's key is used
+
+#### Scenario: Container web program
+- **WHEN** the web program runs with the container flag and the OpenAI environment variable is set
+- **THEN** each turn uses that variable's key and the credential store is never called
 
 ### Requirement: Key-shaped strings redacted from logs
 The system SHALL install a log filter on the root logger, the web server's loggers and the HTTP client's loggers that replaces every substring matching `sk-[A-Za-z0-9_-]{10,}` with `sk-***REDACTED***` in the formatted message, its arguments, and any attached exception or stack text, before any handler emits it. The filter SHALL never drop a record. The Census and CompTox keys, which have no fixed shape, SHALL additionally be redacted wherever the stored value itself appears in a record during a turn.

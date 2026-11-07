@@ -12,6 +12,9 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   only) and `tools.credentials` (to give the turn's keys to the tools that need them). Never import tool modules, provider packages or `evals`; nothing imports `api`.
 - Settings come from `[ui]` in `config/settings.toml` via `config.ui`; `api/core/config.py`
   only exposes them to `Depends()`. Never read ports, origins or names from the environment.
+  The container bind address comes only from `[ui.container]`, used when `python -m api
+  --container` runs; the origin checks always use `[ui].host:[ui].port`, whatever is bound.
+  `GET /api/health` (liveness for container health checks) reads no key and runs no agent.
 - The chat model is built only through `app.chat_model`. The OpenAI, Census and CompTox keys
   are read once per turn from `app.key_vault.ServiceKeys`, given to the tools through
   `tools.credentials.HOLDERS` for that turn only, protected from the logs, and never stored on

@@ -5,12 +5,15 @@ from __future__ import annotations
 import pytest
 
 from app.key_vault import (
+    EnvironmentVault,
     InvalidKeyError,
     KeychainUnavailableError,
     KeyringVault,
     KeyStatus,
     default_service_keys,
+    environment_service_keys,
 )
+from config.ui import KeyName
 from tests.fakes import FakeCredentialStore
 
 KEY = "sk-test" + "A" * 20 + "WXYZ"  # pragma: allowlist secret
@@ -115,3 +118,39 @@ def test_statuses_raise_a_safe_error_when_the_keychain_is_unavailable() -> None:
     keys = default_service_keys(FakeCredentialStore(fail=True))
     with pytest.raises(KeychainUnavailableError):
         keys.statuses()
+
+
+def test_environment_vault_reads_the_variable() -> None:
+    vault = EnvironmentVault("MY_KEY", {"MY_KEY": f"  {KEY}  "})
+    loaded = vault.load()
+    assert loaded is not None
+    assert loaded.get_secret_value() == KEY
+    assert vault.status() == KeyStatus(configured=True)
+
+
+@pytest.mark.parametrize("environ", [{}, {"MY_KEY": ""}, {"MY_KEY": "   "}])
+def test_environment_vault_without_a_key(environ: dict[str, str]) -> None:
+    vault = EnvironmentVault("MY_KEY", environ)
+    assert vault.load() is None
+    assert vault.status() == KeyStatus(configured=False)
+
+
+def test_environment_vault_never_saves_or_clears() -> None:
+    environ = {"MY_KEY": KEY}
+    vault = EnvironmentVault("MY_KEY", environ)
+    for action in (lambda: vault.save(KEY), vault.clear):
+        with pytest.raises(KeychainUnavailableError) as info:
+            action()
+        assert ".env" in str(info.value)
+        assert KEY not in str(info.value)
+    assert environ == {"MY_KEY": KEY}
+
+
+def test_environment_service_keys_map_each_key_to_its_variable() -> None:
+    names: dict[KeyName, str] = {"openai": "A_KEY", "census": "B_KEY", "comptox": "C_KEY"}
+    keys = environment_service_keys(names, {"A_KEY": KEY})
+    assert keys.statuses() == {
+        "openai": KeyStatus(configured=True),
+        "census": KeyStatus(configured=False),
+        "comptox": KeyStatus(configured=False),
+    }

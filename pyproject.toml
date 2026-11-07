@@ -39,6 +39,16 @@ dev = [
     "ruff>=0.6.0",
 ]
 
+# PyTorch on Linux (the Docker image) comes from the CPU-only wheel index, so the image carries
+# no CUDA libraries the read-across encoder never uses. macOS keeps the PyPI wheel.
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu", marker = "sys_platform == 'linux'" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
 [tool.ruff]
 line-length = 100
 target-version = "py313"

@@ -16,12 +16,10 @@ from api.core.config import ui_settings
 from api.core.exceptions import install_exception_handlers
 from api.core.logging_filter import install_redaction, protect_secrets
 from api.core.origin_guard import OriginGuard
-from api.routers import v1_chat, v1_facilities, v1_monitoring, v1_settings
+from api.dependencies import key_variables
+from api.routers import v1_chat, v1_facilities, v1_health, v1_monitoring, v1_settings
 from api.services.threads import ThreadStore
 from app.telemetry import flush_telemetry
-from config.agent import get_agent_settings
-from config.loader import get_comptox_settings
-from config.population import get_population_settings
 from config.telemetry import get_telemetry_settings
 from config.ui import UiSettings
 
@@ -30,9 +28,7 @@ def _environment_keys() -> list[str]:
     """The values of the API-key environment variables that are set (never logged)."""
     monitoring = get_telemetry_settings()
     names = (
-        get_agent_settings().api_key_env_var,
-        get_population_settings().api_key_env_var,
-        get_comptox_settings().api_key_env_var,
+        *key_variables().values(),
         monitoring.write_token_env_var,
         monitoring.read_token_env_var,
     )
@@ -52,8 +48,18 @@ def _mount_frontend(app: FastAPI, dist: Path) -> None:
         app.mount("/", StaticFiles(directory=dist, html=True), name="frontend")
 
 
-def create_app(settings: UiSettings | None = None) -> FastAPI:
-    """Build the API for ``settings`` (the shipped ``[ui]`` settings by default)."""
+def create_app(
+    settings: UiSettings | None = None,
+    *,
+    keys_from_environment: bool = False,
+) -> FastAPI:
+    """Build the API for ``settings`` (the shipped ``[ui]`` settings by default).
+
+    Args:
+        settings: The UI settings.
+        keys_from_environment: Read every key from its environment variable instead of the OS
+            keychain (containers, which have none); keys then cannot be saved in Settings.
+    """
     ui = settings if settings is not None else ui_settings()
     app = FastAPI(title="EcoFate API", lifespan=_lifespan, docs_url=None, redoc_url=None)
     app.add_middleware(
@@ -63,7 +69,9 @@ def create_app(settings: UiSettings | None = None) -> FastAPI:
     )
     app.add_middleware(OriginGuard, origin=ui.origin)  # outermost: runs before CORS and routes
     app.state.threads = ThreadStore(max_threads=ui.max_threads)
+    app.state.keys_from_environment = keys_from_environment
     install_exception_handlers(app)
+    app.include_router(v1_health.router)
     app.include_router(v1_settings.router)
     app.include_router(v1_chat.router)
     app.include_router(v1_facilities.router)

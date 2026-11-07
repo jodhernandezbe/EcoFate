@@ -9,7 +9,7 @@ from datetime import date
 from functools import lru_cache
 from pathlib import Path
 from types import MappingProxyType
-from typing import Literal, get_args
+from typing import Literal, TypedDict, get_args
 
 from config.exposure_graph import GraphText, parse_exposure_graph
 from config.parsing import (
@@ -191,8 +191,10 @@ class UiSettings:
     """Web backend and display settings.
 
     Attributes:
-        host: Loopback host the backend binds to.
+        host: Loopback host the backend binds to, and the host of its origin.
         port: TCP port.
+        container_bind_host: Address bound instead of ``host`` when launched in a container
+            (loopback or unspecified); the origin stays ``host:port``.
         frontend_dist: Built frontend directory served by the backend.
         max_key_length: Longest API key accepted, characters.
         keyring: Credential-store names for the API key.
@@ -210,6 +212,7 @@ class UiSettings:
 
     host: str
     port: int
+    container_bind_host: str
     frontend_dist: Path
     max_key_length: int
     keyring: KeyringNames
@@ -228,6 +231,18 @@ class UiSettings:
     def origin(self) -> str:
         """The backend's own origin, e.g. ``http://127.0.0.1:8765``."""
         return f"http://{self.host}:{self.port}"
+
+
+def _container_bind_host(table: dict[str, object]) -> str:
+    name = f"{_NAME}.container"
+    host = require_str(subtable(table, "container", _NAME), "bind_host", name).strip()
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        address = None
+    if address is None or not (address.is_loopback or address.is_unspecified):
+        raise ValueError(f"{name}.bind_host must be a loopback or unspecified address")
+    return host
 
 
 def _loopback_host(table: dict[str, object]) -> str:
@@ -460,6 +475,21 @@ def _pricing(table: dict[str, object]) -> Mapping[str, ModelPrice]:
     return MappingProxyType({model: _price(raw, f"{name}.{model}") for model, raw in sub.items()})
 
 
+class _Addresses(TypedDict):
+    host: str
+    port: int
+    container_bind_host: str
+
+
+def _addresses(table: dict[str, object]) -> _Addresses:
+    """The origin's host and port, and the address bound inside a container."""
+    return _Addresses(
+        host=_loopback_host(table),
+        port=_port(table),
+        container_bind_host=_container_bind_host(table),
+    )
+
+
 def load_ui_settings(path: Path | None = None) -> UiSettings:
     """Load and validate the web backend and display settings.
 
@@ -472,8 +502,7 @@ def load_ui_settings(path: Path | None = None) -> UiSettings:
     """
     table = section(read_toml(path), _NAME)
     return UiSettings(
-        host=_loopback_host(table),
-        port=_port(table),
+        **_addresses(table),
         frontend_dist=project_path(table, "frontend_dist", _NAME),
         max_key_length=require_int(table, "max_key_length", minimum=1, name=_NAME),
         keyring=_keyring(table),

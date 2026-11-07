@@ -4,10 +4,15 @@ The key is saved, read and deleted through ``keyring`` (macOS Keychain, Linux Se
 Service, Windows Credential Locker) under a service and account named in ``[ui.keyring]``.
 It is never written anywhere else and is handed out only as a ``SecretStr``. The CLI and the
 web API share this vault, so both run on the same stored key.
+
+Inside a container there is no OS keychain; the web program launched with ``--container``
+uses ``EnvironmentVault`` instead, which reads each key from its environment variable and
+never stores one.
 """
 
 from __future__ import annotations
 
+import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol
@@ -27,6 +32,24 @@ class CredentialStore(Protocol):
     def set_password(self, service_name: str, username: str, password: str) -> None: ...
 
     def delete_password(self, service_name: str, username: str) -> None: ...
+
+
+ENVIRONMENT_ONLY = (
+    "Keys come from the .env file on this installation (the OS keychain is unavailable); "
+    "edit .env and restart to change them."
+)
+
+
+class KeyVault(Protocol):
+    """Where one key is kept: save, read, clear and report it (never revealing it)."""
+
+    def save(self, key: str) -> KeyStatus: ...
+
+    def load(self) -> SecretStr | None: ...
+
+    def clear(self) -> KeyStatus: ...
+
+    def status(self) -> KeyStatus: ...
 
 
 class KeychainUnavailableError(RuntimeError):
@@ -124,6 +147,45 @@ class KeyringVault:
 
 
 @dataclass(frozen=True)
+class EnvironmentVault:
+    """A key read from an environment variable (``.env``); it cannot be saved or cleared here.
+
+    Attributes:
+        variable: Name of the environment variable holding the key.
+        environ: The environment to read; ``os.environ`` when None (inject a dict in tests).
+    """
+
+    variable: str
+    environ: Mapping[str, str] | None = None
+
+    def save(self, key: str) -> KeyStatus:
+        """Refuse: keys on this installation come from the environment.
+
+        Raises:
+            KeychainUnavailableError: Always, with a message saying where the keys come from.
+        """
+        raise KeychainUnavailableError(ENVIRONMENT_ONLY)
+
+    def load(self) -> SecretStr | None:
+        """Return the variable's key, or None when it is unset or blank."""
+        environ = os.environ if self.environ is None else self.environ
+        key = environ.get(self.variable, "").strip()
+        return SecretStr(key) if key else None
+
+    def clear(self) -> KeyStatus:
+        """Refuse, like ``save``.
+
+        Raises:
+            KeychainUnavailableError: Always.
+        """
+        raise KeychainUnavailableError(ENVIRONMENT_ONLY)
+
+    def status(self) -> KeyStatus:
+        """Whether the variable holds a key (never any part of it)."""
+        return KeyStatus(configured=self.load() is not None)
+
+
+@dataclass(frozen=True)
 class ServiceKeys:
     """The vaults of every key the interface stores (OpenAI, Census, CompTox), by name.
 
@@ -131,9 +193,9 @@ class ServiceKeys:
     another.
     """
 
-    vaults: Mapping[KeyName, KeyringVault]
+    vaults: Mapping[KeyName, KeyVault]
 
-    def vault(self, name: KeyName) -> KeyringVault:
+    def vault(self, name: KeyName) -> KeyVault:
         """The vault of the key called ``name``."""
         return self.vaults[name]
 
@@ -162,12 +224,25 @@ def default_service_keys(store: CredentialStore = keyring) -> ServiceKeys:
     )
 
 
-def default_vault() -> KeyringVault:
+def environment_service_keys(
+    variables: Mapping[KeyName, str],
+    environ: Mapping[str, str] | None = None,
+) -> ServiceKeys:
+    """Vaults reading each key from its environment variable (containers have no keychain).
+
+    Args:
+        variables: Key name -> environment variable holding it (from the settings).
+        environ: The environment to read; ``os.environ`` when None.
+    """
+    return ServiceKeys({name: EnvironmentVault(variables[name], environ) for name in KEY_NAMES})
+
+
+def default_vault() -> KeyVault:
     """The OpenAI key's vault from the shipped settings (the outer edge)."""
     return default_service_keys().vault("openai")
 
 
-def stored_key(vault: KeyringVault) -> SecretStr | None:
+def stored_key(vault: KeyVault) -> SecretStr | None:
     """Return the vault's key, or None when none is stored or the keychain is unavailable.
 
     For headless callers (CLI, CI) that may fall back to the environment variable.

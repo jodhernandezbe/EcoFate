@@ -18,6 +18,9 @@ port = 9000
 frontend_dist = "frontend/dist"
 max_key_length = 64
 
+[ui.container]
+bind_host = "0.0.0.0"
+
 [ui.keyring]
 service = "svc"
 
@@ -178,6 +181,16 @@ def test_shipped_step_labels_name_registered_tools() -> None:
     assert set(get_ui_settings().step_labels) == registered
 
 
+def test_container_bind_host(tmp_path: Path) -> None:
+    assert load_ui_settings(_write(tmp_path, UI)).container_bind_host == "0.0.0.0"
+    path = _replace(tmp_path, "bind_host", 'bind_host = "127.0.0.1"')
+    assert load_ui_settings(path).container_bind_host == "127.0.0.1"
+
+
+def test_shipped_container_bind_host() -> None:
+    assert get_ui_settings().container_bind_host == "0.0.0.0"
+
+
 def test_localhost_accepted(tmp_path: Path) -> None:
     path = _replace(tmp_path, "host", 'host = "localhost"')
     assert load_ui_settings(path).host == "localhost"
@@ -193,6 +206,10 @@ def test_unpriced_when_pricing_empty(tmp_path: Path) -> None:
     [
         ("host", 'host = "0.0.0.0"', "ui.host"),
         ("host", 'host = "example.com"', "ui.host"),
+        ("bind_host", 'bind_host = "203.0.113.5"', "ui.container.bind_host"),
+        ("bind_host", 'bind_host = ""', "ui.container.bind_host"),
+        ("bind_host", "bind_host = 8", "ui.container.bind_host"),
+        ("bind_host", 'bind_host = "example.com"', "ui.container.bind_host"),
         ("port", "port = 0", "ui.port"),
         ("port", "port = 70000", "ui.port"),
         ("port", "port = true", "ui.port"),

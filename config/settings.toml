@@ -976,6 +976,12 @@ port = 8000
 frontend_dist = "frontend/dist"
 max_key_length = 512
 
+# Address the backend listens on inside a container (`python -m api --container`, used by
+# compose). It must be a loopback or unspecified address; compose publishes the port on the
+# host's loopback only, and the Host/Origin checks still use `host` and `port` above.
+[ui.container]
+bind_host = "0.0.0.0"
+
 # OS credential store entries holding the API keys (macOS Keychain, Secret Service, Windows
 # Credential Locker): one service name and one account per key. Names only; a key itself never
 # appears in this file.

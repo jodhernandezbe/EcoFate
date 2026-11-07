@@ -14,7 +14,38 @@ EcoFate unifies public datasets, such as the EPA Toxics Release Inventory (TRI),
 
 The intended tool flow for an assessment is: chemical properties -> emissions inventory -> stack parameters -> meteorology and population -> exposure metrics. All tools are implemented (see [Tools](#tools)).
 
-## Quick start
+## Run with Docker
+
+The quickest way to see the app: no Python or Node needed, only Docker (Docker Desktop on macOS or Windows).
+
+    cp .env.example .env          # then put your OpenAI key in OPENAI_API_KEY (Census and CompTox keys too, for complete assessments)
+    docker compose up --build     # first build takes several minutes
+    # open http://127.0.0.1:8000
+
+The image is about 2 GB (CPU-only PyTorch and RDKit), and the container needs about 4 GB of RAM once the read-across encoder is loaded: give Docker Desktop at least that much memory and enough disk for the image. The port is published on the host's loopback only (`127.0.0.1:8000`).
+
+Inside the container there is no OS keychain, so the keys come from `.env` (`OPENAI_API_KEY`, `CENSUS_API_KEY`, `COMPTOX_API_KEY`): Settings shows which ones are set, and saving or clearing a key there is refused with a note to edit `.env` and restart (`docker compose up -d` picks up the change). The SCC search index, PubChem answers and the read-across encoder (about 500 MB, downloaded from Hugging Face on first use) are kept in named Docker volumes, so they are built or downloaded once; `make warm` downloads the encoder ahead of the first assessment.
+
+The `Makefile` is the index of everyday commands (`make help` lists them):
+
+| Target | What it does |
+|--------|--------------|
+| `make up` | build if needed and start the stack in the background, waiting until it is healthy |
+| `make down` | stop the stack (volumes are kept) |
+| `make build` | build the images |
+| `make logs` | follow the logs |
+| `make shell` | open a shell in the running `api` container |
+| `make warm` | download the pinned read-across encoder into its volume |
+| `make test` | run the unit tests on the host (uv) |
+| `make lint` | ruff format check and lint |
+| `make check` | everything pre-commit enforces: lint, pyright, bandit, function length, tests, frontend check |
+| `make eval` | agent evaluations on recorded tool outputs (OpenAI key, costs tokens) |
+| `make catalogue` | every catalogue question through the live agent (OpenAI key, costs tokens) |
+| `make migrate` | apply database migrations (nothing to migrate until PostgreSQL arrives) |
+
+`GET /api/health` answers `{"status": "ok"}` while the server is up; the container health check uses it.
+
+## Quick start (local development with uv)
 
 1. Install uv if you don't have it yet: https://docs.astral.sh/uv/getting-started/installation/
 

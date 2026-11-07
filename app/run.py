@@ -18,7 +18,7 @@ from agent.completion import CompletionGuard
 from agent.graph import build_agent
 from agent.state import AgentState
 from app.chat_model import build_chat_model
-from app.key_vault import KeyringVault, ServiceKeys, default_service_keys, stored_key
+from app.key_vault import KeyVault, ServiceKeys, default_service_keys, stored_key
 from app.telemetry import flush_telemetry, run_tracer, session_span
 from app.usage_meter import CallUsage, UsageRecorder
 from config.agent import AgentSettings, get_agent_settings
@@ -56,7 +56,7 @@ def run_config(
 
 def program_model(
     settings: AgentSettings,
-    vault: KeyringVault | None = None,
+    vault: KeyVault | None = None,
     environ: Mapping[str, str] | None = None,
 ) -> BaseChatModel:
     """Build the program's chat model with the key stored in the OS keychain.

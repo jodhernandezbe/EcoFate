@@ -6,8 +6,10 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from fastapi import FastAPI
 
 import api.__main__ as entry
+from api.main import create_app
 from config.telemetry import TelemetrySettings
 from config.ui import UiSettings, get_ui_settings
 
@@ -92,3 +94,48 @@ def test_main_configures_monitoring_after_the_dotenv_file_and_before_serving(
     monkeypatch.setattr(entry.uvicorn, "run", serve)
     entry.main()
     assert order == ["env", "monitoring", "serve"]
+
+
+def test_container_flag_binds_the_container_address(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (tmp_path / "index.html").write_text("<html></html>")
+    settings = replace(get_ui_settings(), frontend_dist=tmp_path, container_bind_host="0.0.0.0")
+    launched = _capture_launch(monkeypatch, settings)
+    entry.main(["--container"])
+    assert (launched["host"], launched["port"]) == ("0.0.0.0", settings.port)
+
+
+def test_unknown_argument_exits_without_serving(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    (tmp_path / "index.html").write_text("<html></html>")
+    settings = replace(get_ui_settings(), frontend_dist=tmp_path)
+    launched = _capture_launch(monkeypatch, settings)
+    with pytest.raises(SystemExit):
+        entry.main(["--host", "0.0.0.0"])
+    assert launched == {}
+
+
+@pytest.mark.parametrize("argv", [[], ["--container"]])
+def test_origin_guard_uses_the_configured_origin_in_both_modes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    argv: list[str],
+) -> None:
+    (tmp_path / "index.html").write_text("<html></html>")
+    settings = replace(get_ui_settings(), frontend_dist=tmp_path)
+    launched = _capture_launch(monkeypatch, settings)
+    built: list[tuple[str, bool]] = []
+
+    def build(ui: UiSettings, *, keys_from_environment: bool = False) -> FastAPI:
+        built.append((ui.origin, keys_from_environment))
+        return create_app(ui, keys_from_environment=keys_from_environment)
+
+    monkeypatch.setattr(entry, "create_app", build)
+    entry.main(argv)
+    # The origin is [ui].host:[ui].port in both modes; only the container reads keys from .env.
+    assert built == [(f"http://{settings.host}:{settings.port}", argv == ["--container"])]
+    assert launched["port"] == settings.port

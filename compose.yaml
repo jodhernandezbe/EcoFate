@@ -1,0 +1,31 @@
+# EcoFate local stack: `docker compose up --build`, then open http://127.0.0.1:8000.
+# Keys come from `.env` (copy `.env.example`); the OS keychain does not exist in the container.
+name: ecofate
+
+services:
+  api:
+    build:
+      context: .
+      target: api
+    image: ecofate-api:local
+    env_file: .env
+    ports:
+      - "127.0.0.1:8000:8000"  # host loopback only; never on all interfaces
+    volumes:
+      - ecofate-cache:/app/.cache
+      - hf-cache:/home/ecofate/.cache/huggingface
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4).status == 200 else 1)"
+      interval: 30s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+
+volumes:
+  ecofate-cache:
+  hf-cache:

@@ -17,11 +17,12 @@ from api.services.monitoring.service import MonitoringService
 from api.services.projectors.rules import WorkspaceRules
 from api.services.threads import ThreadStore
 from app.chat_model import build_chat_model
-from app.key_vault import ServiceKeys
+from app.key_vault import ServiceKeys, environment_service_keys
 from config.agent import get_agent_settings
+from config.loader import get_comptox_settings
 from config.population import get_population_settings
 from config.telemetry import get_telemetry_settings
-from config.ui import UiSettings
+from config.ui import KeyName, UiSettings
 from prompts.registry import load_prompt
 
 
@@ -30,8 +31,23 @@ def get_settings() -> UiSettings:
     return ui_settings()
 
 
-def get_service_keys() -> ServiceKeys:
-    """The OS-keychain vaults of every key; keys are read from them once per turn, never cached."""
+def key_variables() -> dict[KeyName, str]:
+    """Key name -> the environment variable that holds it when no keychain is used."""
+    return {
+        "openai": get_agent_settings().api_key_env_var,
+        "census": get_population_settings().api_key_env_var,
+        "comptox": get_comptox_settings().api_key_env_var,
+    }
+
+
+def get_service_keys(request: Request) -> ServiceKeys:
+    """The vaults of every key; keys are read from them once per turn, never cached.
+
+    The OS keychain natively; the environment (``.env``) when the app was built for a
+    container (``python -m api --container``), where no keychain exists.
+    """
+    if getattr(request.app.state, "keys_from_environment", False):
+        return environment_service_keys(key_variables())
     return default_service_keys()
 
 

@@ -154,6 +154,10 @@ credential store does not hold; the web program SHALL NOT use the OS credential 
 - **WHEN** the command-line program runs with no stored key and the environment variable set
 - **THEN** the environment variable's key is used
 
+#### Scenario: Container web program
+- **WHEN** the web program runs with the container flag, the OpenAI environment variable is set and the signed-in user has stored no key
+- **THEN** the turn ends with the add-your-key message, the environment's OpenAI key is not used, and the Census and CompTox keys still come from the environment
+
 ### Requirement: Key-shaped strings redacted from logs
 The system SHALL install a log filter on the root logger, the web server's loggers and the HTTP
 client's loggers that, in the formatted message, its arguments, and any attached exception or
