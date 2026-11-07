@@ -18,7 +18,7 @@ from app.key_vault import default_service_keys
 from config.ui import UiSettings
 from tests.api.conftest import ORIGIN
 from tests.api.streams import parse_sse
-from tests.fakes import OPENAI_ENTRY, FakeCredentialStore, scripted
+from tests.fakes import OPENAI_ENTRY, FakeCredentialStore, InMemoryThreadStore, scripted
 
 OWN = {"Origin": ORIGIN}
 KEY = "sk-proj-" + "c0N7a1N3r9" * 3  # pragma: allowlist secret
@@ -34,7 +34,7 @@ def environment_key(monkeypatch: pytest.MonkeyPatch) -> str:
 
 
 def _client(settings: UiSettings, *, container: bool, used: list[str]) -> Iterator[TestClient]:
-    app = create_app(settings, keys_from_environment=container)
+    app = create_app(settings, keys_from_environment=container, threads=InMemoryThreadStore())
     model = scripted("an answer")
 
     def build(key: SecretStr) -> object:
@@ -98,7 +98,7 @@ def test_native_mode_ignores_the_environment_key(
 ) -> None:
     store = FakeCredentialStore()
     monkeypatch.setattr(dependencies, "default_service_keys", lambda: default_service_keys(store))
-    native = create_app(settings)
+    native = create_app(settings, threads=InMemoryThreadStore())
     keys = dependencies.get_service_keys(cast(Request, SimpleNamespace(app=native)))
     assert keys.vault("openai").load() is None
     assert store.calls == [("get", *OPENAI_ENTRY)]
@@ -108,7 +108,7 @@ def test_container_mode_selects_the_environment_vaults(
     settings: UiSettings,
     environment_key: str,
 ) -> None:
-    app = create_app(settings, keys_from_environment=True)
+    app = create_app(settings, keys_from_environment=True, threads=InMemoryThreadStore())
     keys = dependencies.get_service_keys(cast(Request, SimpleNamespace(app=app)))
     loaded = keys.vault("openai").load()
     assert loaded is not None

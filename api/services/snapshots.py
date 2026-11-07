@@ -60,19 +60,19 @@ def _prompt(pending: ConfirmationRequest | None) -> ConfirmationPrompt | None:
     return ConfirmationPrompt(request_id=event.request_id, entries=event.entries)
 
 
-def thread_snapshot(
+async def thread_snapshot(
     threads: ThreadStore,
     thread_id: str,
     pricing: Mapping[str, ModelPrice],
 ) -> ThreadSnapshot | None:
     """The snapshot of a held thread, or None when the program does not hold it."""
-    if not threads.holds(thread_id):
+    if not await threads.holds(thread_id):
         return None
-    threads.touch(thread_id)
+    await threads.touch(thread_id)
     return ThreadSnapshot(
         thread_id=thread_id,
-        messages=thread_messages(threads.messages(thread_id)),
-        workspace=threads.workspace(thread_id) or WorkspaceState(),
-        usage=summarize(threads.session_calls(thread_id), pricing),
-        confirmation=_prompt(threads.pending(thread_id)),
+        messages=thread_messages(await threads.messages(thread_id)),
+        workspace=await threads.workspace(thread_id) or WorkspaceState(),
+        usage=summarize(await threads.session_calls(thread_id), pricing),
+        confirmation=_prompt(await threads.pending(thread_id)),
     )

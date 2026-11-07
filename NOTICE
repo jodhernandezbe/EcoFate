@@ -1,0 +1,17 @@
+EcoFate
+Copyright 2026 Jose Hernandez-Betancur
+
+This product includes software developed by Jose Hernandez-Betancur
+(https://github.com/jodhernandezbe/EcoFate).
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+If you redistribute this work or a derivative of it, in source or binary form,
+keep this NOTICE file (Apache License 2.0, section 4(d)) and credit the original
+author in your documentation or "About" page. If you use EcoFate in research,
+publications or reports, please cite it as described in CITATION.cff.
+
+Third-party components keep their own licences. In particular, the molecular
+embedding model downloaded at run time (SaeedLab/MolDeBERTa-base-123M-mtr) is
+licensed CC BY-NC-ND 4.0, which permits non-commercial use only; commercial
+users must replace it or obtain a separate licence.

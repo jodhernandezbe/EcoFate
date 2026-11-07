@@ -901,6 +901,27 @@ timeout_seconds = 120.0
 recursion_limit = 80
 temperature = 0.0
 
+# PostgreSQL: the web program's durable state (threads, their history, usage, workspaces,
+# pending confirmations and the user's answers). The connection URL, which carries the password,
+# is never written here: it is read from the environment variable named in `url_env_var`.
+[database]
+url_env_var = "DATABASE_URL"  # pragma: allowlist secret
+# Connections kept open per process (the pool also serves the checkpointer).
+pool_size = 5
+# Seconds to wait for a free pooled connection before the request fails.
+pool_timeout_seconds = 10.0
+# Seconds one statement may run before PostgreSQL cancels it.
+statement_timeout_seconds = 30.0
+# Seconds GET /api/health waits for the database to answer SELECT 1.
+health_timeout_seconds = 2.0
+# Seconds a turn may hold its thread before another process may claim it (a crashed process's
+# lease expires after this). Must exceed [agent].timeout_seconds.
+turn_lease_seconds = 600.0
+# Days a thread may sit idle before the purge deletes it with its checkpoints.
+thread_retention_days = 30
+# Minutes between purges of idle threads.
+purge_interval_minutes = 60
+
 # Monitoring (Pydantic Logfire). `app` and `api` configure it once at start-up; nothing is sent
 # unless a write token (`write_token_env_var`, or `logfire projects use`) is present; Logfire reads
 # that variable itself, the program only keeps its value out of the logs. The Monitoring view
@@ -1084,11 +1105,6 @@ chat_max_share = 0.55
 overview_default_share = 0.4
 overview_min_share = 0.15
 overview_max_share = 0.75
-
-# Conversation threads kept in server memory (never on disk). Past this many, the least
-# recently used idle thread is forgotten. A memory bound, not a limit on useful history.
-[ui.threads]
-max_retained = 20
 
 # The Word report of a thread (GET /api/v1/chat/threads/{id}/report). Text only: every value in
 # it comes from the thread's workspace. `file_name` takes {cas} (the CAS number, or "chemical")

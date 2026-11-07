@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Iterator
 
 import pytest
@@ -13,7 +14,12 @@ from api.dependencies import AgentRuntime, get_runtime
 from api.services.threads import ThreadStore
 from tests.api.conftest import ORIGIN
 from tests.api.streams import parse_sse
-from tests.fakes import OPENAI_ENTRY, FakeCredentialStore, ScriptedChatModel, scripted
+from tests.fakes import (
+    OPENAI_ENTRY,
+    FakeCredentialStore,
+    ScriptedChatModel,
+    scripted,
+)
 
 OWN = {"Origin": ORIGIN}
 KEY = "sk-proj-" + "r4T5y6U7i8" * 3  # pragma: allowlist secret
@@ -54,10 +60,10 @@ def test_stream_is_sse_with_ordered_events(chat: TestClient) -> None:
 
 def test_busy_thread_is_409_and_others_are_unaffected(chat: TestClient, app: FastAPI) -> None:
     threads: ThreadStore = app.state.threads
-    threads.claim("t1")
+    asyncio.run(threads.claim("t1"))
     assert _post(chat, "t1").status_code == 409
     assert _post(chat, "t2").status_code == 200
-    threads.release("t1")
+    asyncio.run(threads.release("t1"))
     assert _post(chat, "t1").status_code == 200
 
 
@@ -69,7 +75,7 @@ def test_thread_is_released_after_the_turn(chat: TestClient) -> None:
 def test_reset_clears_history_and_refuses_while_busy(chat: TestClient, app: FastAPI) -> None:
     _post(chat)
     assert chat.delete("/api/v1/chat/threads/t1", headers=OWN).status_code == 204
-    app.state.threads.claim("t1")
+    asyncio.run(app.state.threads.claim("t1"))
     assert chat.delete("/api/v1/chat/threads/t1", headers=OWN).status_code == 409
 
 

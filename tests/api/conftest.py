@@ -14,7 +14,7 @@ from api.dependencies import get_service_keys
 from api.main import create_app
 from app.key_vault import default_service_keys
 from config.ui import UiSettings, get_ui_settings
-from tests.fakes import FakeCredentialStore
+from tests.fakes import FakeCredentialStore, InMemoryThreadStore
 
 ORIGIN = "http://127.0.0.1:8000"
 
@@ -31,7 +31,7 @@ def settings(tmp_path: Path) -> UiSettings:
 
 @pytest.fixture
 def app(store: FakeCredentialStore, settings: UiSettings) -> FastAPI:
-    api = create_app(settings)
+    api = create_app(settings, threads=InMemoryThreadStore())
     keys = default_service_keys(store)
     api.dependency_overrides[get_service_keys] = lambda: keys
     return api
@@ -41,9 +41,3 @@ def app(store: FakeCredentialStore, settings: UiSettings) -> FastAPI:
 def client(app: FastAPI) -> Iterator[TestClient]:
     with TestClient(app, base_url=ORIGIN, raise_server_exceptions=False) as test_client:
         yield test_client
-
-
-@pytest.fixture
-def anyio_backend() -> str:
-    """Run async tests (``pytest.mark.anyio``) on asyncio only; trio is not used."""
-    return "asyncio"

@@ -6,7 +6,7 @@ import asyncio
 import io
 import logging
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import date
 
 import pytest
@@ -31,12 +31,14 @@ from api.schemas.chat import (
 from api.services.agent_runner import NO_KEY_MESSAGE, AgentRuntime, ModelFactory, run_turn
 from api.services.threads import ThreadStore
 from app.key_vault import ServiceKeys, default_service_keys
+from app.usage_meter import CallUsage
 from config.ui import ModelPrice
 from tests.fakes import (
     CENSUS_ENTRY,
     COMPTOX_ENTRY,
     OPENAI_ENTRY,
     FakeCredentialStore,
+    InMemoryThreadStore,
     ScriptedChatModel,
     reply,
     scripted,
@@ -66,7 +68,7 @@ async def _run(
     events = run_turn(
         ChatRequest(thread_id=thread_id, message=message),
         keys=_keys(store, with_key=with_key),
-        threads=threads or ThreadStore(),
+        threads=threads or InMemoryThreadStore(),
         runtime=AgentRuntime(build_model, 10),
     )
     return [event async for event in events]
@@ -148,7 +150,7 @@ async def test_failure_mid_run_still_finishes_the_stream() -> None:
 
 
 async def test_follow_up_turn_sees_the_earlier_history() -> None:
-    threads = ThreadStore()
+    threads = InMemoryThreadStore()
     model = scripted("first answer", "second answer")
     store = FakeCredentialStore()
     await _run("one", store, _factory(model), threads)
@@ -175,7 +177,7 @@ async def test_tools_see_the_turns_key_and_it_is_cleared_after(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("agent.graph.get_all_tools", lambda: [probe_key])
-    threads = ThreadStore()
+    threads = InMemoryThreadStore()
     await _run("go", FakeCredentialStore(), _factory(_calling_probe()), threads)
     saved = threads.checkpointer.get_tuple({"configurable": {"thread_id": "t1"}})
     assert saved is not None
@@ -187,7 +189,7 @@ async def test_tools_see_the_turns_key_and_it_is_cleared_after(
 
 async def test_concurrent_turns_keep_their_own_keys(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("agent.graph.get_all_tools", lambda: [probe_key])
-    threads = ThreadStore()
+    threads = InMemoryThreadStore()
     seen: dict[str, str] = {}
 
     async def turn(thread_id: str, key: str) -> None:
@@ -239,7 +241,7 @@ async def _tool_events(
     run = run_turn(
         ChatRequest(thread_id="t1", message="go"),
         keys=_keys(FakeCredentialStore()),
-        threads=ThreadStore(),
+        threads=InMemoryThreadStore(),
         runtime=AgentRuntime(_factory(model), 10, labels),
     )
     return [event async for event in run]
@@ -329,7 +331,7 @@ async def test_usage_is_reported_for_every_model_call_of_the_turn(
         usage_metadata=reply("", 100, 20, cached=40).usage_metadata,
     )
     model = ScriptedChatModel([call, reply("done", 150, 30)])
-    usage = await _usage_run(model, ThreadStore())
+    usage = await _usage_run(model, InMemoryThreadStore())
     assert (usage.turn.calls, usage.turn.input_tokens, usage.turn.output_tokens) == (2, 250, 50)
     assert usage.turn.cached_input_tokens == 40
     assert usage.turn.complete is True
@@ -340,15 +342,15 @@ async def test_usage_is_reported_for_every_model_call_of_the_turn(
 
 
 async def test_session_totals_add_up_and_a_reset_clears_them() -> None:
-    threads = ThreadStore()
+    threads = InMemoryThreadStore()
     model = ScriptedChatModel([reply("one", 100, 10), reply("two", 200, 20)])
     first = await _usage_run(model, threads)
     second = await _usage_run(model, threads)
     assert second.turn.input_tokens == 200
     assert second.session.input_tokens == first.turn.input_tokens + 200 == 300
     assert second.session.calls == 2
-    threads.reset("t1")
-    assert threads.session_calls("t1") == []
+    await threads.reset("t1")
+    assert await threads.session_calls("t1") == []
 
 
 async def test_a_failed_turn_still_reports_the_calls_it_made(
@@ -360,13 +362,13 @@ async def test_a_failed_turn_still_reports_the_calls_it_made(
         tool_calls=[ToolCall(name="probe_key", args={}, id="c1")],
         usage_metadata=reply("", 100, 20).usage_metadata,
     )
-    usage = await _usage_run(ScriptedChatModel([call]), ThreadStore())  # the 2nd call fails
+    usage = await _usage_run(ScriptedChatModel([call]), InMemoryThreadStore())  # the 2nd call fails
     assert usage.turn.calls == 1
     assert usage.turn.input_tokens == 100
 
 
 async def test_a_model_that_reports_no_usage_makes_the_turn_incomplete() -> None:
-    usage = await _usage_run(scripted("answer"), ThreadStore())
+    usage = await _usage_run(scripted("answer"), InMemoryThreadStore())
     assert usage.turn.calls == 1
     assert usage.turn.complete is False
     assert usage.turn.cost_status == "lower_bound"
@@ -383,7 +385,7 @@ async def test_an_unpriced_model_still_reports_tokens() -> None:
     run = run_turn(
         ChatRequest(thread_id="t1", message="go"),
         keys=_keys(FakeCredentialStore()),
-        threads=ThreadStore(),
+        threads=InMemoryThreadStore(),
         runtime=AgentRuntime(_factory(ScriptedChatModel([reply("a", 5, 6)])), 10, model_name="x"),
     )
     usage = next(e for e in [event async for event in run] if isinstance(e, Usage))
@@ -431,7 +433,7 @@ async def _probe_turn(
     threads: ThreadStore | None = None,
 ) -> dict[str, str]:
     monkeypatch.setattr("agent.graph.get_all_tools", lambda: [probe_census, probe_comptox])
-    threads = threads or ThreadStore()
+    threads = threads or InMemoryThreadStore()
     run = run_turn(
         ChatRequest(thread_id="t1", message="go"),
         keys=default_service_keys(store),
@@ -496,7 +498,7 @@ async def test_concurrent_turns_keep_their_own_service_keys(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr("agent.graph.get_all_tools", lambda: [probe_census, probe_comptox])
-    threads = ThreadStore()
+    threads = InMemoryThreadStore()
     seen: dict[str, str] = {}
 
     async def turn(thread_id: str, census: str) -> None:
@@ -546,7 +548,7 @@ async def _guarded_turn(model: ScriptedChatModel, message: str = "hello") -> lis
     run = run_turn(
         ChatRequest(thread_id="t1", message=message),
         keys=_keys(FakeCredentialStore()),
-        threads=ThreadStore(),
+        threads=InMemoryThreadStore(),
         runtime=_guarded(model),
     )
     return [event async for event in run]
@@ -660,3 +662,25 @@ async def test_an_unknown_failure_is_still_generic_with_a_traceback(
         == "Something went wrong. Try again."
     )
     assert "RuntimeError" in caplog.text
+
+
+class _DatabaseDown(InMemoryThreadStore):
+    """A store whose database stops answering when the turn records its usage."""
+
+    async def add_usage(self, thread_id: str, calls: Sequence[CallUsage]) -> None:
+        raise OSError("connection to the database refused")
+
+
+async def test_a_database_failure_after_the_turn_ends_with_the_generic_error() -> None:
+    run = run_turn(
+        ChatRequest(thread_id="t1", message="go"),
+        keys=_keys(FakeCredentialStore()),
+        threads=_DatabaseDown(),
+        runtime=AgentRuntime(_factory(scripted("answer")), 10, model_name="m", pricing=PRICING),
+    )
+    events = [event async for event in run]
+    assert [e.type for e in events[-2:]] == ["error", "turn_finished"]
+    error = events[-2]
+    assert isinstance(error, ErrorEvent)
+    assert "refused" not in error.message
+    assert error.correlation_id

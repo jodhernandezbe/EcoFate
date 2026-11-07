@@ -79,9 +79,6 @@ overview_default_share = 0.4
 overview_min_share = 0.15
 overview_max_share = 0.75
 
-[ui.threads]
-max_retained = 5
-
 [ui.report]
 title = "Title"
 disclaimer = "Disclaimer"
@@ -151,7 +148,6 @@ def test_values(tmp_path: Path) -> None:
     assert settings.display.suggestions == ("first", "second")
     assert (settings.layout.rail.collapsed_px, settings.layout.chat.min_px) == (60, 280)
     assert settings.layout.overview.default_share == 0.4
-    assert settings.max_threads == 5
     price = settings.pricing["model-a"]
     assert (price.input_usd_per_mtok, price.priced_on) == (1.5, date(2026, 1, 2))
 
@@ -250,8 +246,6 @@ def test_unpriced_when_pricing_empty(tmp_path: Path) -> None:
         ("chat_default_share", "chat_default_share = 0.6", "chat_default_share"),
         ("overview_min_share", "overview_min_share = 0.5", "ui.layout.overview"),
         ("overview_max_share", "overview_max_share = 0", "ui.layout.overview_max_share"),
-        ("max_retained", "max_retained = 0", "ui.threads.max_retained"),
-        ("max_retained", "max_retained = true", "ui.threads.max_retained"),
         ("input_usd_per_mtok", "input_usd_per_mtok = -1", "input_usd_per_mtok"),
         ("output_usd_per_mtok", "output_usd_per_mtok = true", "output_usd_per_mtok"),
         ("cached_input_usd_per_mtok", 'cached_input_usd_per_mtok = "1"', "cached_input"),
@@ -262,6 +256,17 @@ def test_unpriced_when_pricing_empty(tmp_path: Path) -> None:
 def test_invalid_entry(tmp_path: Path, line_start: str, new_line: str, key: str) -> None:
     with pytest.raises(ValueError, match=key):
         load_ui_settings(_replace(tmp_path, line_start, new_line))
+
+
+@pytest.mark.parametrize("old", ["max_threads = 5\n", "[ui.threads]\nmax_retained = 5\n"])
+def test_removed_thread_limit_is_rejected(tmp_path: Path, old: str) -> None:
+    text = UI.replace("[ui.report]", "[ui.report]", 1)
+    if old.startswith("max_threads"):
+        text = text.replace("max_key_length = 64\n", "max_key_length = 64\n" + old, 1)
+    else:
+        text = text.replace("[ui.report]", old + "\n[ui.report]", 1)
+    with pytest.raises(ValueError, match=r"database\.thread_retention_days"):
+        load_ui_settings(_write(tmp_path, text))
 
 
 def test_missing_section(tmp_path: Path) -> None:

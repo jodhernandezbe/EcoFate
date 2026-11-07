@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import zipfile
 from collections.abc import Iterator
 from io import BytesIO
@@ -39,7 +40,7 @@ def _threads(app: FastAPI) -> ThreadStore:
 def _assessed_thread(chat: TestClient, app: FastAPI, thread: str = "t1") -> None:
     body = {"thread_id": thread, "message": "assess"}
     assert chat.post("/api/v1/chat/stream", json=body, headers=OWN).status_code == 200
-    _threads(app).set_workspace(thread, assessed())
+    asyncio.run(_threads(app).set_workspace(thread, assessed()))
 
 
 def _refuse_model(app: FastAPI) -> None:
@@ -80,7 +81,7 @@ def test_unknown_thread_is_a_generic_404(chat: TestClient) -> None:
 def test_empty_thread_is_409(chat: TestClient, app: FastAPI) -> None:
     body = {"thread_id": "t1", "message": "hello"}
     chat.post("/api/v1/chat/stream", json=body, headers=OWN)
-    _threads(app).set_workspace("t1", WorkspaceState())
+    asyncio.run(_threads(app).set_workspace("t1", WorkspaceState()))
     response = chat.get(URL.format("t1"), headers=OWN)
     assert response.status_code == 409
     assert set(response.json()) == {"error", "correlation_id"}
@@ -89,10 +90,10 @@ def test_empty_thread_is_409(chat: TestClient, app: FastAPI) -> None:
 def test_running_thread_is_409_and_left_running(chat: TestClient, app: FastAPI) -> None:
     _assessed_thread(chat, app)
     threads = _threads(app)
-    threads.claim("t1")
+    asyncio.run(threads.claim("t1"))
     assert chat.get(URL.format("t1"), headers=OWN).status_code == 409
-    assert threads.running("t1")
-    threads.release("t1")
+    assert asyncio.run(threads.running("t1"))
+    asyncio.run(threads.release("t1"))
 
 
 def test_malformed_id_is_422(chat: TestClient) -> None:

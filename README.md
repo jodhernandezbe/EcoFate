@@ -19,6 +19,7 @@ The intended tool flow for an assessment is: chemical properties -> emissions in
 The quickest way to see the app: no Python or Node needed, only Docker (Docker Desktop on macOS or Windows).
 
     cp .env.example .env          # then put your OpenAI key in OPENAI_API_KEY (Census and CompTox keys too, for complete assessments)
+                                  # and a long random POSTGRES_PASSWORD (letters and digits)
     docker compose up --build     # first build takes several minutes
     # open http://127.0.0.1:8000
 
@@ -41,9 +42,14 @@ The `Makefile` is the index of everyday commands (`make help` lists them):
 | `make check` | everything pre-commit enforces: lint, pyright, bandit, function length, tests, frontend check |
 | `make eval` | agent evaluations on recorded tool outputs (OpenAI key, costs tokens) |
 | `make catalogue` | every catalogue question through the live agent (OpenAI key, costs tokens) |
-| `make migrate` | apply database migrations (nothing to migrate until PostgreSQL arrives) |
+| `make migrate` | apply the database migrations (`python -m storage upgrade` in the one-shot `migrate` service) |
+| `make db` | start only PostgreSQL, published on `127.0.0.1:5432` (native runs and `make test-db`) |
+| `make test-db` | run the PostgreSQL tests (`pytest -m postgres`) against the `db` service |
+| `make psql` | open a `psql` shell in the `db` service |
 
-`GET /api/health` answers `{"status": "ok"}` while the server is up; the container health check uses it.
+The stack has three services: `db` (PostgreSQL 16, data in the `pgdata` volume, not published to the host), `migrate` (applies the schema, then exits) and `api`, which starts only after `migrate` succeeded. `.env` sets `POSTGRES_USER`, `POSTGRES_PASSWORD` and `POSTGRES_DB`; compose builds the services' `DATABASE_URL` from them. `docker compose down -v` deletes the database volume (every conversation).
+
+`GET /api/health` answers `{"status": "ok"}` only while the server is up and PostgreSQL answers, and 503 `{"status": "unavailable"}` otherwise; the container health check uses it.
 
 ## Quick start (local development with uv)
 
@@ -79,8 +85,11 @@ A local split-screen app: the assessment overview and facility map on the left, 
 
 ```bash
 npm --prefix frontend ci && npm --prefix frontend run build   # once, and after frontend changes
+make db && make migrate                                        # PostgreSQL on 127.0.0.1:5432 (Docker)
 uv run python -m api                                           # http://127.0.0.1:8000
 ```
+
+The web program needs PostgreSQL: it reads the connection URL from `DATABASE_URL` (in `.env`, see `.env.example`) and refuses to start when it is missing, unreachable or not migrated, naming `make migrate`. The command line (`python -m app`) does not need a database.
 
 For frontend work with hot reload, run `uv run python -m api` in one terminal and `npm --prefix frontend run dev` in another, then open http://localhost:5173.
 
@@ -161,7 +170,18 @@ The code is split into packages with one-way dependencies: `agent` -> `tools` ->
       emissions/             inventory.py, industry.py, process.py, stack.py, rag/, helpers/
       exposure/              meteorology.py, population.py, metrics.py, helpers/
       http.py, digits.py     shared by the tool folders (retrying JSON client, digit-string ids)
+    storage/                 PostgreSQL for the web program: engine.py, tables.py, migrations/ (Alembic),
+                             codec.py (rows <-> types, fail closed), threads.py (PostgresThreadStore)
     tests/                   pytest suite, mirrors the package layout
+
+### Conversation storage (PostgreSQL)
+
+The web program keeps every conversation in PostgreSQL, so a thread survives a restart and any process connected to the same database can serve its next turn:
+
+- **What is stored:** the message history (LangGraph checkpoints, in tables the checkpoint library manages), the session's token usage, the tool calls and results the dashboard is rebuilt from, the latest workspace, an open confirmation request, and the values the user supplied or declined. Every row has a `user_id` column, empty until accounts exist.
+- **One turn at a time:** a turn claims its thread with a lease (`[database].turn_lease_seconds`); a second turn on the same thread is answered 409, and a crashed process's lease expires.
+- **Retention:** threads idle for `[database].thread_retention_days` are deleted with their history by a purge that runs every `[database].purge_interval_minutes`; a running thread is never purged.
+- **Where it runs:** the `db` compose service, locally and on the server. The schema changes only through Alembic migrations (`make migrate`); the web program never migrates by itself. Settings live in `[database]` in `config/settings.toml`; the URL, which carries the password, only in the environment.
 
 ### Tools
 
@@ -227,3 +247,12 @@ Tool names must be unique; the registry raises `ValueError` on duplicates.
     uv run pre-commit run --all-files
 
 Pre-commit runs on every commit: file hygiene, ruff (lint + format), `uv lock` check, detect-secrets, strict pyright, bandit (security lint) and pytest. If detect-secrets flags a false positive, review it and update the baseline with `uv run detect-secrets scan > .secrets.baseline` (after checking the diff). Dependency CVEs: `uv run pip-audit`.
+
+## License and citation
+
+EcoFate is released under the [Apache License 2.0](LICENSE): anyone may use, modify and
+redistribute it, including commercially, provided they keep the copyright and [NOTICE](NOTICE)
+files and state their changes. If you use EcoFate, build on it or publish work that relies on it,
+please credit the author and cite it with [CITATION.cff](CITATION.cff) (GitHub's "Cite this
+repository" button). Third-party data and models keep their own licences; the MolDeBERTa model
+used by the read-across tool is CC BY-NC-ND 4.0 (non-commercial only).

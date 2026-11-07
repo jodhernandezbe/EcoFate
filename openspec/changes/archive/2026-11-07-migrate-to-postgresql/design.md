@@ -41,8 +41,11 @@ everywhere", "Code layout", "Configuration and secrets"). What shapes the approa
 
 1. **SQLAlchemy 2.0 async + psycopg 3 + Alembic in a new `storage/` package.** The engine is
    created once per process (`storage.engine.create_engine(url, settings)`) and injected;
-   repositories take an `async_sessionmaker`. `storage/` imports only `config` and `commons`;
-   `api` imports `storage`; nothing in `agent/`, `tools/` or `models/` does. Alternatives:
+   repositories take an `async_sessionmaker`. `storage/` imports `config` and `commons`, plus
+   types only from `app.usage_meter` (`CallUsage`) and `tools.schemas` (`ConfirmationRequest`)
+   so the store returns the program's own types (decided during implementation; the workspace
+   model still comes in as a parameter because `storage` never imports `api`); `api` imports
+   `storage`; nothing in `agent/`, `tools/` or `models/` does. Alternatives:
    raw psycopg (rejected: hand-written migrations and row mapping); SQLModel (rejected: an
    extra layer over SQLAlchemy with weaker typing in strict pyright); sync SQLAlchemy in a
    thread pool (rejected: the runner is async end to end).
@@ -103,6 +106,9 @@ everywhere", "Code layout", "Configuration and secrets"). What shapes the approa
    "unavailable"}` on failure (no exception text). Migrations never run implicitly in the web
    process; compose runs a one-shot `migrate` service (`python -m storage upgrade`) that `api`
    depends on with `service_completed_successfully`.
+   Compose cannot publish a service's port only under a profile, so the `dev` profile adds a
+   small `db-port` forwarder (`alpine/socat`, `127.0.0.1:5432` -> `db:5432`); `db` itself is
+   never published.
 9. **Secrets and logs.** `.env.example` gains `POSTGRES_USER`, `POSTGRES_PASSWORD`,
    `POSTGRES_DB` and `DATABASE_URL` placeholders (compose builds the URL for the services).
    `commons/key_patterns.py` adds a pattern that masks the password of

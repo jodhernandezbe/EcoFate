@@ -33,19 +33,19 @@ class ReportFile:
     content: bytes
 
 
-def _state(threads: ThreadStore, thread_id: str) -> WorkspaceState:
-    if not threads.holds(thread_id):
+async def _state(threads: ThreadStore, thread_id: str) -> WorkspaceState:
+    if not await threads.holds(thread_id):
         raise ReportUnavailable(404, NOT_HELD)
-    if threads.running(thread_id):
+    if await threads.running(thread_id):
         raise ReportUnavailable(409, RUNNING)
-    threads.touch(thread_id)
-    state = threads.workspace(thread_id) or WorkspaceState()
+    await threads.touch(thread_id)
+    state = await threads.workspace(thread_id) or WorkspaceState()
     if not has_findings(state):
         raise ReportUnavailable(409, NOTHING)
     return state
 
 
-def thread_report(
+async def thread_report(
     threads: ThreadStore,
     thread_id: str,
     settings: UiSettings,
@@ -57,7 +57,7 @@ def thread_report(
         ReportUnavailable: 404 when the thread is not held, 409 while it runs a turn or when it
             has nothing to report.
     """
-    state = _state(threads, thread_id)
+    state = await _state(threads, thread_id)
     ctx = report_context(settings)
-    content = build_report(state, last_answer(threads.messages(thread_id)), ctx, when)
+    content = build_report(state, last_answer(await threads.messages(thread_id)), ctx, when)
     return ReportFile(name=file_name(state, ctx, when), content=content)

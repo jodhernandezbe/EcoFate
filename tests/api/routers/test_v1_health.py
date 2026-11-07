@@ -11,7 +11,7 @@ from api.services.agent_runner import AgentRuntime
 from app.key_vault import default_service_keys
 from config.ui import UiSettings
 from tests.api.conftest import ORIGIN
-from tests.fakes import FakeCredentialStore
+from tests.fakes import FakeCredentialStore, InMemoryThreadStore
 
 
 def test_health_answers_ok_without_keys_or_model(
@@ -34,7 +34,7 @@ def test_health_answers_ok_without_keys_or_model(
 
 def test_health_answers_when_the_keychain_is_unavailable(settings: UiSettings) -> None:
     failing = FakeCredentialStore(fail=True)
-    api = create_app(settings)
+    api = create_app(settings, threads=InMemoryThreadStore())
     keys = default_service_keys(failing)
     api.dependency_overrides[get_service_keys] = lambda: keys
     with TestClient(api, base_url=ORIGIN) as client:
@@ -48,3 +48,14 @@ def test_health_refuses_a_foreign_host(client: TestClient) -> None:
 
 def test_container_bind_address_is_not_an_accepted_host(client: TestClient) -> None:
     assert client.get("/api/health", headers={"Host": "0.0.0.0:8000"}).status_code == 403
+
+
+async def _down() -> bool:
+    return False
+
+
+def test_health_is_503_unavailable_when_the_database_does_not_answer(settings: UiSettings) -> None:
+    api = create_app(settings, threads=InMemoryThreadStore(), health_check=_down)
+    with TestClient(api, base_url=ORIGIN) as client:
+        response = client.get("/api/health")
+    assert (response.status_code, response.json()) == (503, {"status": "unavailable"})

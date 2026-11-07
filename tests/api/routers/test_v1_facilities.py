@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -10,6 +12,7 @@ from api.services.state_serializer import build_workspace
 from api.services.threads import ThreadStore
 from tests.api.conftest import ORIGIN
 from tests.api.services.projectors.factories import RULES, inventory, record
+from tests.fakes import InMemoryThreadStore
 
 
 def _client(app: FastAPI, threads: ThreadStore) -> TestClient:
@@ -18,8 +21,8 @@ def _client(app: FastAPI, threads: ThreadStore) -> TestClient:
 
 
 def _threads_with_facility() -> ThreadStore:
-    threads = ThreadStore()
-    threads.set_workspace("t1", build_workspace(inventory(record("A")), RULES))
+    threads = InMemoryThreadStore()
+    asyncio.run(threads.set_workspace("t1", build_workspace(inventory(record("A")), RULES)))
     return threads
 
 

@@ -204,7 +204,6 @@ class UiSettings:
         thresholds: Risk status thresholds.
         display: Digits, breakpoint and suggestion chips.
         layout: Workspace layout limits.
-        max_threads: Most conversation threads held in memory.
         pricing: Chat model name -> token prices.
         report: Fixed text of the Word assessment report.
         exposure_graph: Fixed text and units of the exposure chain graph.
@@ -222,7 +221,6 @@ class UiSettings:
     thresholds: RiskThresholds
     display: Display
     layout: Layout
-    max_threads: int
     pricing: Mapping[str, ModelPrice]
     report: ReportSettings
     exposure_graph: GraphText
@@ -441,9 +439,13 @@ def _layout(table: dict[str, object]) -> Layout:
     return Layout(rail=_rail(sub, name), chat=_chat(sub, name), overview=_overview(sub, name))
 
 
-def _max_threads(table: dict[str, object]) -> int:
-    name = f"{_NAME}.threads"
-    return require_int(subtable(table, "threads", _NAME), "max_retained", minimum=1, name=name)
+def _reject_removed_thread_limit(table: dict[str, object]) -> None:
+    """The in-memory thread maximum is gone; retention is a ``[database]`` setting."""
+    if "max_threads" in table or "threads" in table:
+        raise ValueError(
+            f"{_NAME}.threads / {_NAME}.max_threads were removed; "
+            "set database.thread_retention_days instead",
+        )
 
 
 def _priced_on(sub: dict[str, object], name: str) -> date:
@@ -501,6 +503,7 @@ def load_ui_settings(path: Path | None = None) -> UiSettings:
         ValueError: If a key is missing or invalid; the message names the key.
     """
     table = section(read_toml(path), _NAME)
+    _reject_removed_thread_limit(table)
     return UiSettings(
         **_addresses(table),
         frontend_dist=project_path(table, "frontend_dist", _NAME),
@@ -512,7 +515,6 @@ def load_ui_settings(path: Path | None = None) -> UiSettings:
         thresholds=_thresholds(table),
         display=_display(table),
         layout=_layout(table),
-        max_threads=_max_threads(table),
         pricing=_pricing(table),
         report=parse_report(table),
         exposure_graph=parse_exposure_graph(table),

@@ -34,7 +34,7 @@ ENV PATH="/app/.venv/bin:${PATH}" \
     PYTHON_KEYRING_BACKEND=keyring.backends.fail.Keyring
 WORKDIR /app
 COPY --from=deps /app/.venv /app/.venv
-COPY pyproject.toml ./
+COPY pyproject.toml LICENSE NOTICE ./
 COPY agent/ agent/
 COPY api/ api/
 COPY app/ app/
@@ -42,6 +42,8 @@ COPY commons/ commons/
 COPY config/ config/
 COPY models/ models/
 COPY prompts/ prompts/
+COPY storage/ storage/
+COPY alembic.ini ./
 COPY tools/ tools/
 COPY data/ data/
 COPY --from=frontend /src/frontend/dist frontend/dist

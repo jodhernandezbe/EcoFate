@@ -48,7 +48,7 @@ async def _frames(
         async for event in run_turn(body, keys=keys, threads=threads, runtime=runtime, plan=plan):
             yield encode_event(event)
     finally:
-        threads.release(body.thread_id)
+        await threads.release(body.thread_id)
 
 
 @router.post("/stream")
@@ -59,13 +59,16 @@ async def chat_stream(
     runtime: Annotated[AgentRuntime, Depends(get_runtime)],
 ) -> StreamingResponse:
     """Run one turn of ``thread_id`` and stream its events."""
-    if not threads.claim(body.thread_id):
+    if not await threads.claim(body.thread_id):
         raise HTTPException(status_code=409, detail=BUSY)
     try:
-        plan = plan_turn(body, threads)
+        plan = await plan_turn(body, threads)
     except ConfirmationError as error:
-        threads.release(body.thread_id)
+        await threads.release(body.thread_id)
         raise HTTPException(status_code=error.status, detail=error.detail) from error
+    except BaseException:
+        await threads.release(body.thread_id)
+        raise
     return StreamingResponse(
         _frames(body, keys, threads, runtime, plan),
         media_type="text/event-stream",
@@ -75,27 +78,27 @@ async def chat_stream(
 
 
 @router.get("/threads/{thread_id}")
-def get_thread(
+async def get_thread(
     thread_id: ThreadId,
     threads: Annotated[ThreadStore, Depends(get_threads)],
     settings: Annotated[UiSettings, Depends(get_settings)],
 ) -> ThreadSnapshot:
     """A held thread's messages, workspace and usage, so the interface can resume it."""
-    snapshot = thread_snapshot(threads, thread_id, settings.pricing)
+    snapshot = await thread_snapshot(threads, thread_id, settings.pricing)
     if snapshot is None:
         raise HTTPException(status_code=404, detail=UNKNOWN)
     return snapshot
 
 
 @router.get("/threads/{thread_id}/report", response_class=Response, responses=REPORT_RESPONSES)
-def get_report(
+async def get_report(
     thread_id: ThreadId,
     threads: Annotated[ThreadStore, Depends(get_threads)],
     settings: Annotated[UiSettings, Depends(get_settings)],
 ) -> Response:
     """A held thread's findings as a Word report; never runs the agent or a tool."""
     try:
-        report = thread_report(threads, thread_id, settings, datetime.now().astimezone())
+        report = await thread_report(threads, thread_id, settings, datetime.now().astimezone())
     except ReportUnavailable as error:
         raise HTTPException(status_code=error.status, detail=error.detail) from error
     disposition = f'attachment; filename="{report.name}"'
@@ -107,11 +110,11 @@ def get_report(
 
 
 @router.delete("/threads/{thread_id}", status_code=204)
-def reset_thread(
+async def reset_thread(
     thread_id: ThreadId,
     threads: Annotated[ThreadStore, Depends(get_threads)],
 ) -> Response:
     """Forget a thread's history (new assessment)."""
-    if not threads.reset(thread_id):
+    if not await threads.reset(thread_id):
         raise HTTPException(status_code=409, detail=BUSY)
     return Response(status_code=204)

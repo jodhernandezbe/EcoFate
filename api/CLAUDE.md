@@ -8,13 +8,22 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
 - Layering: `routers/` (thin handlers, no logic) -> `services/` (orchestration: agent runner,
   state serializer, threads, usage) -> the agent core. `core/` holds config view, keyring,
   log redaction and exception handlers; `schemas/` holds every wire model.
-- Allowed imports: `app`, `agent`, `config`, `commons`, `prompts`, `tools.schemas` (types
+- Allowed imports: `app`, `agent`, `config`, `commons`, `prompts`, `storage`, `tools.schemas` (types
   only) and `tools.credentials` (to give the turn's keys to the tools that need them). Never import tool modules, provider packages or `evals`; nothing imports `api`.
 - Settings come from `[ui]` in `config/settings.toml` via `config.ui`; `api/core/config.py`
   only exposes them to `Depends()`. Never read ports, origins or names from the environment.
   The container bind address comes only from `[ui.container]`, used when `python -m api
   --container` runs; the origin checks always use `[ui].host:[ui].port`, whatever is bound.
-  `GET /api/health` (liveness for container health checks) reads no key and runs no agent.
+  `GET /api/health` (container health checks) answers `ok` only when the database answers
+  `SELECT 1` within `[database].health_timeout_seconds`, else 503 `unavailable`; it reads no
+  key and runs no agent.
+- Threads (history, usage, tool messages, workspace, pending request, answers) live in
+  PostgreSQL behind the `services/threads.ThreadStore` protocol (`storage.threads` in
+  production, `tests/fakes.InMemoryThreadStore` in tests). Never hold thread state on the app
+  object or in module globals: another process may serve the next turn. Every store call is
+  awaited; a turn claims its thread (409 when busy) and releases it on every path.
+  `services/database.py` opens the database in the lifespan and refuses to start without a
+  migrated one; tests pass `create_app(..., threads=InMemoryThreadStore())` and never touch it.
 - The chat model is built only through `app.chat_model`. The OpenAI, Census and CompTox keys
   are read once per turn from `app.key_vault.ServiceKeys`, given to the tools through
   `tools.credentials.HOLDERS` for that turn only, protected from the logs, and never stored on

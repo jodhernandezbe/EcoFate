@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use EcoFate or build on it, please cite it as below."
+title: "EcoFate: screening-level chemical exposure and risk assessments"
+type: software
+authors:
+  - family-names: "Hernandez-Betancur"
+    given-names: "Jose"
+repository-code: "https://github.com/jodhernandezbe/EcoFate"
+license: Apache-2.0
+version: "0.1.0"
+date-released: "2026-11-07"
+keywords:
+  - chemical exposure
+  - risk assessment
+  - Toxics Release Inventory
+  - LangGraph
+  - LLM agent

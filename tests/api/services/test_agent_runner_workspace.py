@@ -12,7 +12,7 @@ from api.services.agent_runner import AgentRuntime, run_turn
 from api.services.threads import ThreadStore
 from app.key_vault import default_service_keys
 from tests.api.services.projectors.factories import RULES, record
-from tests.fakes import OPENAI_ENTRY, FakeCredentialStore, ScriptedChatModel
+from tests.fakes import OPENAI_ENTRY, FakeCredentialStore, InMemoryThreadStore, ScriptedChatModel
 
 pytestmark = pytest.mark.anyio
 
@@ -80,7 +80,7 @@ def _updates(events: list[StreamEvent]) -> list[WorkspaceUpdate]:
 
 
 async def test_a_workspace_update_follows_the_tool_results(monkeypatch: pytest.MonkeyPatch) -> None:
-    events = await _turn(monkeypatch, _model("query_emissions_inventory"), ThreadStore())
+    events = await _turn(monkeypatch, _model("query_emissions_inventory"), InMemoryThreadStore())
     (update,) = _updates(events)
     assert [f.frs_id for f in update.state.facilities] == ["A", "B"]
     assert update.state.framing_version == 1
@@ -94,19 +94,19 @@ async def test_a_workspace_update_follows_the_tool_results(monkeypatch: pytest.M
 
 
 async def test_the_workspace_is_kept_for_the_thread(monkeypatch: pytest.MonkeyPatch) -> None:
-    threads = ThreadStore()
+    threads = InMemoryThreadStore()
     await _turn(monkeypatch, _model("query_emissions_inventory"), threads)
-    kept = threads.workspace("t1")
+    kept = await threads.workspace("t1")
     assert kept is not None and len(kept.facilities) == 2
-    assert len(threads.tool_messages("t1")) == 2
-    assert threads.reset("t1")
-    assert threads.workspace("t1") is None and threads.tool_messages("t1") == []
+    assert len(await threads.tool_messages("t1")) == 2
+    assert await threads.reset("t1")
+    assert await threads.workspace("t1") is None and await threads.tool_messages("t1") == []
 
 
 async def test_a_failed_tool_changes_nothing_and_sends_no_update(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    events = await _turn(monkeypatch, _model("get_population_receptors"), ThreadStore())
+    events = await _turn(monkeypatch, _model("get_population_receptors"), InMemoryThreadStore())
     assert all(e.state.facilities == [] for e in _updates(events))
     assert len(_updates(events)) <= 1
 
@@ -115,7 +115,7 @@ async def test_without_workspace_rules_no_update_is_sent(monkeypatch: pytest.Mon
     events = await _turn(
         monkeypatch,
         _model("query_emissions_inventory"),
-        ThreadStore(),
+        InMemoryThreadStore(),
         with_rules=False,
     )
     assert _updates(events) == []
@@ -125,6 +125,6 @@ async def test_a_batch_of_parallel_tools_sends_one_update(monkeypatch: pytest.Mo
     events = await _turn(
         monkeypatch,
         _model("query_emissions_inventory", "get_population_receptors"),
-        ThreadStore(),
+        InMemoryThreadStore(),
     )
     assert len(_updates(events)) == 1

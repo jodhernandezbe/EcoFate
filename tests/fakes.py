@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import json
 import re
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from keyring.errors import KeyringError, PasswordDeleteError
@@ -13,7 +15,12 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, AIMessageChunk, BaseMessage, UsageMetadata
 from langchain_core.outputs import ChatGeneration, ChatGenerationChunk, ChatResult
 from langchain_core.runnables import Runnable, RunnableLambda
+from langgraph.checkpoint.memory import InMemorySaver
 from pydantic import PrivateAttr
+
+from api.schemas.workspace import WorkspaceState
+from app.usage_meter import CallUsage
+from tools.schemas import ConfirmationRequest
 
 
 class FakeCredentialStore:
@@ -203,3 +210,144 @@ def verdict(
 def completion_verdict(complete: bool, reason: str = "") -> AIMessage:
     """A scripted reviewer answer: the JSON the completion check parses."""
     return AIMessage(content=json.dumps({"complete": complete, "reason": reason}))
+
+
+def _utc_now() -> datetime:
+    return datetime.now(UTC)
+
+
+@dataclass
+class _ThreadRow:
+    last_used_at: datetime
+    busy_until: datetime | None = None
+
+
+class InMemoryThreadStore:
+    """The ``ThreadStore`` contract in process memory, for unit tests.
+
+    Honours the same rules as ``storage.threads.PostgresThreadStore``: a claim takes a lease
+    that expires, a supplied value is never replaced and beats a decline, ``reset`` and
+    ``purge_idle`` skip a running thread. ``clock`` lets a test move time.
+    """
+
+    def __init__(
+        self,
+        *,
+        lease: timedelta = timedelta(minutes=10),
+        clock: Callable[[], datetime] = _utc_now,
+    ) -> None:
+        self.checkpointer = InMemorySaver()
+        self._lease = lease
+        self._clock = clock
+        self._rows: dict[str, _ThreadRow] = {}
+        self._usage: dict[str, list[CallUsage]] = {}
+        self._tool_messages: dict[str, list[BaseMessage]] = {}
+        self._workspaces: dict[str, WorkspaceState] = {}
+        self._pending: dict[str, ConfirmationRequest] = {}
+        self._answers: dict[str, dict[str, float | None]] = {}
+
+    def _row(self, thread_id: str) -> _ThreadRow:
+        return self._rows.setdefault(thread_id, _ThreadRow(self._clock()))
+
+    def _busy(self, thread_id: str) -> bool:
+        row = self._rows.get(thread_id)
+        return row is not None and row.busy_until is not None and row.busy_until > self._clock()
+
+    async def claim(self, thread_id: str) -> bool:
+        if self._busy(thread_id):
+            return False
+        row = self._row(thread_id)
+        row.busy_until = self._clock() + self._lease
+        row.last_used_at = self._clock()
+        return True
+
+    async def release(self, thread_id: str) -> None:
+        if thread_id in self._rows:
+            self._rows[thread_id].busy_until = None
+
+    async def touch(self, thread_id: str) -> None:
+        self._row(thread_id).last_used_at = self._clock()
+
+    async def holds(self, thread_id: str) -> bool:
+        return thread_id in self._rows
+
+    async def running(self, thread_id: str) -> bool:
+        return self._busy(thread_id)
+
+    async def messages(self, thread_id: str) -> list[BaseMessage]:
+        found = self.checkpointer.get_tuple({"configurable": {"thread_id": thread_id}})
+        if found is None:
+            return []
+        return list(found.checkpoint["channel_values"].get("messages", []))
+
+    async def add_usage(self, thread_id: str, calls: Sequence[CallUsage]) -> None:
+        self._row(thread_id)
+        self._usage.setdefault(thread_id, []).extend(calls)
+
+    async def session_calls(self, thread_id: str) -> list[CallUsage]:
+        return list(self._usage.get(thread_id, []))
+
+    async def add_tool_messages(self, thread_id: str, messages: Sequence[BaseMessage]) -> None:
+        self._row(thread_id)
+        self._tool_messages.setdefault(thread_id, []).extend(messages)
+
+    async def tool_messages(self, thread_id: str) -> list[BaseMessage]:
+        return list(self._tool_messages.get(thread_id, []))
+
+    async def workspace(self, thread_id: str) -> WorkspaceState | None:
+        return self._workspaces.get(thread_id)
+
+    async def set_workspace(self, thread_id: str, state: WorkspaceState) -> None:
+        self._row(thread_id)
+        self._workspaces[thread_id] = state
+
+    async def pending(self, thread_id: str) -> ConfirmationRequest | None:
+        return self._pending.get(thread_id)
+
+    async def set_pending(self, thread_id: str, request: ConfirmationRequest | None) -> None:
+        if request is None:
+            self._pending.pop(thread_id, None)
+            return
+        self._row(thread_id)
+        self._pending[thread_id] = request
+
+    async def answers(self, thread_id: str) -> tuple[dict[str, float], frozenset[str]]:
+        stored = self._answers.get(thread_id, {})
+        supplied = {key: value for key, value in stored.items() if value is not None}
+        return supplied, frozenset(key for key, value in stored.items() if value is None)
+
+    async def record_answers(
+        self,
+        thread_id: str,
+        supplied: Mapping[str, float],
+        declined: Iterable[str],
+    ) -> None:
+        self._row(thread_id)
+        stored = self._answers.setdefault(thread_id, {})
+        for key in declined:
+            stored.setdefault(key, None)
+        for key, value in supplied.items():
+            if stored.get(key) is None:
+                stored[key] = value
+
+    def _forget(self, thread_id: str) -> None:
+        self.checkpointer.delete_thread(thread_id)
+        for table in (self._rows, self._usage, self._tool_messages, self._workspaces):
+            table.pop(thread_id, None)
+        self._pending.pop(thread_id, None)
+        self._answers.pop(thread_id, None)
+
+    async def reset(self, thread_id: str) -> bool:
+        if self._busy(thread_id):
+            return False
+        self._forget(thread_id)
+        return True
+
+    async def purge_idle(self, older_than: timedelta) -> list[str]:
+        cutoff = self._clock() - older_than
+        stale = [
+            t for t, row in self._rows.items() if row.last_used_at < cutoff and not self._busy(t)
+        ]
+        for thread_id in stale:
+            self._forget(thread_id)
+        return stale

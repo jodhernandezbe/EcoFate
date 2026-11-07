@@ -67,3 +67,9 @@ def exporter(monitoring: telemetry_settings.TelemetrySettings) -> Iterator[TestE
     telemetry._otel_client.cache_clear()  # pyright: ignore[reportPrivateUsage]
     yield memory
     telemetry._otel_client.cache_clear()  # pyright: ignore[reportPrivateUsage]
+
+
+@pytest.fixture
+def anyio_backend() -> str:
+    """Run async tests (``pytest.mark.anyio``) on asyncio only; trio is not used."""
+    return "asyncio"

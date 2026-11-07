@@ -273,14 +273,14 @@ def _callbacks(runtime: AgentRuntime, recorder: UsageRecorder) -> list[BaseCallb
     return [recorder, *([tracer] if tracer is not None else [])]
 
 
-def _run_config(
+async def _run_config(
     request: ChatRequest,
     threads: ThreadStore,
     runtime: AgentRuntime,
     recorder: UsageRecorder,
 ) -> RunnableConfig:
     """The run configuration: the thread, its answers for the tools, and the recorder."""
-    supplied, declined = threads.answers(request.thread_id)
+    supplied, declined = await threads.answers(request.thread_id)
     return {
         "recursion_limit": runtime.recursion_limit,
         "configurable": {
@@ -291,7 +291,7 @@ def _run_config(
     }
 
 
-def _confirmation_events(
+async def _confirmation_events(
     payload: object,
     request: ChatRequest,
     threads: ThreadStore,
@@ -306,7 +306,7 @@ def _confirmation_events(
     if not isinstance(pending, dict):
         return []
     request_data = cast(ConfirmationRequest, pending)
-    threads.set_pending(request.thread_id, request_data)
+    await threads.set_pending(request.thread_id, request_data)
     question = ask_text(request_data)
     return [
         AssistantMessage(seq=seq.next(), text=question),
@@ -324,10 +324,10 @@ async def _agent_events(
     plan: TurnPlan,
 ) -> AsyncGenerator[StreamEvent]:
     agent = _build(model, threads, runtime)
-    config = _run_config(request, threads, runtime, recorder)
-    supplied, _ = threads.answers(request.thread_id)
+    config = await _run_config(request, threads, runtime, recorder)
+    supplied, _ = await threads.answers(request.thread_id)
     if supplied:  # the user's answers show on the card now, not only once a tool runs again
-        for event in _rebuild(request, threads, runtime, seq):
+        for event in await _rebuild(request, threads, runtime, seq):
             yield event
     inputs: AgentState = {
         "messages": [HumanMessage(content=plan.message)],
@@ -337,9 +337,9 @@ async def _agent_events(
         for event in _translate(mode, payload, seq, runtime.step_labels):
             yield event
         if mode == "updates":
-            for event in _workspace_events(payload, request, threads, runtime, seq):
+            for event in await _workspace_events(payload, request, threads, runtime, seq):
                 yield event
-            for event in _confirmation_events(payload, request, threads, seq):
+            for event in await _confirmation_events(payload, request, threads, seq):
                 yield event
 
 
@@ -352,7 +352,7 @@ def _tool_messages(update: Mapping[str, object]) -> list[BaseMessage]:
     return [*calls, *results]
 
 
-def _workspace_events(
+async def _workspace_events(
     payload: object,
     request: ChatRequest,
     threads: ThreadStore,
@@ -363,13 +363,13 @@ def _workspace_events(
     messages = _tool_messages(cast(Mapping[str, object], payload))
     if runtime.workspace_rules is None or not messages:
         return []
-    threads.add_tool_messages(request.thread_id, messages)
+    await threads.add_tool_messages(request.thread_id, messages)
     if not any(isinstance(m, ToolMessage) for m in messages):
         return []
-    return _rebuild(request, threads, runtime, seq)
+    return await _rebuild(request, threads, runtime, seq)
 
 
-def _rebuild(
+async def _rebuild(
     request: ChatRequest,
     threads: ThreadStore,
     runtime: AgentRuntime,
@@ -378,17 +378,17 @@ def _rebuild(
     """Rebuild the workspace from the tool messages and the user's answers, if it changed."""
     if runtime.workspace_rules is None:
         return []
-    previous = threads.workspace(request.thread_id)
-    supplied, _ = threads.answers(request.thread_id)
+    previous = await threads.workspace(request.thread_id)
+    supplied, _ = await threads.answers(request.thread_id)
     state = build_workspace(
-        threads.tool_messages(request.thread_id),
+        await threads.tool_messages(request.thread_id),
         runtime.workspace_rules,
         previous,
         supplied,
     )
     if state == previous:
         return []
-    threads.set_workspace(request.thread_id, state)
+    await threads.set_workspace(request.thread_id, state)
     return [WorkspaceUpdate(seq=seq.next(), state=state)]
 
 
@@ -396,7 +396,7 @@ def _error(seq: EventSequence, message: str) -> ErrorEvent:
     return ErrorEvent(seq=seq.next(), message=message, correlation_id=new_correlation_id())
 
 
-def _usage_event(
+async def _usage_event(
     seq: EventSequence,
     request: ChatRequest,
     threads: ThreadStore,
@@ -404,8 +404,8 @@ def _usage_event(
     recorder: UsageRecorder,
     span: SessionSpan,
 ) -> Usage:
-    threads.add_usage(request.thread_id, recorder.calls)
-    session_calls = threads.session_calls(request.thread_id)
+    await threads.add_usage(request.thread_id, recorder.calls)
+    session_calls = await threads.session_calls(request.thread_id)
     span.record_usage(recorder.calls, runtime.pricing)
     span.record_usage(session_calls, runtime.pricing, session=True)
     return Usage(
@@ -483,5 +483,25 @@ async def _turn_events(
     except Exception as error:
         span.fail()
         yield _failure(seq, error)
-    yield _usage_event(seq, request, threads, runtime, recorder, span)
+    async for event in _closing_events(seq, request, threads, runtime, recorder, span):
+        yield event
+
+
+async def _closing_events(
+    seq: EventSequence,
+    request: ChatRequest,
+    threads: ThreadStore,
+    runtime: AgentRuntime,
+    recorder: UsageRecorder,
+    span: SessionSpan,
+) -> AsyncGenerator[StreamEvent]:
+    """``usage`` then ``turn_finished``; a store failure here (the database is down) becomes the
+    generic error event instead of ``usage``, and the turn still finishes."""
+    try:
+        usage = await _usage_event(seq, request, threads, runtime, recorder, span)
+    except Exception as error:
+        span.fail()
+        yield _failure(seq, error)
+    else:
+        yield usage
     yield TurnFinished(seq=seq.next())

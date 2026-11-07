@@ -18,6 +18,7 @@ from api.core.logging_filter import (
     redact,
     uvicorn_log_config,
 )
+from tests.fakes import InMemoryThreadStore
 
 KEY = "sk-proj-" + "a1B2c3D4e5" * 3  # pragma: allowlist secret
 
@@ -282,7 +283,18 @@ def test_keys_from_the_environment_are_protected_while_the_app_runs(
 
     monkeypatch.setenv("CENSUS_API_KEY", CENSUS)
     monkeypatch.setenv("COMPTOX_API_KEY", "ct0x-key-" + "9d" * 14)  # pragma: allowlist secret
-    with TestClient(create_app()):
+    with TestClient(create_app(threads=InMemoryThreadStore())):
         assert CENSUS not in redact(f"plain text {CENSUS} in a log")
         assert "ct0x-key-" not in redact("value ct0x-key-" + "9d" * 14)
     assert redact(f"plain text {CENSUS}") != "plain text " + LITERAL_REDACTED  # not after shutdown
+
+
+DATABASE_URL = "postgresql+psycopg://ecofate:s3cr3t@db:5432/ecofate"  # pragma: allowlist secret
+
+
+def test_a_database_password_never_reaches_a_log_line() -> None:
+    line = redact(f"connect failed: {DATABASE_URL}")
+    assert "s3cr3t" not in line
+    assert "postgresql+psycopg://ecofate:" in line
+    assert "@db:5432/ecofate" in line
+    assert redact(line) == line  # redacting twice is harmless

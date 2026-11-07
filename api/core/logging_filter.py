@@ -13,6 +13,7 @@ from typing import Any
 from commons.key_patterns import (
     ASSIGNMENT_PATTERN,
     BEARER_PATTERN,
+    DATABASE_URL_PATTERN,
     MASKED_KEY_PATTERN,
     QUERY_PATTERN,
     SECRET_PATTERN,
@@ -52,6 +53,7 @@ def protect_secrets(values: Iterable[str]) -> Generator[None]:
 
 def redact(text: str) -> str:
     """Return ``text`` with key-shaped substrings and protected values replaced."""
+    text = DATABASE_URL_PATTERN.sub(rf"\1{LITERAL_REDACTED}\3", text)
     text = BEARER_PATTERN.sub(rf"\1{LITERAL_REDACTED}", text)
     text = QUERY_PATTERN.sub(rf"\1{LITERAL_REDACTED}", text)
     text = ASSIGNMENT_PATTERN.sub(rf"\1\2{LITERAL_REDACTED}", text)

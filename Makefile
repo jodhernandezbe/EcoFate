@@ -1,14 +1,14 @@
 # EcoFate entry points. Each target only wraps commands documented in the README.
 # `make help` lists them.
 
-SOURCES := agent app api commons config evals models prompts tools
+SOURCES := agent app api commons config evals models prompts storage tools
 PYTHON_FILES = $(shell git ls-files $(foreach dir,$(SOURCES),'$(dir)/*.py'))
 WARM := from huggingface_hub import snapshot_download; \
 	from config.read_across import get_read_across_settings as settings; \
 	model = settings().model; snapshot_download(model.name, revision=model.revision)
 
 .DEFAULT_GOAL := help
-.PHONY: help up down build logs shell warm test lint check eval catalogue migrate
+.PHONY: help up down build logs shell warm test lint check eval catalogue migrate db test-db psql
 
 help: ## List the targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -51,5 +51,16 @@ eval: ## Agent evaluations on recorded tool outputs (OpenAI key, costs tokens)
 catalogue: ## Every catalogue question through the live agent (OpenAI key, costs tokens)
 	uv run python -m evals catalogue
 
-migrate: ## Apply database migrations (nothing to migrate until PostgreSQL arrives)
-	@echo "No database yet: nothing to migrate (added by migrate-to-postgresql)."
+migrate: ## Apply the database migrations (starts db if needed)
+	docker compose run --rm --build migrate
+
+db: ## Start only PostgreSQL, on 127.0.0.1:5432 (native runs and make test-db)
+	docker compose --profile dev up --detach --wait db db-port
+
+test-db: db ## Run the PostgreSQL tests (pytest -m postgres) against the db service
+	@set -a && . ./.env && set +a && \
+	ECOFATE_TEST_DATABASE_URL="$${ECOFATE_TEST_DATABASE_URL:-postgresql://$$POSTGRES_USER:$$POSTGRES_PASSWORD@127.0.0.1:5432/$$POSTGRES_DB}" \
+	uv run pytest -m postgres
+
+psql: ## Open a psql shell in the db service
+	docker compose exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'

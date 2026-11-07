@@ -19,7 +19,13 @@ from app.key_vault import default_service_keys
 from app.telemetry import flush_telemetry
 from config.telemetry import TelemetrySettings
 from tests.app.test_usage_meter import PRICING
-from tests.fakes import OPENAI_ENTRY, FakeCredentialStore, ScriptedChatModel, reply
+from tests.fakes import (
+    OPENAI_ENTRY,
+    FakeCredentialStore,
+    InMemoryThreadStore,
+    ScriptedChatModel,
+    reply,
+)
 
 pytestmark = pytest.mark.anyio
 KEY = "sk-proj-" + "k1L2m3N4o5" * 3  # pragma: allowlist secret
@@ -81,7 +87,7 @@ async def test_a_turn_is_one_span_tagged_with_the_thread_and_its_totals(
     exporter: TestExporter,
 ) -> None:
     model = ScriptedChatModel([reply("hello", 100, 20), reply("again", 50, 10)])
-    threads, runtime = ThreadStore(), _runtime(model, monitoring)
+    threads, runtime = InMemoryThreadStore(), _runtime(model, monitoring)
     await _run("Assess benzene", threads, runtime)
     await _run("And toluene?", threads, runtime)
     first, second = _turn_spans(exporter, monitoring)
@@ -106,7 +112,7 @@ async def test_a_missing_key_ends_the_turn_span_as_an_error(
     events = run_turn(
         ChatRequest(thread_id="t9", message="hi"),
         keys=default_service_keys(FakeCredentialStore()),  # no OpenAI key stored
-        threads=ThreadStore(),
+        threads=InMemoryThreadStore(),
         runtime=runtime,
     )
     assert [e.type for e in [e async for e in events]][-1] == "turn_finished"
@@ -119,7 +125,7 @@ async def test_a_model_failure_ends_the_turn_span_as_an_error(
     exporter: TestExporter,
 ) -> None:
     runtime = _runtime(ScriptedChatModel([]), monitoring)  # out of script: the model raises
-    await _run("hi", ThreadStore(), runtime)
+    await _run("hi", InMemoryThreadStore(), runtime)
     (span,) = _turn_spans(exporter, monitoring)
     assert (span.attributes or {})[monitoring.attributes.outcome] == "error"
 
@@ -135,7 +141,7 @@ async def test_tool_calls_nest_in_the_turn_trace(
         tool_calls=[ToolCall(name="lookup", args={"cas": "71-43-2"}, id="c")],
     )
     model = ScriptedChatModel([call, reply("done", 20, 2)])
-    await _run("Assess 71-43-2", ThreadStore(), _runtime(model, monitoring))
+    await _run("Assess 71-43-2", InMemoryThreadStore(), _runtime(model, monitoring))
     flush_telemetry(monitoring)
     (turn,) = _turn_spans(exporter, monitoring)
     tools = [s for s in exporter.exported_spans if (s.attributes or {}).get("gen_ai.tool.name")]
@@ -151,7 +157,7 @@ async def test_closing_the_stream_early_still_ends_the_span_cleanly(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     runtime = _runtime(ScriptedChatModel([reply("hello there", 10, 2)]), monitoring)
-    events = _turn("hi", ThreadStore(), runtime)
+    events = _turn("hi", InMemoryThreadStore(), runtime)
     with caplog.at_level(logging.WARNING):
         await events.__anext__()
         await events.aclose()

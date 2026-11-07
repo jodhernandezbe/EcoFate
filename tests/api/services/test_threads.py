@@ -1,75 +1,48 @@
-"""Tests for the in-memory thread store."""
+"""Time-dependent rules of the in-memory thread store (lease expiry, idle purge).
+
+The rest of the contract is in ``test_thread_store_contract.py``; the PostgreSQL versions of
+these rules are in ``tests/storage/test_postgres_threads.py``.
+"""
 
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
 
-from api.services.threads import ThreadStore
+from tests.fakes import InMemoryThreadStore
+
+pytestmark = pytest.mark.anyio
 
 
-def test_one_turn_at_a_time_per_thread() -> None:
-    threads = ThreadStore()
-    assert threads.claim("a") is True
-    assert threads.claim("a") is False
-    assert threads.claim("b") is True
-    threads.release("a")
-    assert threads.claim("a") is True
+class Clock:
+    def __init__(self) -> None:
+        self.now = datetime(2026, 1, 1, tzinfo=UTC)
+
+    def __call__(self) -> datetime:
+        return self.now
 
 
-def test_release_is_idempotent() -> None:
-    threads = ThreadStore()
-    threads.release("never-claimed")
-    assert threads.claim("x") is True
+async def test_an_expired_lease_can_be_claimed() -> None:
+    clock = Clock()
+    store = InMemoryThreadStore(lease=timedelta(minutes=5), clock=clock)
+    assert await store.claim("t")
+    clock.now += timedelta(minutes=4)
+    assert not await store.claim("t")
+    clock.now += timedelta(minutes=2)
+    assert not await store.running("t")
+    assert await store.claim("t")
 
 
-def test_reset_is_refused_while_busy() -> None:
-    threads = ThreadStore()
-    threads.claim("a")
-    assert threads.reset("a") is False
-    threads.release("a")
-    assert threads.reset("a") is True
-
-
-def test_least_recently_used_idle_thread_is_forgotten_past_the_limit() -> None:
-    threads = ThreadStore(max_threads=2)
-    for name in ("a", "b"):
-        threads.claim(name)
-        threads.release(name)
-    threads.touch("a")  # b is now the oldest
-    threads.claim("c")
-    assert (threads.holds("a"), threads.holds("b"), threads.holds("c")) == (True, False, True)
-
-
-def test_a_running_thread_is_never_forgotten() -> None:
-    threads = ThreadStore(max_threads=1)
-    threads.claim("a")
-    threads.claim("b")
-    assert threads.holds("a") and threads.holds("b")
-    threads.release("a")
-    threads.claim("c")
-    assert not threads.holds("a")
-
-
-def test_no_limit_keeps_every_thread() -> None:
-    threads = ThreadStore()
-    for name in "abcdef":
-        threads.claim(name)
-        threads.release(name)
-    assert all(threads.holds(name) for name in "abcdef")
-
-
-def test_reset_forgets_the_thread() -> None:
-    threads = ThreadStore()
-    threads.claim("a")
-    threads.release("a")
-    assert threads.reset("a") is True
-    assert threads.holds("a") is False
-
-
-def test_the_limit_must_be_positive() -> None:
-    with pytest.raises(ValueError, match="max_threads"):
-        ThreadStore(max_threads=0)
-
-
-def test_messages_of_an_unknown_thread_are_empty() -> None:
-    assert ThreadStore().messages("nope") == []
+async def test_purge_deletes_old_idle_threads_and_keeps_busy_and_recent_ones() -> None:
+    clock = Clock()
+    store = InMemoryThreadStore(lease=timedelta(days=60), clock=clock)
+    await store.touch("old")
+    await store.claim("old-busy")
+    clock.now += timedelta(days=40)
+    await store.touch("recent")
+    purged = await store.purge_idle(timedelta(days=30))
+    assert purged == ["old"]
+    assert not await store.holds("old")
+    assert await store.holds("old-busy")
+    assert await store.holds("recent")

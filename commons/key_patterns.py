@@ -22,6 +22,10 @@ ASSIGNMENT_PATTERN = re.compile(
     r"(?i)\b((?:x-)?api[_-]?key|access[_-]?token|auth[_-]?token|secret|password)"
     r"(['\"]?\s*[:=]\s*['\"]?)[^\s'\",})]{8,}",
 )
+# The password of a PostgreSQL URL (the part between "user:" and "@host"; scheme postgres,
+# postgresql or postgresql+driver); groups 1 and 3 (scheme and user, host onwards) stay. The
+# password runs to the last "@" before the host, so one containing "@" or ":" is masked whole.
+DATABASE_URL_PATTERN = re.compile(r"(postgres(?:ql)?(?:\+\w+)?://[^:/@\s]*:)(\S+)(@[^@/\s]+)")
 
 KEY_PATTERNS: tuple[re.Pattern[str], ...] = (
     SECRET_PATTERN,
@@ -29,4 +33,5 @@ KEY_PATTERNS: tuple[re.Pattern[str], ...] = (
     BEARER_PATTERN,
     QUERY_PATTERN,
     ASSIGNMENT_PATTERN,
+    DATABASE_URL_PATTERN,
 )

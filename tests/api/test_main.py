@@ -13,6 +13,7 @@ from api.main import _environment_keys, create_app  # pyright: ignore[reportPriv
 from config.telemetry import get_telemetry_settings
 from config.ui import UiSettings
 from tests.api.conftest import ORIGIN
+from tests.fakes import InMemoryThreadStore
 
 KEY = "sk-proj-" + "m3N4b5V6c7" * 3  # pragma: allowlist secret
 BODY = {"api_key": "sk-" + "a" * 20}  # pragma: allowlist secret
@@ -79,7 +80,7 @@ def test_frontend_is_served_when_built(settings: UiSettings, tmp_path: Path) -> 
     dist = tmp_path / "built"
     dist.mkdir()
     (dist / "index.html").write_text("<html>shell</html>")
-    app = create_app(replace(settings, frontend_dist=dist))
+    app = create_app(replace(settings, frontend_dist=dist), threads=InMemoryThreadStore())
     with TestClient(app, base_url=ORIGIN) as client:
         assert "shell" in client.get("/").text
         assert client.get("/api/v1/settings/openai-key").status_code == 200
@@ -92,3 +93,16 @@ def test_both_logfire_tokens_are_kept_out_of_the_logs(monkeypatch: pytest.Monkey
     protected = _environment_keys()
     assert "write-token-" + "w" * 20 in protected
     assert "read-token-" + "r" * 20 in protected
+
+
+@pytest.mark.anyio
+async def test_without_an_injected_store_start_up_needs_the_database_url(
+    settings: UiSettings,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    app = create_app(settings)
+    with pytest.raises(SystemExit) as stopped:
+        async with app.router.lifespan_context(app):
+            pytest.fail("must not serve")
+    assert "DATABASE_URL" in str(stopped.value.code)

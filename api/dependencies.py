@@ -101,7 +101,7 @@ def get_runtime() -> AgentRuntime:
 
 
 def get_threads(request: Request) -> ThreadStore:
-    """The in-memory thread store of this app."""
+    """The thread store of this app (PostgreSQL in production, a fake in tests)."""
     return cast(ThreadStore, request.app.state.threads)
 
 
