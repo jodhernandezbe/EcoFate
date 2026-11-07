@@ -3,8 +3,16 @@
 from __future__ import annotations
 
 import pytest
+from langgraph.errors import GraphRecursionError
 
-from app.turns.failures import FailureReason, KeysUnavailableError, classify, new_correlation_id
+from app.turns.failures import (
+    RESUMABLE_REASONS,
+    FailureReason,
+    KeysUnavailableError,
+    classify,
+    new_correlation_id,
+    resumable,
+)
 
 
 class ProviderError(Exception):
@@ -40,14 +48,15 @@ class ConnectTimeout(Exception):
         (ProviderError(403), FailureReason.FORBIDDEN),
         (ProviderError(500), FailureReason.PROVIDER_DOWN),
         (ProviderError(503), FailureReason.PROVIDER_DOWN),
-        (APIConnectionError(), FailureReason.UNREACHABLE),
-        (APITimeoutError(), FailureReason.UNREACHABLE),
-        (ConnectTimeout(), FailureReason.UNREACHABLE),
+        (APIConnectionError(), FailureReason.PROVIDER_DOWN),
+        (APITimeoutError(), FailureReason.PROVIDER_DOWN),
+        (ConnectTimeout(), FailureReason.PROVIDER_DOWN),
         (KeysUnavailableError(FailureReason.NO_KEY), FailureReason.NO_KEY),
         (
             KeysUnavailableError(FailureReason.KEYCHAIN_UNAVAILABLE),
             FailureReason.KEYCHAIN_UNAVAILABLE,
         ),
+        (GraphRecursionError("Recursion limit of 80 reached"), FailureReason.STEP_LIMIT),
         (RuntimeError("boom"), FailureReason.UNEXPECTED),
         (ProviderError(400), FailureReason.UNEXPECTED),
         (ProviderError(404), FailureReason.UNEXPECTED),
@@ -79,3 +88,33 @@ def test_a_code_on_the_exception_itself_counts() -> None:
 def test_correlation_ids_are_short_and_distinct() -> None:
     first, second = new_correlation_id(), new_correlation_id()
     assert len(first) == 12 and first != second
+
+
+@pytest.mark.parametrize(
+    ("reason", "expected"),
+    [
+        (FailureReason.OUT_OF_CREDITS, True),
+        (FailureReason.RATE_LIMITED, True),
+        (FailureReason.BAD_KEY, True),
+        (FailureReason.PROVIDER_DOWN, True),
+        (FailureReason.STEP_LIMIT, True),
+        (FailureReason.WORKER_LOST, True),
+        (FailureReason.FORBIDDEN, False),
+        (FailureReason.UNEXPECTED, False),
+        (FailureReason.SUPERSEDED, False),
+        (FailureReason.NO_KEY, False),
+        (FailureReason.KEYCHAIN_UNAVAILABLE, False),
+    ],
+)
+def test_only_fixable_reasons_are_resumable(reason: FailureReason, expected: bool) -> None:
+    assert resumable(reason) is expected
+
+
+def test_an_unknown_exception_is_unexpected_and_not_resumable() -> None:
+    class SomethingNew(Exception):
+        """No status, no code, no known name."""
+
+    reason = classify(SomethingNew("429 insufficient_quota rate limit"))  # text never counts
+    assert reason == FailureReason.UNEXPECTED
+    assert not resumable(reason)
+    assert reason not in RESUMABLE_REASONS

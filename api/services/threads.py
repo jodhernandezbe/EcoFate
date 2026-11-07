@@ -16,7 +16,41 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from api.schemas.workspace import WorkspaceState
 from app.usage_meter import CallUsage
+from storage.turn_model import Turn, TurnStatus
 from tools.schemas import ConfirmationRequest
+
+
+class TurnStore(Protocol):
+    """Every turn's durable status; at most one open (queued or running) turn per thread.
+
+    Honoured by ``storage.turns.TurnRepository`` and the in-memory fake in ``tests/fakes.py``.
+    """
+
+    async def begin(self, thread_id: str) -> Turn | None:
+        """Record a new running turn of the thread; None while the thread has an open turn."""
+        ...
+
+    async def resume(self, turn_id: str, max_resumes: int) -> Turn | None:
+        """Move an interrupted turn back to running, counting the resume; None (nothing
+        changed) when it is not interrupted, reached ``max_resumes`` or its thread is busy."""
+        ...
+
+    async def move(self, turn_id: str, target: TurnStatus, reason: str | None = None) -> Turn:
+        """Move a turn to ``target``; raises ``TurnTransitionError`` (nothing changed) when the
+        move is not allowed, ``ValueError`` when the reason does not fit the status."""
+        ...
+
+    async def abandon(self, turn_id: str, reason: str) -> bool:
+        """Interrupt the turn if it is still open; whether it was (safe to repeat)."""
+        ...
+
+    async def interrupt_open(self, reason: str, thread_id: str | None = None) -> list[str]:
+        """Interrupt every open turn (of one thread, when given); the threads they belong to."""
+        ...
+
+    async def latest(self, thread_id: str) -> Turn | None:
+        """The thread's most recent turn; None when it has none."""
+        ...
 
 
 class ThreadStore(Protocol):
@@ -25,6 +59,11 @@ class ThreadStore(Protocol):
     @property
     def checkpointer(self) -> BaseCheckpointSaver[str]:
         """Keeps each thread's messages; given to the agent."""
+        ...
+
+    @property
+    def turns(self) -> TurnStore:
+        """Every turn's status (the thread's lease is taken with ``claim`` first)."""
         ...
 
     async def claim(self, thread_id: str) -> bool:
@@ -51,12 +90,21 @@ class ThreadStore(Protocol):
         """The thread's conversation as of its last finished step (a copy)."""
         ...
 
-    async def add_usage(self, thread_id: str, calls: Sequence[CallUsage]) -> None:
-        """Add a finished turn's model calls to the thread's session usage."""
+    async def add_usage(
+        self,
+        thread_id: str,
+        calls: Sequence[CallUsage],
+        turn_id: str | None = None,
+    ) -> None:
+        """Add a finished turn's (or resumed segment's) model calls to the thread's usage."""
         ...
 
     async def session_calls(self, thread_id: str) -> list[CallUsage]:
         """Every model call of the thread so far (a copy)."""
+        ...
+
+    async def turn_calls(self, thread_id: str, turn_id: str) -> list[CallUsage]:
+        """Every model call of one turn, its resumed segments included (a copy)."""
         ...
 
     async def add_tool_messages(self, thread_id: str, messages: Sequence[BaseMessage]) -> None:

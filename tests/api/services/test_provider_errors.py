@@ -5,7 +5,8 @@ from __future__ import annotations
 import pytest
 
 from api.services import provider_errors as messages
-from api.services.provider_errors import explain
+from api.services.provider_errors import explain, interruption_message, message_for
+from app.turns import FailureReason
 
 
 class ProviderError(Exception):
@@ -63,7 +64,7 @@ def test_other_statuses(status: int, message: str) -> None:
 
 @pytest.mark.parametrize("error", [APIConnectionError(), APITimeoutError()])
 def test_network_failures(error: Exception) -> None:
-    assert explain(error) == messages.UNREACHABLE
+    assert explain(error) == messages.PROVIDER_DOWN  # unreachable is a provider failure too
 
 
 @pytest.mark.parametrize(
@@ -92,3 +93,33 @@ def test_a_malformed_body_does_not_break_it() -> None:
     assert explain(error) == messages.RATE_LIMITED
     error.body = {"error": "just text"}
     assert explain(error) == messages.RATE_LIMITED
+
+
+@pytest.mark.parametrize(
+    ("reason", "message"),
+    [
+        (FailureReason.OUT_OF_CREDITS, messages.OUT_OF_CREDITS),
+        (FailureReason.RATE_LIMITED, messages.RATE_LIMITED),
+        (FailureReason.BAD_KEY, messages.BAD_KEY),
+        (FailureReason.PROVIDER_DOWN, messages.PROVIDER_DOWN),
+        (FailureReason.STEP_LIMIT, messages.STEP_LIMIT),
+        (FailureReason.WORKER_LOST, messages.WORKER_LOST),
+    ],
+)
+def test_each_interruption_says_what_to_do_before_resuming(
+    reason: FailureReason,
+    message: str,
+) -> None:
+    assert interruption_message(reason, resumable=True) == message
+    assert "Resume" in message
+
+
+def test_an_interruption_that_cannot_be_resumed_says_to_send_a_new_message() -> None:
+    message = interruption_message(FailureReason.OUT_OF_CREDITS, resumable=False)
+    assert message == messages.NOT_RESUMABLE
+    assert "Resume" not in message.replace("resumed", "")
+
+
+def test_the_step_limit_is_not_a_provider_failure() -> None:
+    assert message_for(FailureReason.STEP_LIMIT) == messages.STEP_LIMIT
+    assert message_for(FailureReason.UNEXPECTED) == messages.GENERIC_ERROR

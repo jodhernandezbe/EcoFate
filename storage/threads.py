@@ -29,6 +29,7 @@ from storage.tables import (
     thread_workspaces,
     threads,
 )
+from storage.turns import TurnRepository
 from tools.schemas import ConfirmationRequest
 
 Sessions = async_sessionmaker[AsyncSession]
@@ -61,6 +62,7 @@ class PostgresThreadStore[WorkspaceT: BaseModel]:
         workspace_model: type[WorkspaceT],
     ) -> None:
         self.checkpointer = checkpointer
+        self.turns = TurnRepository(sessions)
         self._sessions = sessions
         self._lease = timedelta(seconds=settings.turn_lease_seconds)
         self._workspace_model = workspace_model
@@ -157,19 +159,32 @@ class PostgresThreadStore[WorkspaceT: BaseModel]:
         top = select(func.coalesce(func.max(table.c.seq), -1)).where(_of(thread_id, table))
         return int((await session.execute(top)).scalar_one()) + 1
 
-    async def add_usage(self, thread_id: str, calls: Sequence[CallUsage]) -> None:
-        """Add a finished turn's model calls to the thread's session usage."""
+    async def add_usage(
+        self,
+        thread_id: str,
+        calls: Sequence[CallUsage],
+        turn_id: str | None = None,
+    ) -> None:
+        """Add a finished turn's (or resumed segment's) model calls to the thread's usage."""
         if not calls:
             return
         async with self._sessions.begin() as session:
             first = await self._next_seq(session, thread_usage, thread_id)
             rows = [
-                _usage_row(thread_id, first + offset, call) for offset, call in enumerate(calls)
+                _usage_row(thread_id, first + offset, call) | {"turn_id": turn_id}
+                for offset, call in enumerate(calls)
             ]
             await session.execute(insert(thread_usage), rows)
 
     async def session_calls(self, thread_id: str) -> list[CallUsage]:
         """Every model call of the thread so far; rows that do not decode are left out."""
+        return await self._calls(thread_id, None)
+
+    async def turn_calls(self, thread_id: str, turn_id: str) -> list[CallUsage]:
+        """Every model call of one turn, its resumed segments included; bad rows left out."""
+        return await self._calls(thread_id, turn_id)
+
+    async def _calls(self, thread_id: str, turn_id: str | None) -> list[CallUsage]:
         columns = thread_usage.c
         statement = (
             select(
@@ -181,6 +196,8 @@ class PostgresThreadStore[WorkspaceT: BaseModel]:
             .where(_of(thread_id, thread_usage))
             .order_by(columns.seq)
         )
+        if turn_id is not None:
+            statement = statement.where(columns.turn_id == turn_id)
         async with self._sessions() as session:
             rows = (await session.execute(statement)).all()
         decoded = (codec.usage_from_row(thread_id, *row) for row in rows)

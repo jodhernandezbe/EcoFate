@@ -9,9 +9,10 @@ from langchain_core.messages import AIMessage, BaseMessage, ToolCall
 from langchain_core.tools import tool
 
 from api.schemas.chat import ChatRequest, ErrorEvent
-from api.services.agent_runner import AgentRuntime, run_turn
+from api.services.agent_runner import AgentRuntime
 from app.key_vault import default_service_keys
 from tests.api.services.projectors.factories import RULES
+from tests.api.streams import begun_turn
 from tests.fakes import OPENAI_ENTRY, FakeCredentialStore, InMemoryThreadStore, ScriptedChatModel
 
 pytestmark = pytest.mark.anyio
@@ -42,7 +43,7 @@ async def test_a_store_failure_while_presenting_is_the_turns_failure(
     model = ScriptedChatModel([call, AIMessage(content="never")])
     store = FakeCredentialStore()
     store.entries[OPENAI_ENTRY] = KEY
-    run = run_turn(
+    run = begun_turn(
         ChatRequest(thread_id="p1", message="go"),
         keys=default_service_keys(store),
         threads=_ToolStoreDown(),

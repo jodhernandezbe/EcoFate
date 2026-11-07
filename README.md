@@ -96,6 +96,7 @@ For frontend work with hot reload, run `uv run python -m api` in one terminal an
 The left rail has four entries:
 
 - **Workspace**: the analysis view.
+- **Resume**: when a turn stops for a reason you can fix (your OpenAI account ran out of credits, the key was rejected, OpenAI rate-limited or failed, the run reached its step limit, or the server stopped mid-turn), the chat keeps the partial answer and tool steps and says why, with a **Resume** button (and **Open Settings** for a rejected key). Resume continues from the last finished step: your message is not sent again and finished tool calls do not run again, and the usage of both parts counts as one turn. A turn can be resumed up to `[agent].max_resumes_per_turn` times (3 by default); sending a new message instead abandons the stopped turn. Unexpected errors are not resumable.
 - **Clear workspace**: asks first, then discards the conversation, overview, charts and map (on the server too).
 - **Generate report**: downloads a Word document laid out like an EPA screening-level assessment (summary, chemical properties, data sources, releases, exposure, risk, uncertainties, and the assistant's last answer labelled as model-generated). Every value in it comes from the dashboard.
 - **Monitoring**: lists recorded agent sessions (see [Monitoring](#monitoring)).
@@ -186,6 +187,7 @@ The web program keeps every conversation in PostgreSQL, so a thread survives a r
 
 - **What is stored:** the message history (LangGraph checkpoints, in tables the checkpoint library manages), the session's token usage, the tool calls and results the dashboard is rebuilt from, the latest workspace, an open confirmation request, and the values the user supplied or declined. Every row has a `user_id` column, empty until accounts exist.
 - **One turn at a time:** a turn claims its thread with a lease (`[database].turn_lease_seconds`); a second turn on the same thread is answered 409, and a crashed process's lease expires.
+- **Turn status:** every turn has a row in `turns` (`running`, `interrupted`, `completed` or `failed`, with its reason, resume count and times); at most one turn per thread is open (a partial unique index). At start-up, turns a stopped server left running become `interrupted` (`worker_lost`) so they can be resumed.
 - **Retention:** threads idle for `[database].thread_retention_days` are deleted with their history by a purge that runs every `[database].purge_interval_minutes`; a running thread is never purged.
 - **Where it runs:** the `db` compose service, locally and on the server. The schema changes only through Alembic migrations (`make migrate`); the web program never migrates by itself. Settings live in `[database]` in `config/settings.toml`; the URL, which carries the password, only in the environment.
 

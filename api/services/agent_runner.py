@@ -9,15 +9,15 @@ bookkeeping in the ``ThreadStore`` is done.
 
 from __future__ import annotations
 
-import uuid
+import logging
 from collections.abc import AsyncGenerator, Callable, Mapping, Sequence
 from contextlib import aclosing
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import Literal
+from typing import Literal, cast
 
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import BaseMessage
+from langchain_core.messages import BaseMessage, HumanMessage
 from pydantic import SecretStr
 
 from agent.completion import CompletionGuard
@@ -28,20 +28,23 @@ from api.schemas.chat import (
     ChatRequest,
     ErrorEvent,
     GuardrailPivotResponse,
+    InterruptionReason,
     ScopeDecision,
     StreamEvent,
     Token,
     ToolStatus,
     TurnFinished,
+    TurnInterrupted,
     TurnStarted,
     Usage,
     WorkspaceUpdate,
 )
 from api.services.confirmation import TurnPlan, request_event
 from api.services.projectors.rules import WorkspaceRules
-from api.services.provider_errors import NO_KEY_MESSAGE, message_for
+from api.services.provider_errors import NO_KEY_MESSAGE, interruption_message, message_for
 from api.services.state_serializer import build_workspace
 from api.services.threads import ThreadStore
+from api.services.turn_lifecycle import can_resume
 from api.services.usage_meter import summarize
 from app.key_vault import ServiceKeys
 from app.turns import (
@@ -60,17 +63,31 @@ from app.turns import (
     TurnEvent,
     TurnFailed,
     TurnRequest,
+    TurnSegment,
     TurnServices,
     TurnSettings,
     TurnUsage,
     execute_turn,
     load_turn_keys,
+    pending_steps,
+    resumable,
 )
 from app.usage_meter import CallUsage
 from config.telemetry import TelemetrySettings
 from config.ui import ModelPrice
+from storage.turn_model import Turn, TurnStatus, TurnTransitionError
 
-__all__ = ["NO_KEY_MESSAGE", "AgentRuntime", "EventSequence", "ModelFactory", "run_turn"]
+__all__ = [
+    "NO_KEY_MESSAGE",
+    "AgentRuntime",
+    "EventSequence",
+    "ModelFactory",
+    "resume_steps",
+    "run_resume",
+    "run_turn",
+]
+
+logger = logging.getLogger(__name__)
 
 ModelFactory = Callable[[SecretStr], BaseChatModel]
 
@@ -90,6 +107,8 @@ class AgentRuntime:
         system_prompt: The agent's system prompt; None keeps the standard one.
         workspace_rules: Builds the workspace sent after each tool batch; None sends none.
         telemetry: Monitoring settings; each turn is then recorded as a trace. None records none.
+        max_resumes_per_turn: How many times one interrupted turn may be resumed
+            (``[agent].max_resumes_per_turn``; the default serves tests only).
     """
 
     build_model: ModelFactory
@@ -102,6 +121,7 @@ class AgentRuntime:
     system_prompt: str | None = None
     workspace_rules: WorkspaceRules | None = None
     telemetry: TelemetrySettings | None = None
+    max_resumes_per_turn: int = 3
 
     def turn_settings(self) -> TurnSettings:
         """The runner's view of these settings (everything but presentation)."""
@@ -129,14 +149,28 @@ class EventSequence:
         return number
 
 
+@dataclass
+class _Outcome:
+    """Whether the turn being presented stopped before its answer."""
+
+    stopped: bool = False
+
+
 @dataclass(frozen=True)
 class _Turn:
-    """One turn being presented: its thread, where its bookkeeping goes and how it is shown."""
+    """One turn being presented: its record, where its bookkeeping goes and how it is shown."""
 
-    thread_id: str
+    record: Turn
     threads: ThreadStore
     runtime: AgentRuntime
+    resumed: bool = False
     seq: EventSequence = field(default_factory=EventSequence)
+    outcome: _Outcome = field(default_factory=_Outcome)
+
+    @property
+    def thread_id(self) -> str:
+        """The turn's thread."""
+        return self.record.thread_id
 
 
 async def run_turn(
@@ -145,26 +179,84 @@ async def run_turn(
     keys: ServiceKeys,
     threads: ThreadStore,
     runtime: AgentRuntime,
+    turn: Turn,
     plan: TurnPlan | None = None,
 ) -> AsyncGenerator[StreamEvent]:
-    """Run one turn and yield its events; always ends with ``usage`` and ``turn_finished``.
+    """Run one turn (its record ``turn`` is running) and yield its events; always ends with
+    ``usage`` and ``turn_finished``.
 
     Each tool call becomes a started and a finished ``tool_status`` event carrying the
     configured label (the tool name when none is configured), never the tool's payload.
-    ``usage`` reports the tokens and estimated cost of every model call of the turn and of
-    the thread so far, even when the turn failed.
+    ``usage`` reports the tokens and estimated cost of every model call of the turn (its resumed
+    segments included) and of the thread so far, even when the turn failed.
 
-    Failures become one ``error`` event: a user-facing message for a missing key or keychain or
-    a known provider failure (no credits, a refused key, a rate limit, no connection), otherwise
-    a generic message (the details are logged, redacted, under the same id).
+    A failure the user can fix (no credits, a refused key, a rate limit, the provider down, the
+    step limit) interrupts the turn: one ``turn_interrupted`` event with its reason and fixed
+    message, and the record becomes ``interrupted``. Any other failure becomes one ``error``
+    event (a fixed message for a missing key or a refused account, otherwise a generic one with
+    the id the details were logged under) and the record becomes ``failed``.
     """
-    turn = _Turn(request.thread_id, threads, runtime)
     chosen = plan or TurnPlan(message=request.message, note="")
-    events = execute_turn(
-        TurnRequest(request.thread_id, request.message, chosen.message, chosen.note),
-        _services(keys, threads, runtime, request.thread_id),
-        runtime.turn_settings(),
+    turn_request = TurnRequest(
+        request.thread_id,
+        request.message,
+        chosen.message,
+        chosen.note,
+        segment=TurnSegment(turn.id, turn.resume_count),
     )
+    presented = _present_turn(turn_request, keys, _Turn(turn, threads, runtime))
+    async with aclosing(
+        presented,
+    ) as events:  # closed here, in this context, when the client leaves
+        async for event in events:
+            yield event
+
+
+async def run_resume(
+    *,
+    keys: ServiceKeys,
+    threads: ThreadStore,
+    runtime: AgentRuntime,
+    turn: Turn,
+) -> AsyncGenerator[StreamEvent]:
+    """Continue the interrupted ``turn`` (now running again) from its last checkpoint; the
+    events are those of ``run_turn``, starting with ``turn_started`` marked as resumed."""
+    messages = await threads.messages(turn.thread_id)
+    question = next((m.text for m in reversed(messages) if isinstance(m, HumanMessage)), "")
+    turn_request = TurnRequest(
+        turn.thread_id,
+        question,
+        "",
+        resume=True,
+        segment=TurnSegment(turn.id, turn.resume_count),
+    )
+    presented = _present_turn(turn_request, keys, _Turn(turn, threads, runtime, resumed=True))
+    async with aclosing(
+        presented,
+    ) as events:  # closed here, in this context, when the client leaves
+        async for event in events:
+            yield event
+
+
+async def resume_steps(
+    thread_id: str,
+    *,
+    keys: ServiceKeys,
+    threads: ThreadStore,
+    runtime: AgentRuntime,
+) -> tuple[str, ...]:
+    """What the thread's last checkpoint would run next; raises ``KeysUnavailableError``."""
+    services = _services(keys, threads, runtime, thread_id, turn_id=None)
+    return await pending_steps(thread_id, services, runtime.turn_settings())
+
+
+async def _present_turn(
+    request: TurnRequest,
+    keys: ServiceKeys,
+    turn: _Turn,
+) -> AsyncGenerator[StreamEvent]:
+    services = _services(keys, turn.threads, turn.runtime, turn.thread_id, turn.record.id)
+    events = execute_turn(request, services, turn.runtime.turn_settings())
     async with aclosing(_relay(events, turn)) as relayed:  # closed here when the client leaves
         async for event in relayed:
             yield event
@@ -175,11 +267,12 @@ def _services(
     threads: ThreadStore,
     runtime: AgentRuntime,
     thread_id: str,
+    turn_id: str | None,
 ) -> TurnServices:
     """The runner's collaborators: this turn's keys, model factory and the thread's store."""
 
     async def record_usage(calls: Sequence[CallUsage]) -> Sequence[CallUsage]:
-        await threads.add_usage(thread_id, calls)
+        await threads.add_usage(thread_id, calls, turn_id)
         return await threads.session_calls(thread_id)
 
     return TurnServices(
@@ -234,8 +327,50 @@ async def _bookkeeping(event: TurnEvent, turn: _Turn) -> list[StreamEvent] | Non
             await turn.threads.set_pending(turn.thread_id, pending)
             question = AssistantMessage(seq=turn.seq.next(), text=ask_text(pending))
             return [question, request_event(turn.seq.next(), pending)]
+        case TurnFailed() | TurnUsage() | TurnDone():
+            return await _closing(event, turn)
         case _:
             return None
+
+
+async def _closing(event: TurnFailed | TurnUsage | TurnDone, turn: _Turn) -> list[StreamEvent]:
+    """A failure, the usage and the end: the turn's record is updated on the way."""
+    match event:
+        case TurnFailed():
+            return [await _stopped(event, turn)]
+        case TurnUsage():
+            return [await _usage(event, turn)]
+        case TurnDone():
+            if not turn.outcome.stopped:
+                await _move(turn, TurnStatus.COMPLETED)
+            return [TurnFinished(seq=turn.seq.next())]
+
+
+async def _stopped(event: TurnFailed, turn: _Turn) -> StreamEvent:
+    """Interrupt the turn for a reason the user can fix; fail it for any other."""
+    turn.outcome.stopped = True
+    seq, reason = turn.seq, event.reason
+    if not resumable(reason):
+        await _move(turn, TurnStatus.FAILED, reason)
+        message = message_for(reason)
+        return ErrorEvent(seq=seq.next(), message=message, correlation_id=event.correlation_id)
+    interrupted = await _move(turn, TurnStatus.INTERRUPTED, reason)
+    again = interrupted is not None and can_resume(interrupted, turn.runtime.max_resumes_per_turn)
+    return TurnInterrupted(
+        seq=seq.next(),
+        reason=cast(InterruptionReason, reason.value),
+        resumable=again,
+        message=interruption_message(reason, resumable=again),
+    )
+
+
+async def _move(turn: _Turn, target: TurnStatus, reason: str | None = None) -> Turn | None:
+    """Record the turn's new status; a move another process made impossible is only logged."""
+    try:
+        return await turn.threads.turns.move(turn.record.id, target, reason)
+    except TurnTransitionError:
+        logger.warning("turn %s could not move to %s", turn.record.id, target)
+        return None
 
 
 def _shown(event: TurnEvent, turn: _Turn) -> list[StreamEvent]:
@@ -254,21 +389,16 @@ def _shown(event: TurnEvent, turn: _Turn) -> list[StreamEvent]:
 
 
 def _lifecycle(event: TurnEvent, turn: _Turn) -> list[StreamEvent]:
-    """The start, the usage, a failure and the end of the turn."""
-    seq = turn.seq
-    match event:
-        case TurnBegan():
-            turn_id = uuid.uuid4().hex[:12]
-            return [TurnStarted(seq=seq.next(), thread_id=turn.thread_id, turn_id=turn_id)]
-        case TurnUsage():
-            return [_usage(event, turn)]
-        case TurnFailed(reason=reason, correlation_id=correlation_id):
-            message = message_for(reason)
-            return [ErrorEvent(seq=seq.next(), message=message, correlation_id=correlation_id)]
-        case TurnDone():
-            return [TurnFinished(seq=seq.next())]
-        case _:
-            return []
+    """The start of the turn (marked as resumed when it continues an interrupted one)."""
+    if isinstance(event, TurnBegan):
+        started = TurnStarted(
+            seq=turn.seq.next(),
+            thread_id=turn.thread_id,
+            turn_id=turn.record.id,
+            resumed=turn.resumed,
+        )
+        return [started]
+    return []
 
 
 def _tool_status(event: ToolStarted | ToolFinished, turn: _Turn) -> ToolStatus:
@@ -296,11 +426,13 @@ def _scope(event: ScopePassed | ScopeRedirect, turn: _Turn) -> list[StreamEvent]
     ]
 
 
-def _usage(event: TurnUsage, turn: _Turn) -> Usage:
+async def _usage(event: TurnUsage, turn: _Turn) -> Usage:
+    """The turn's calls (every segment of a resumed turn) and the thread's so far."""
     pricing = turn.runtime.pricing
+    calls = await turn.threads.turn_calls(turn.thread_id, turn.record.id)
     return Usage(
         seq=turn.seq.next(),
-        turn=summarize(event.turn, pricing),
+        turn=summarize(calls, pricing),
         session=summarize(event.session, pricing),
     )
 

@@ -44,13 +44,13 @@ async def test_text_blocks_are_read_and_other_blocks_dropped() -> None:
 
 
 async def test_unknown_thread_has_no_snapshot() -> None:
-    assert await thread_snapshot(InMemoryThreadStore(), "nope", {}) is None
+    assert await thread_snapshot(InMemoryThreadStore(), "nope", {}, 3) is None
 
 
 async def test_held_thread_without_turns_has_an_empty_snapshot() -> None:
     threads = InMemoryThreadStore()
     await threads.claim("a")
-    snapshot = await thread_snapshot(threads, "a", {})
+    snapshot = await thread_snapshot(threads, "a", {}, 3)
     assert snapshot is not None
     assert snapshot.messages == []
     assert snapshot.workspace.facilities == []

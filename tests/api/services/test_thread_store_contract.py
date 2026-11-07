@@ -15,6 +15,7 @@ from langgraph.graph import END, START, MessagesState, StateGraph
 from api.schemas.workspace import WorkspaceState
 from api.services.threads import ThreadStore
 from app.usage_meter import CallUsage
+from storage.turn_model import TurnStatus, TurnTransitionError
 from tests.fakes import InMemoryThreadStore
 from tests.postgres import database
 from tools.schemas import ConfirmationRequest
@@ -172,3 +173,149 @@ async def test_threads_are_independent(store: ThreadStore) -> None:
     await store.record_answers(THREAD, {"a": 1.0}, [])
     assert await store.claim("other")
     assert await store.answers("other") == ({}, frozenset())
+
+
+# --- turns ----------------------------------------------------------------------------------
+
+
+async def _interrupted(store: ThreadStore, reason: str = "out_of_credits") -> str:
+    turn = await store.turns.begin(THREAD)
+    assert turn is not None
+    await store.turns.move(turn.id, TurnStatus.INTERRUPTED, reason)
+    return turn.id
+
+
+async def test_a_turn_runs_then_completes_with_its_times(store: ThreadStore) -> None:
+    turn = await store.turns.begin(THREAD)
+    assert turn is not None
+    assert (turn.status, turn.reason, turn.resume_count) == (TurnStatus.RUNNING, None, 0)
+    assert turn.started_at is not None and turn.finished_at is None
+    done = await store.turns.move(turn.id, TurnStatus.COMPLETED)
+    assert done.status is TurnStatus.COMPLETED and done.finished_at is not None
+    assert await store.turns.latest(THREAD) == done
+
+
+async def test_a_second_open_turn_on_the_thread_is_refused(store: ThreadStore) -> None:
+    first = await store.turns.begin(THREAD)
+    assert first is not None
+    assert await store.turns.begin(THREAD) is None
+    assert await store.turns.latest(THREAD) == first
+    assert await store.turns.begin("other") is not None  # other threads are independent
+
+
+async def test_completed_cannot_run_again_and_is_left_unchanged(store: ThreadStore) -> None:
+    turn = await store.turns.begin(THREAD)
+    assert turn is not None
+    done = await store.turns.move(turn.id, TurnStatus.COMPLETED)
+    with pytest.raises(TurnTransitionError):
+        await store.turns.move(turn.id, TurnStatus.RUNNING)
+    assert await store.turns.resume(turn.id, 3) is None
+    assert await store.turns.latest(THREAD) == done
+
+
+async def test_an_unknown_turn_cannot_move(store: ThreadStore) -> None:
+    with pytest.raises(TurnTransitionError):
+        await store.turns.move("no-such-turn", TurnStatus.COMPLETED)
+
+
+@pytest.mark.parametrize(
+    ("target", "reason"),
+    [
+        (TurnStatus.INTERRUPTED, None),
+        (TurnStatus.FAILED, None),
+        (TurnStatus.COMPLETED, "out_of_credits"),
+    ],
+)
+async def test_a_reason_must_fit_the_status(
+    store: ThreadStore,
+    target: TurnStatus,
+    reason: str | None,
+) -> None:
+    turn = await store.turns.begin(THREAD)
+    assert turn is not None
+    with pytest.raises(ValueError, match="reason"):
+        await store.turns.move(turn.id, target, reason)
+    assert await store.turns.latest(THREAD) == turn
+
+
+async def test_resume_counts_each_time_up_to_the_cap(store: ThreadStore) -> None:
+    turn_id = await _interrupted(store)
+    for expected in (1, 2):
+        resumed = await store.turns.resume(turn_id, 2)
+        assert resumed is not None
+        assert (resumed.status, resumed.reason, resumed.resume_count) == (
+            TurnStatus.RUNNING,
+            None,
+            expected,
+        )
+        await store.turns.move(turn_id, TurnStatus.INTERRUPTED, "rate_limited")
+    assert await store.turns.resume(turn_id, 2) is None
+    stays = await store.turns.latest(THREAD)
+    assert stays is not None
+    assert (stays.status, stays.reason, stays.resume_count) == (
+        TurnStatus.INTERRUPTED,
+        "rate_limited",
+        2,
+    )
+
+
+async def test_resume_is_refused_while_another_turn_of_the_thread_is_open(
+    store: ThreadStore,
+) -> None:
+    turn_id = await _interrupted(store)
+    other = await store.turns.begin(THREAD)
+    assert other is not None
+    assert await store.turns.resume(turn_id, 3) is None
+    assert await store.turns.latest(THREAD) == other
+
+
+async def test_an_interrupted_turn_can_be_abandoned_or_found_finished(store: ThreadStore) -> None:
+    turn_id = await _interrupted(store)
+    failed = await store.turns.move(turn_id, TurnStatus.FAILED, "superseded")
+    assert (failed.status, failed.reason) == (TurnStatus.FAILED, "superseded")
+    assert failed.finished_at is not None
+    second = await _interrupted(store)
+    done = await store.turns.move(second, TurnStatus.COMPLETED)
+    assert (done.status, done.reason) == (TurnStatus.COMPLETED, None)
+
+
+async def test_abandon_interrupts_only_an_open_turn_and_is_safe_to_repeat(
+    store: ThreadStore,
+) -> None:
+    turn = await store.turns.begin(THREAD)
+    assert turn is not None
+    assert await store.turns.abandon(turn.id, "worker_lost")
+    assert not await store.turns.abandon(turn.id, "worker_lost")
+    assert not await store.turns.abandon("no-such-turn", "worker_lost")
+    latest = await store.turns.latest(THREAD)
+    assert latest is not None
+    assert (latest.status, latest.reason) == (TurnStatus.INTERRUPTED, "worker_lost")
+
+
+async def test_interrupt_open_frees_every_thread_or_just_one(store: ThreadStore) -> None:
+    assert await store.turns.begin(THREAD) is not None
+    assert await store.turns.begin("other") is not None
+    assert await store.turns.interrupt_open("worker_lost", "other") == ["other"]
+    assert await store.turns.interrupt_open("worker_lost") == [THREAD]
+    assert await store.turns.interrupt_open("worker_lost") == []
+    for thread in (THREAD, "other"):
+        latest = await store.turns.latest(thread)
+        assert latest is not None and latest.status is TurnStatus.INTERRUPTED
+        assert await store.turns.begin(thread) is not None
+
+
+async def test_usage_is_kept_per_turn(store: ThreadStore) -> None:
+    turn = await store.turns.begin(THREAD)
+    assert turn is not None
+    await store.add_usage(THREAD, [CallUsage("m", 1, 0, 1)], turn.id)
+    await store.add_usage(THREAD, [CallUsage("m", 2, 0, 2)])
+    await store.add_usage(THREAD, [CallUsage("m", 3, 0, 3)], turn.id)
+    expected = [CallUsage("m", 1, 0, 1), CallUsage("m", 3, 0, 3)]
+    assert await store.turn_calls(THREAD, turn.id) == expected
+    assert len(await store.session_calls(THREAD)) == 3
+
+
+async def test_reset_deletes_the_threads_turns(store: ThreadStore) -> None:
+    await _interrupted(store)
+    assert await store.reset(THREAD)
+    assert await store.turns.latest(THREAD) is None

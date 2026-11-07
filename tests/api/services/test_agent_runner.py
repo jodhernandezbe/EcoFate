@@ -26,13 +26,15 @@ from api.schemas.chat import (
     StreamEvent,
     Token,
     ToolStatus,
+    TurnInterrupted,
     Usage,
 )
-from api.services.agent_runner import NO_KEY_MESSAGE, AgentRuntime, ModelFactory, run_turn
+from api.services.agent_runner import NO_KEY_MESSAGE, AgentRuntime, ModelFactory
 from api.services.threads import ThreadStore
 from app.key_vault import ServiceKeys, default_service_keys
 from app.usage_meter import CallUsage
 from config.ui import ModelPrice
+from tests.api.streams import begun_turn
 from tests.fakes import (
     CENSUS_ENTRY,
     COMPTOX_ENTRY,
@@ -65,7 +67,7 @@ async def _run(
     thread_id: str = "t1",
     with_key: bool = True,
 ) -> list[StreamEvent]:
-    events = run_turn(
+    events = begun_turn(
         ChatRequest(thread_id=thread_id, message=message),
         keys=_keys(store, with_key=with_key),
         threads=threads or InMemoryThreadStore(),
@@ -197,7 +199,7 @@ async def test_concurrent_turns_keep_their_own_keys(monkeypatch: pytest.MonkeyPa
         store.entries[OPENAI_ENTRY] = key
         keys = default_service_keys(store)
         request = ChatRequest(thread_id=thread_id, message="go")
-        events = run_turn(
+        events = begun_turn(
             request,
             keys=keys,
             threads=threads,
@@ -238,7 +240,7 @@ async def _tool_events(
     labels: dict[str, str],
 ) -> list[StreamEvent]:
     monkeypatch.setattr("agent.graph.get_all_tools", lambda: [probe_key, flaky])
-    run = run_turn(
+    run = begun_turn(
         ChatRequest(thread_id="t1", message="go"),
         keys=_keys(FakeCredentialStore()),
         threads=InMemoryThreadStore(),
@@ -308,7 +310,7 @@ PRICING = {
 
 
 async def _usage_run(model: BaseChatModel, threads: ThreadStore, thread_id: str = "t1") -> Usage:
-    run = run_turn(
+    run = begun_turn(
         ChatRequest(thread_id=thread_id, message="go"),
         keys=_keys(FakeCredentialStore()),
         threads=threads,
@@ -382,7 +384,7 @@ async def test_a_turn_with_no_key_reports_zero_usage() -> None:
 
 
 async def test_an_unpriced_model_still_reports_tokens() -> None:
-    run = run_turn(
+    run = begun_turn(
         ChatRequest(thread_id="t1", message="go"),
         keys=_keys(FakeCredentialStore()),
         threads=InMemoryThreadStore(),
@@ -434,7 +436,7 @@ async def _probe_turn(
 ) -> dict[str, str]:
     monkeypatch.setattr("agent.graph.get_all_tools", lambda: [probe_census, probe_comptox])
     threads = threads or InMemoryThreadStore()
-    run = run_turn(
+    run = begun_turn(
         ChatRequest(thread_id="t1", message="go"),
         keys=default_service_keys(store),
         threads=threads,
@@ -504,7 +506,7 @@ async def test_concurrent_turns_keep_their_own_service_keys(
     async def turn(thread_id: str, census: str) -> None:
         store = FakeCredentialStore()
         store.entries.update({OPENAI_ENTRY: KEY, CENSUS_ENTRY: census})
-        run = run_turn(
+        run = begun_turn(
             ChatRequest(thread_id=thread_id, message="go"),
             keys=default_service_keys(store),
             threads=threads,
@@ -545,7 +547,7 @@ def _guarded(model: BaseChatModel) -> AgentRuntime:
 
 
 async def _guarded_turn(model: ScriptedChatModel, message: str = "hello") -> list[StreamEvent]:
-    run = run_turn(
+    run = begun_turn(
         ChatRequest(thread_id="t1", message=message),
         keys=_keys(FakeCredentialStore()),
         threads=InMemoryThreadStore(),
@@ -635,17 +637,19 @@ class _OutOfCredits(Exception):
     body = {"error": {"code": "credit_balance_exhausted", "message": "raw text with sk-secret"}}
 
 
-async def test_a_provider_without_credits_is_explained_not_generic(
+async def test_a_provider_without_credits_interrupts_the_turn_with_a_plain_message(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     def build(key: SecretStr) -> BaseChatModel:
         raise _OutOfCredits("You have no credits remaining")
 
     events = await _run("hi", FakeCredentialStore(), build)
-    error = next(e for e in events if isinstance(e, ErrorEvent))
-    assert "no credits" in error.message and "billing" in error.message
-    assert "sk-secret" not in error.model_dump_json()
-    assert error.correlation_id in caplog.text
+    interrupted = next(e for e in events if isinstance(e, TurnInterrupted))
+    assert (interrupted.reason, interrupted.resumable) == ("out_of_credits", True)
+    assert "no credits" in interrupted.message and "billing" in interrupted.message
+    assert "remaining" not in interrupted.model_dump_json()  # never the provider's text
+    assert not [e for e in events if isinstance(e, ErrorEvent)]
+    assert "_OutOfCredits" in caplog.text  # logged by class, under a correlation id
     assert "Traceback" not in caplog.text  # a known failure needs no stack trace
     assert [e.type for e in events][-2:] == ["usage", "turn_finished"]
 
@@ -667,12 +671,17 @@ async def test_an_unknown_failure_is_still_generic_with_a_traceback(
 class _DatabaseDown(InMemoryThreadStore):
     """A store whose database stops answering when the turn records its usage."""
 
-    async def add_usage(self, thread_id: str, calls: Sequence[CallUsage]) -> None:
+    async def add_usage(
+        self,
+        thread_id: str,
+        calls: Sequence[CallUsage],
+        turn_id: str | None = None,
+    ) -> None:
         raise OSError("connection to the database refused")
 
 
 async def test_a_database_failure_after_the_turn_ends_with_the_generic_error() -> None:
-    run = run_turn(
+    run = begun_turn(
         ChatRequest(thread_id="t1", message="go"),
         keys=_keys(FakeCredentialStore()),
         threads=_DatabaseDown(),

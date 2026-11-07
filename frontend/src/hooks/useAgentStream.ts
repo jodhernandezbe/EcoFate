@@ -4,10 +4,11 @@ import type {
   ChatRequest,
   ConfirmationAnswers,
   ConfirmationPrompt,
+  StreamEvent,
   WorkspaceState,
 } from "../types/workspace";
 
-import { ApiError, resetThread, streamChat } from "../services/apiClient";
+import { ApiError, resetThread, resumeChat, streamChat } from "../services/apiClient";
 import { chatReducer, initialChatState } from "./chatState";
 
 const newId = (): string => crypto.randomUUID();
@@ -43,6 +44,15 @@ export function useAgentStream(listeners: StreamListeners = {}) {
     busy.current = state.busy;
   });
 
+  /** Feed a turn's events to the conversation and the workspace until the stream ends. */
+  const follow = useCallback(async (stream: AsyncGenerator<StreamEvent>) => {
+    for await (const event of stream) {
+      dispatch({ type: "event", event });
+      if (event.type === "workspace_update") heard.current.onWorkspace?.(event.state);
+    }
+    dispatch({ type: "closed" });
+  }, []);
+
   /** Stream one turn: a message, or the user's answers to the open request. */
   const turn = useCallback(
     async (body: ChatRequest, shown: string, reopen: ConfirmationPrompt | null) => {
@@ -50,11 +60,7 @@ export function useAgentStream(listeners: StreamListeners = {}) {
       setNotice(null);
       dispatch({ type: "user_sent", id: newId(), assistantId: newId(), text: shown });
       try {
-        for await (const event of streamChat(body, abort.signal)) {
-          dispatch({ type: "event", event });
-          if (event.type === "workspace_update") heard.current.onWorkspace?.(event.state);
-        }
-        dispatch({ type: "closed" });
+        await follow(streamChat(body, abort.signal));
       } catch (error) {
         // A value the server refuses leaves the request open: show it again to correct.
         if (reopen && error instanceof ApiError && error.status === UNPROCESSABLE) {
@@ -65,8 +71,24 @@ export function useAgentStream(listeners: StreamListeners = {}) {
         dispatch({ type: "failed", message: describe(error) });
       }
     },
-    [],
+    [follow],
   );
+
+  /**
+   * Continue the interrupted turn where it stopped; its events continue the same assistant
+   * message. A refused resume keeps the stop and says why.
+   */
+  const resume = useCallback(async () => {
+    if (busy.current) return;
+    busy.current = true;
+    setNotice(null);
+    dispatch({ type: "resume_sent" });
+    try {
+      await follow(resumeChat(current.current, new AbortController().signal));
+    } catch (error) {
+      dispatch({ type: "failed", message: describe(error) });
+    }
+  }, [follow]);
 
   const send = useCallback(
     (text: string) => turn({ thread_id: current.current, message: text }, text, null),
@@ -104,5 +126,5 @@ export function useAgentStream(listeners: StreamListeners = {}) {
     return true;
   }, []);
 
-  return { ...state, threadId, notice, send, answer, clearWorkspace };
+  return { ...state, threadId, notice, send, answer, resume, clearWorkspace };
 }

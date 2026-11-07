@@ -7,8 +7,9 @@ show the interruption's fixed message beneath them, and, when the turn can be re
 assistant message. For a rejected key the chat SHALL also offer to open Settings. While a turn
 is running the Resume button SHALL be disabled and say why. A turn that cannot be resumed SHALL
 show its message without a Resume button. The composer SHALL stay usable, and sending a new
-message SHALL replace the Resume button with the new turn. After a page reload the chat SHALL
-restore the interruption and its Resume button from the thread snapshot. The status indicator
+message SHALL replace the Resume button with the new turn. When the chat restores a held thread
+from its snapshot, it SHALL restore the interruption and its Resume button with it (restoring the
+thread after a page reload is a separate change). The status indicator
 SHALL show that the turn stopped. No dashboard panel SHALL change.
 
 #### Scenario: Out of credits
@@ -23,8 +24,8 @@ SHALL show that the turn stopped. No dashboard panel SHALL change.
 - **WHEN** a turn is interrupted with reason `bad_key`
 - **THEN** the chat offers both Resume and a control that opens the Settings drawer
 
-#### Scenario: Reload keeps Resume
-- **WHEN** the page is reloaded on a thread whose latest turn is interrupted and resumable
+#### Scenario: Restored thread keeps Resume
+- **WHEN** the chat restores a held thread whose latest turn is interrupted and resumable from its snapshot
 - **THEN** the chat shows the interruption message and the Resume button again
 
 #### Scenario: Cap reached

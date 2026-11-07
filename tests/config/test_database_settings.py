@@ -16,6 +16,7 @@ api_key_env_var = "TEST_KEY_VAR"  # pragma: allowlist secret
 timeout_seconds = 120.0
 recursion_limit = 10
 temperature = 0.0
+max_resumes_per_turn = 3
 
 [database]
 url_env_var = "TEST_DATABASE_URL"

@@ -900,6 +900,10 @@ api_key_env_var = "OPENAI_API_KEY"  # pragma: allowlist secret
 timeout_seconds = 120.0
 recursion_limit = 80
 temperature = 0.0
+# How many times one interrupted turn (no credits, rejected key, rate limit, provider failure,
+# step limit, server stopped) may be resumed from its last checkpoint. Each resume gets a fresh
+# `recursion_limit`, so this bounds the steps a looping agent can take on resumes.
+max_resumes_per_turn = 3
 
 # PostgreSQL: the web program's durable state (threads, their history, usage, workspaces,
 # pending confirmations and the user's answers). The connection URL, which carries the password,
@@ -953,6 +957,8 @@ model = "gen_ai.request.model"
 outcome = "exposure.outcome"
 usage_prefix = "exposure.usage."
 session_usage_prefix = "exposure.session_usage."
+turn_id = "exposure.turn_id"
+resume_index = "exposure.resume_index"
 
 # What the LangChain-to-OpenTelemetry bridge writes on its spans (read by the Monitoring view).
 [telemetry.bridge]

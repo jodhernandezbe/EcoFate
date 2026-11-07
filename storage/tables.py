@@ -28,6 +28,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 
+from storage.turn_model import OPEN_STATUSES, REASONED_STATUSES, TurnStatus
+
 # Stable constraint names, so migrations and the models agree on them.
 NAMING_CONVENTION = {
     "ix": "ix_%(table_name)s_%(column_0_N_name)s",
@@ -70,12 +72,47 @@ threads = Table(
     Index("ix_threads_last_used_at", "last_used_at"),
 )
 
+_STATUS_VALUES = ", ".join(f"'{status}'" for status in TurnStatus)
+_OPEN_VALUES = ", ".join(f"'{status}'" for status in OPEN_STATUSES)
+_REASONED_VALUES = ", ".join(f"'{status}'" for status in REASONED_STATUSES)
+
+turns = Table(
+    "turns",
+    metadata,
+    Column("id", Text, primary_key=True),
+    _thread_id(),
+    _user_id(),
+    Column("status", Text, nullable=False),
+    Column("reason", Text, nullable=True),
+    Column("resume_count", Integer, nullable=False, server_default=text("0")),
+    _created_at(),
+    Column("started_at", DateTime(timezone=True), nullable=True),
+    _created_at("updated_at"),
+    Column("finished_at", DateTime(timezone=True), nullable=True),
+    CheckConstraint(f"status IN ({_STATUS_VALUES})", name="status_known"),
+    CheckConstraint("resume_count >= 0", name="resume_count_not_negative"),
+    CheckConstraint(
+        f"(status IN ({_REASONED_VALUES})) = (reason IS NOT NULL)",
+        name="reason_matches_status",
+    ),
+    # At most one turn per thread holds the thread (queued or running), across every process.
+    Index(
+        "uq_turns_open_thread",
+        "thread_id",
+        unique=True,
+        postgresql_where=text(f"status IN ({_OPEN_VALUES})"),
+    ),
+    Index("ix_turns_thread_id_created_at", "thread_id", "created_at"),
+)
+
 thread_usage = Table(
     "thread_usage",
     metadata,
     Column("id", BigInteger, Identity(), primary_key=True),
     _thread_id(),
     _user_id(),
+    # The turn whose model call this was (None for calls recorded before turns existed).
+    Column("turn_id", Text, ForeignKey("turns.id", ondelete="CASCADE"), nullable=True, index=True),
     Column("seq", Integer, nullable=False),
     Column("model", Text, nullable=False),
     Column("input_tokens", BigInteger, nullable=True),
@@ -132,6 +169,7 @@ thread_answers = Table(
 
 TABLES = (
     threads,
+    turns,
     thread_usage,
     thread_tool_messages,
     thread_workspaces,

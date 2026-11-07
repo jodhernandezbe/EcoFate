@@ -14,6 +14,7 @@ export type StreamEventSchema =
   | WorkspaceUpdate
   | Token
   | AssistantMessage
+  | TurnInterrupted
   | Usage
   | ErrorEvent
   | ConfirmationRequested
@@ -311,6 +312,7 @@ export interface SessionsResponse {
  * via the `definition` "TurnStarted".
  */
 export interface TurnStarted {
+  resumed: boolean;
   /**
    * Position of the event in its stream, from 0.
    */
@@ -1158,6 +1160,22 @@ export interface AssistantMessage {
   type: "assistant_message";
 }
 /**
+ * The turn stopped for a reason the user can fix; it may be resumed where it stopped.
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "TurnInterrupted".
+ */
+export interface TurnInterrupted {
+  message: string;
+  reason: "out_of_credits" | "rate_limited" | "bad_key" | "provider_down" | "step_limit" | "worker_lost";
+  resumable: boolean;
+  /**
+   * Position of the event in its stream, from 0.
+   */
+  seq: number;
+  type: "turn_interrupted";
+}
+/**
  * This interface was referenced by `ApiContract`'s JSON-Schema
  * via the `definition` "Usage".
  */
@@ -1253,6 +1271,7 @@ export interface TurnFinished {
  */
 export interface ThreadSnapshot {
   confirmation: ConfirmationPrompt | null;
+  interrupted: TurnInterruption | null;
   messages: ThreadMessage[];
   thread_id: string;
   usage: UsageTotals;
@@ -1267,6 +1286,17 @@ export interface ThreadSnapshot {
 export interface ConfirmationPrompt {
   entries: MissingValue[];
   request_id: string;
+}
+/**
+ * Why a turn stopped before its answer, whether it can be resumed, and what to do.
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "TurnInterruption".
+ */
+export interface TurnInterruption {
+  message: string;
+  reason: "out_of_credits" | "rate_limited" | "bad_key" | "provider_down" | "step_limit" | "worker_lost";
+  resumable: boolean;
 }
 /**
  * One user or assistant message of a thread (text only, no tool calls or results).

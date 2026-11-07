@@ -1,8 +1,10 @@
+import { CirclePause } from "lucide-react";
 import { useEffect, useRef } from "react";
 import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import type { ChatMessage } from "../../hooks/chatState";
+import type { TurnInterruption } from "../../types/workspace";
 import { SuggestionChips } from "./SuggestionChips";
 import { ToolExecutionPills } from "./ToolExecutionPill";
 import { Welcome } from "./Welcome";
@@ -32,7 +34,53 @@ const MARKDOWN: Components = {
   td: ({ children }) => <td className={CELL}>{children}</td>,
 };
 
-function Assistant({ message }: { message: ChatMessage }) {
+const RESUME_BLOCKED = "A turn is running; Resume is available when it ends.";
+
+interface StopActions {
+  /** A turn is running: Resume is shown disabled with the reason. */
+  busy: boolean;
+  onResume?: (() => void) | undefined;
+  onOpenSettings?: (() => void) | undefined;
+}
+
+/** Why the turn stopped (the server's fixed text) and what the user can do about it. */
+function StopNotice({ stop, busy, onResume, onOpenSettings }: StopActions & { stop: TurnInterruption }) {
+  return (
+    <div role="status" className="mt-2 rounded-xl border border-hairline px-3 py-2 text-sm">
+      <p className="flex items-start gap-2">
+        <CirclePause size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-fg2" />
+        <span>{stop.message}</span>
+      </p>
+      {stop.resumable || stop.reason === "bad_key" ? (
+        <div className="mt-2 flex flex-wrap items-center gap-2 pl-6">
+          {stop.resumable && onResume ? (
+            <button
+              type="button"
+              disabled={busy}
+              title={busy ? RESUME_BLOCKED : undefined}
+              aria-description={busy ? RESUME_BLOCKED : undefined}
+              onClick={onResume}
+              className="spring rounded-full bg-accent px-3 py-1 text-sm font-medium text-accent-fg transition disabled:opacity-30"
+            >
+              Resume
+            </button>
+          ) : null}
+          {stop.reason === "bad_key" && onOpenSettings ? (
+            <button
+              type="button"
+              onClick={onOpenSettings}
+              className="spring rounded-full border border-hairline px-3 py-1 text-sm text-accent transition hover:bg-hairline"
+            >
+              Open Settings
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function Assistant({ message, ...actions }: StopActions & { message: ChatMessage }) {
   return (
     <div className="min-w-0 max-w-[92%] text-[15px] leading-relaxed">
       <ToolExecutionPills steps={message.tools} />
@@ -42,11 +90,12 @@ function Assistant({ message }: { message: ChatMessage }) {
             {message.text}
           </Markdown>
         </div>
-      ) : message.streaming && !message.error ? (
+      ) : message.streaming && !message.error && !message.interrupted ? (
         <span className="text-fg2" aria-live="polite">
           Thinking…
         </span>
       ) : null}
+      {message.interrupted ? <StopNotice stop={message.interrupted} {...actions} /> : null}
       {message.error ? (
         <p role="alert" className="mt-2 rounded-xl border border-hairline px-3 py-2 text-sm text-bad">
           {message.error}
@@ -69,6 +118,12 @@ interface MessageStreamProps {
   suggestions?: string[];
   canSend?: boolean;
   onSend?: (text: string) => void;
+  /** A turn is running (an interrupted turn's Resume waits for it). */
+  busy?: boolean;
+  /** Resume the interrupted turn in place. */
+  onResume?: (() => void) | undefined;
+  /** Open the Settings drawer (offered when the key was rejected). */
+  onOpenSettings?: (() => void) | undefined;
 }
 
 export function MessageStream({
@@ -76,6 +131,9 @@ export function MessageStream({
   suggestions = [],
   canSend = false,
   onSend,
+  busy = false,
+  onResume,
+  onOpenSettings,
 }: MessageStreamProps) {
   const end = useRef<HTMLDivElement>(null);
   const last = messages[messages.length - 1];
@@ -98,7 +156,11 @@ export function MessageStream({
         <ol className="flex flex-col gap-4">
           {messages.map((message) => (
             <li key={message.id} className="flex min-w-0">
-              {message.role === "user" ? <User message={message} /> : <Assistant message={message} />}
+              {message.role === "user" ? (
+                <User message={message} />
+              ) : (
+                <Assistant message={message} busy={busy} onResume={onResume} onOpenSettings={onOpenSettings} />
+              )}
             </li>
           ))}
         </ol>

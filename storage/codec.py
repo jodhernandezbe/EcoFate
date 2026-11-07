@@ -10,12 +10,14 @@ from __future__ import annotations
 import logging
 import math
 from collections.abc import Mapping
+from datetime import datetime
 from typing import cast
 
 from langchain_core.messages import BaseMessage, message_to_dict, messages_from_dict
 from pydantic import BaseModel, ValidationError
 
 from app.usage_meter import CallUsage
+from storage.turn_model import REASONED_STATUSES, Turn, TurnStatus
 from tools.schemas import ConfirmationRequest, MissingEntry
 
 logger = logging.getLogger(__name__)
@@ -149,3 +151,44 @@ def answer_from_row(
         _warn(thread_id, "answer")
         return None
     return key, number
+
+
+def _status(value: object) -> TurnStatus | None:
+    try:
+        return TurnStatus(value) if isinstance(value, str) else None
+    except ValueError:
+        return None
+
+
+def _turn_fields(row: Mapping[str, object]) -> tuple[TurnStatus, str | None, int] | None:
+    """The status, reason and resume count of a stored turn, when they fit together."""
+    status, reason = _status(row.get("status")), row.get("reason")
+    valid, resume_count = _count(row.get("resume_count"), nullable=False)
+    if status is None or not valid or resume_count is None:
+        return None
+    if reason is not None and not isinstance(reason, str):
+        return None
+    if (reason is None) == (status in REASONED_STATUSES):
+        return None
+    return status, reason, resume_count
+
+
+def turn_from_row(row: Mapping[str, object]) -> Turn | None:
+    """A stored turn, or None (with a warning) when its status, reason or count do not fit."""
+    thread_id = str(row.get("thread_id"))
+    fields = _turn_fields(row)
+    if fields is None:
+        _warn(thread_id, "turn")
+        return None
+    status, reason, resume_count = fields
+    return Turn(
+        id=str(row["id"]),
+        thread_id=thread_id,
+        status=status,
+        reason=reason,
+        resume_count=resume_count,
+        created_at=cast(datetime, row["created_at"]),
+        started_at=cast(datetime | None, row["started_at"]),
+        updated_at=cast(datetime, row["updated_at"]),
+        finished_at=cast(datetime | None, row["finished_at"]),
+    )

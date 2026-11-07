@@ -3327,6 +3327,7 @@
           "token": "#/$defs/Token",
           "tool_status": "#/$defs/ToolStatus",
           "turn_finished": "#/$defs/TurnFinished",
+          "turn_interrupted": "#/$defs/TurnInterrupted",
           "turn_started": "#/$defs/TurnStarted",
           "usage": "#/$defs/Usage",
           "workspace_update": "#/$defs/WorkspaceUpdate"
@@ -3354,6 +3355,9 @@
         },
         {
           "$ref": "#/$defs/AssistantMessage"
+        },
+        {
+          "$ref": "#/$defs/TurnInterrupted"
         },
         {
           "$ref": "#/$defs/Usage"
@@ -3407,6 +3411,17 @@
           ],
           "default": null
         },
+        "interrupted": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TurnInterruption"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "messages": {
           "items": {
             "$ref": "#/$defs/ThreadMessage"
@@ -3428,7 +3443,8 @@
         "messages",
         "workspace",
         "usage",
-        "confirmation"
+        "confirmation",
+        "interrupted"
       ],
       "title": "ThreadSnapshot",
       "type": "object"
@@ -3563,9 +3579,85 @@
       "title": "TurnFinished",
       "type": "object"
     },
+    "TurnInterrupted": {
+      "additionalProperties": false,
+      "description": "The turn stopped for a reason the user can fix; it may be resumed where it stopped.",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "reason": {
+          "enum": [
+            "out_of_credits",
+            "rate_limited",
+            "bad_key",
+            "provider_down",
+            "step_limit",
+            "worker_lost"
+          ],
+          "type": "string"
+        },
+        "resumable": {
+          "type": "boolean"
+        },
+        "seq": {
+          "description": "Position of the event in its stream, from 0.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": {
+          "const": "turn_interrupted",
+          "default": "turn_interrupted",
+          "type": "string"
+        }
+      },
+      "required": [
+        "seq",
+        "type",
+        "reason",
+        "resumable",
+        "message"
+      ],
+      "title": "TurnInterrupted",
+      "type": "object"
+    },
+    "TurnInterruption": {
+      "additionalProperties": false,
+      "description": "Why a turn stopped before its answer, whether it can be resumed, and what to do.",
+      "properties": {
+        "message": {
+          "type": "string"
+        },
+        "reason": {
+          "enum": [
+            "out_of_credits",
+            "rate_limited",
+            "bad_key",
+            "provider_down",
+            "step_limit",
+            "worker_lost"
+          ],
+          "type": "string"
+        },
+        "resumable": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "reason",
+        "resumable",
+        "message"
+      ],
+      "title": "TurnInterruption",
+      "type": "object"
+    },
     "TurnStarted": {
       "additionalProperties": false,
       "properties": {
+        "resumed": {
+          "default": false,
+          "type": "boolean"
+        },
         "seq": {
           "description": "Position of the event in its stream, from 0.",
           "minimum": 0,
@@ -3587,7 +3679,8 @@
         "seq",
         "type",
         "thread_id",
-        "turn_id"
+        "turn_id",
+        "resumed"
       ],
       "title": "TurnStarted",
       "type": "object"

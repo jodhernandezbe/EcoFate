@@ -44,6 +44,8 @@ class AttributeNames:
         outcome: ``ok`` or ``error``.
         usage_prefix: Prefix of the usage fields of the run (``calls``, ``input_tokens``, ...).
         session_usage_prefix: The same fields for the thread so far (web turns only).
+        turn_id: The web turn the span belongs to (a resumed turn keeps its id).
+        resume_index: 0 for a turn's first run, then 1, 2, ... for each resume (web turns only).
     """
 
     session_id: str
@@ -52,6 +54,8 @@ class AttributeNames:
     outcome: str
     usage_prefix: str
     session_usage_prefix: str
+    turn_id: str
+    resume_index: str
 
 
 @dataclass(frozen=True)
@@ -148,6 +152,8 @@ def _attributes(table: dict[str, object]) -> AttributeNames:
         outcome=require_str(attrs, "outcome", name).strip(),
         usage_prefix=require_str(attrs, "usage_prefix", name).strip(),
         session_usage_prefix=require_str(attrs, "session_usage_prefix", name).strip(),
+        turn_id=require_str(attrs, "turn_id", name).strip(),
+        resume_index=require_str(attrs, "resume_index", name).strip(),
     )
     if values.usage_prefix == values.session_usage_prefix:
         raise ValueError(f"{name} must give the turn and the session usage their own prefix")

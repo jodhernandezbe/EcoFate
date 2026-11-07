@@ -11,6 +11,7 @@ from api.schemas.chat import ConfirmationPrompt, ThreadMessage, ThreadSnapshot
 from api.schemas.workspace import WorkspaceState
 from api.services.confirmation import request_event
 from api.services.threads import ThreadStore
+from api.services.turn_lifecycle import interruption
 from api.services.usage_meter import summarize
 from config.ui import ModelPrice
 from tools.schemas import ConfirmationRequest
@@ -64,8 +65,13 @@ async def thread_snapshot(
     threads: ThreadStore,
     thread_id: str,
     pricing: Mapping[str, ModelPrice],
+    max_resumes: int,
 ) -> ThreadSnapshot | None:
-    """The snapshot of a held thread, or None when the program does not hold it."""
+    """The snapshot of a held thread, or None when the program does not hold it.
+
+    ``interrupted`` reports the latest turn when it was interrupted (resumable while it has been
+    resumed fewer than ``max_resumes`` times).
+    """
     if not await threads.holds(thread_id):
         return None
     await threads.touch(thread_id)
@@ -75,4 +81,5 @@ async def thread_snapshot(
         workspace=await threads.workspace(thread_id) or WorkspaceState(),
         usage=summarize(await threads.session_calls(thread_id), pricing),
         confirmation=_prompt(await threads.pending(thread_id)),
+        interrupted=interruption(await threads.turns.latest(thread_id), max_resumes),
     )

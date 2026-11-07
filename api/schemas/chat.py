@@ -53,6 +53,34 @@ class TurnStarted(_Event):
     type: Literal["turn_started"] = "turn_started"
     thread_id: str
     turn_id: str
+    resumed: bool = False  # True when the turn continues from where it was interrupted
+
+
+InterruptionReason = Literal[
+    "out_of_credits",
+    "rate_limited",
+    "bad_key",
+    "provider_down",
+    "step_limit",
+    "worker_lost",
+]
+
+
+class TurnInterruption(ContractModel):
+    """Why a turn stopped before its answer, whether it can be resumed, and what to do."""
+
+    reason: InterruptionReason
+    resumable: bool
+    message: str
+
+
+class TurnInterrupted(_Event):
+    """The turn stopped for a reason the user can fix; it may be resumed where it stopped."""
+
+    type: Literal["turn_interrupted"] = "turn_interrupted"
+    reason: InterruptionReason
+    resumable: bool
+    message: str
 
 
 class ScopeDecision(_Event):
@@ -125,6 +153,7 @@ class ThreadSnapshot(ContractModel):
     workspace: WorkspaceState
     usage: UsageTotals
     confirmation: ConfirmationPrompt | None = None  # the open request, if any
+    interrupted: TurnInterruption | None = None  # the latest turn, when it was interrupted
 
 
 class Usage(_Event):
@@ -180,6 +209,7 @@ StreamEvent = Annotated[
     | WorkspaceUpdate
     | Token
     | AssistantMessage
+    | TurnInterrupted
     | Usage
     | ErrorEvent
     | ConfirmationRequested

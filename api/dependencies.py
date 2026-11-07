@@ -97,7 +97,13 @@ def get_runtime() -> AgentRuntime:
         system_prompt=f"{load_prompt(DEFAULT_SYSTEM_PROMPT)}\n\n{load_prompt(ui.prompts.addendum)}",
         workspace_rules=_workspace_rules(ui),
         telemetry=get_telemetry_settings(),
+        max_resumes_per_turn=settings.max_resumes_per_turn,
     )
+
+
+def get_max_resumes() -> int:
+    """How many times one interrupted turn may be resumed (``[agent].max_resumes_per_turn``)."""
+    return get_agent_settings().max_resumes_per_turn
 
 
 def get_threads(request: Request) -> ThreadStore:

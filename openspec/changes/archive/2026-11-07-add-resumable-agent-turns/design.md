@@ -45,6 +45,14 @@ See proposal.md for motivation. What the code does today:
    index on `thread_id WHERE status IN ('queued','running')`. Claiming a thread is inserting
    that row; a unique-violation answers 409 as today. Alternative: keep the in-memory busy
    set, rejected because a second API process or a worker could not see it.
+   *As built:* `migrate-to-postgresql` had already replaced the in-memory set with a
+   cross-process lease (`threads.busy_until`), whose expiry the `persistent-storage` spec
+   requires. The lease stays the claim, and the turn record sits on top of it. With the lease
+   held, a turn still open on the thread is stale and becomes `interrupted/worker_lost` (as at
+   start-up), so an expired lease never leaves a thread blocked. A stream the client leaves
+   also interrupts its turn (`worker_lost`). `step_budget_used` was not added (LangGraph does
+   not report steps used). Each usage row gains a nullable `turn_id`, so a resumed turn's
+   usage is the sum of its segments.
 2. **Reasons in the runner, messages in the web layer.** `extract-turn-runner` already put
    `classify(exc) -> FailureReason` in `app/turns/failures.py`; this change adds
    `GraphRecursionError` -> `step_limit` and a `resumable(reason)` predicate there, and
@@ -74,7 +82,7 @@ See proposal.md for motivation. What the code does today:
 8. **UI wiring only through chat state.** `chatState` gains an `interrupted` field on the
    assistant message (`reason`, `resumable`, `message`); `MessageStream` renders the text and
    a Resume button; `useAgentStream.resume()` posts to the resume endpoint and feeds the
-   same reducer. The snapshot's `interrupted` restores the button after reload.
+   same reducer. The snapshot's `interrupted` restores the button when a held thread is restored (restoring the thread after a page reload is a separate change).
 9. **Telemetry.** A resume is its own turn span with `session_id` = thread id plus
    attributes `turn_id` and `resume_index`, so Monitoring shows the segments of one turn.
 

@@ -22,6 +22,8 @@ interface ChatDockProps {
   onSend: (text: string) => void;
   onClear: () => void;
   onAnswer?: ((answers: ConfirmationAnswers, summary: string) => void) | undefined;
+  /** Resume the interrupted turn where it stopped. */
+  onResume?: (() => void) | undefined;
   onOpenSettings: () => void;
   onCollapse: () => void;
 }
@@ -29,7 +31,8 @@ interface ChatDockProps {
 function statusOf(messages: ChatMessage[], busy: boolean): AssistantStatus {
   if (busy) return "thinking";
   const last = messages[messages.length - 1];
-  return last?.error ? "error" : "idle";
+  if (last?.error) return "error";
+  return last?.interrupted ? "stopped" : "idle";
 }
 
 /** The chat dock: header, conversation and composer. */
@@ -45,6 +48,7 @@ export function ChatDock({
   onSend,
   onClear,
   onAnswer,
+  onResume,
   onOpenSettings,
   onCollapse,
 }: ChatDockProps) {
@@ -64,6 +68,9 @@ export function ChatDock({
         suggestions={suggestions ?? []}
         canSend={hasKey && !busy}
         onSend={onSend}
+        busy={busy}
+        onResume={onResume}
+        onOpenSettings={onOpenSettings}
       />
       {confirmation && onAnswer ? (
         <ConfirmationCard prompt={confirmation} busy={busy} onConfirm={onAnswer} />

@@ -10,6 +10,7 @@ const assistant = (text: string, extra: Partial<ChatMessage> = {}): ChatMessage 
   error: null,
   streaming: false,
   tools: [],
+  interrupted: null,
   ...extra,
 });
 
@@ -85,5 +86,52 @@ describe("MessageStream", () => {
       expect(container.querySelector("script")).toBeNull();
       expect(screen.getByRole("table")).toHaveTextContent("<script>x</script>");
     });
+  });
+});
+
+describe("interrupted turn", () => {
+  type Reason = "out_of_credits" | "rate_limited" | "bad_key" | "provider_down" | "step_limit" | "worker_lost";
+  const stopped = (reason: Reason, resumable = true): ChatMessage =>
+    assistant("Partial answer", { interrupted: { reason, resumable, message: `Stopped: ${reason}.` } });
+
+  it.each<Reason>(["out_of_credits", "rate_limited", "provider_down", "step_limit", "worker_lost"])(
+    "shows the fixed text and a Resume button for %s, without Settings",
+    (reason) => {
+      const onResume = vi.fn();
+      render(<MessageStream messages={[stopped(reason)]} onResume={onResume} onOpenSettings={vi.fn()} />);
+      expect(screen.getByText("Partial answer")).toBeInTheDocument();
+      expect(screen.getByRole("status")).toHaveTextContent(`Stopped: ${reason}.`);
+      screen.getByRole("button", { name: "Resume" }).click();
+      expect(onResume).toHaveBeenCalledOnce();
+      expect(screen.queryByRole("button", { name: "Open Settings" })).toBeNull();
+    },
+  );
+
+  it("offers Resume and Open Settings for a rejected key", () => {
+    const onOpenSettings = vi.fn();
+    render(<MessageStream messages={[stopped("bad_key")]} onResume={vi.fn()} onOpenSettings={onOpenSettings} />);
+    expect(screen.getByRole("button", { name: "Resume" })).toBeEnabled();
+    screen.getByRole("button", { name: "Open Settings" }).click();
+    expect(onOpenSettings).toHaveBeenCalledOnce();
+  });
+
+  it("disables Resume and says why while a turn runs", () => {
+    render(<MessageStream messages={[stopped("rate_limited")]} busy onResume={vi.fn()} />);
+    const button = screen.getByRole("button", { name: "Resume" });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("aria-description", expect.stringContaining("A turn is running"));
+    expect(button).toHaveAttribute("title", expect.stringContaining("A turn is running"));
+  });
+
+  it("shows the message without a Resume button when it can no longer be resumed", () => {
+    render(<MessageStream messages={[stopped("out_of_credits", false)]} onResume={vi.fn()} />);
+    expect(screen.getByRole("status")).toHaveTextContent("Stopped: out_of_credits.");
+    expect(screen.queryByRole("button", { name: "Resume" })).toBeNull();
+  });
+
+  it("does not say Thinking under a stop with no text", () => {
+    const interrupted = { reason: "worker_lost" as const, resumable: true, message: "Server stopped." };
+    render(<MessageStream messages={[assistant("", { streaming: true, interrupted })]} onResume={vi.fn()} />);
+    expect(screen.queryByText("Thinking…")).toBeNull();
   });
 });

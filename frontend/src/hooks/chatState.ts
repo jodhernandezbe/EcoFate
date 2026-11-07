@@ -1,4 +1,10 @@
-import type { ConfirmationPrompt, StreamEvent, ThreadSnapshot, UsageTotals } from "../types/workspace";
+import type {
+  ConfirmationPrompt,
+  StreamEvent,
+  ThreadSnapshot,
+  TurnInterruption,
+  UsageTotals,
+} from "../types/workspace";
 
 export interface ToolStep {
   callId: string;
@@ -13,6 +19,8 @@ export interface ChatMessage {
   error: string | null;
   streaming: boolean;
   tools: ToolStep[];
+  /** Why the turn stopped before its answer, when it was interrupted (it may be resumable). */
+  interrupted: TurnInterruption | null;
 }
 
 /** What the usage meter shows: the session, and the last turn when one was streamed here. */
@@ -31,6 +39,7 @@ export interface ChatState {
 
 export type ChatAction =
   | { type: "user_sent"; id: string; assistantId: string; text: string }
+  | { type: "resume_sent" }
   | { type: "event"; event: StreamEvent }
   | { type: "failed"; message: string }
   | { type: "closed" }
@@ -93,6 +102,13 @@ function onEvent(state: ChatState, event: StreamEvent): ChatState {
       };
     case "usage":
       return { ...state, usage: { turn: event.turn, session: event.session } };
+    case "turn_started":
+      // A resumed turn continues the interrupted assistant message: its stop is over.
+      return event.resumed ? updateLastAssistant(state, (m) => ({ ...m, interrupted: null })) : state;
+    case "turn_interrupted": {
+      const interrupted = { reason: event.reason, resumable: event.resumable, message: event.message };
+      return updateLastAssistant(state, (m) => ({ ...m, interrupted, streaming: false }));
+    }
     case "error":
       return updateLastAssistant(state, (m) => ({ ...m, error: event.message }));
     case "turn_finished":
@@ -102,46 +118,59 @@ function onEvent(state: ChatState, event: StreamEvent): ChatState {
   }
 }
 
-/** A held thread's text messages and session usage; its tool steps are not stored. */
+const assistant = (id: string, text: string, streaming: boolean): ChatMessage => ({
+  id,
+  role: "assistant",
+  text,
+  error: null,
+  streaming,
+  tools: [],
+  interrupted: null,
+});
+
+/** Attach a held thread's interruption to its last assistant message (one is added when the
+ * turn stopped before writing any text). */
+function withInterruption(messages: ChatMessage[], interrupted: TurnInterruption | null): ChatMessage[] {
+  if (!interrupted) return messages;
+  const last = messages[messages.length - 1];
+  if (last?.role === "assistant") return [...messages.slice(0, -1), { ...last, interrupted }];
+  return [...messages, { ...assistant(`restored-${messages.length}`, "", false), interrupted }];
+}
+
+/** A held thread's text messages, session usage and interruption; its tool steps are not stored. */
 function restored(snapshot: ThreadSnapshot, ids: string[]): ChatState {
   const messages = snapshot.messages.map((message, index): ChatMessage => ({
-    id: ids[index] ?? `restored-${index}`,
+    ...assistant(ids[index] ?? `restored-${index}`, message.text, false),
     role: message.role,
-    text: message.text,
-    error: null,
-    streaming: false,
-    tools: [],
   }));
   const usage = snapshot.usage.calls > 0 ? { turn: null, session: snapshot.usage } : null;
-  return { messages, busy: false, usage, confirmation: snapshot.confirmation ?? null };
+  return {
+    messages: withInterruption(messages, snapshot.interrupted ?? null),
+    busy: false,
+    usage,
+    confirmation: snapshot.confirmation ?? null,
+  };
 }
 
 export function chatReducer(state: ChatState, action: ChatAction): ChatState {
   switch (action.type) {
     case "user_sent":
+      // A new message abandons an interrupted turn: its Resume control goes away.
       return {
         ...state,
         busy: true,
         confirmation: null,
         messages: [
-          ...state.messages,
-          {
-            id: action.id,
-            role: "user",
-            text: action.text,
-            error: null,
-            streaming: false,
-            tools: [],
-          },
-          {
-            id: action.assistantId,
-            role: "assistant",
-            text: "",
-            error: null,
-            streaming: true,
-            tools: [],
-          },
+          ...state.messages.map((m) => (m.interrupted ? { ...m, interrupted: null } : m)),
+          { ...assistant(action.id, action.text, false), role: "user" },
+          assistant(action.assistantId, "", true),
         ],
+      };
+    case "resume_sent":
+      // The resumed events continue the interrupted message; its stop clears once they start.
+      return {
+        ...updateLastAssistant(state, (m) => ({ ...m, error: null, streaming: true })),
+        busy: true,
       };
     case "event":
       return onEvent(state, action.event);

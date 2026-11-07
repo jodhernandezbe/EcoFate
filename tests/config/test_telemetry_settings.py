@@ -33,6 +33,8 @@ model = "m"
 outcome = "o"
 usage_prefix = "u."
 session_usage_prefix = "s."
+turn_id = "t"
+resume_index = "r"
 
 [telemetry.bridge]
 operation = "op"
@@ -108,6 +110,8 @@ def test_shipped_settings_load() -> None:
         ("cli_session", "cli_session = 4", "telemetry.spans.cli_session"),
         ("session_usage_prefix", 'session_usage_prefix = "u."', "telemetry.attributes"),
         ("outcome", 'outcome = ""', "telemetry.attributes.outcome"),
+        ("turn_id", 'turn_id = ""', "telemetry.attributes.turn_id"),
+        ("resume_index", "resume_index = 1", "telemetry.attributes.resume_index"),
         ("tool_operation", "tool_operation = 3", "telemetry.bridge.tool_operation"),
         ("usage_metadata", 'usage_metadata = " "', "telemetry.bridge.usage_metadata"),
     ],

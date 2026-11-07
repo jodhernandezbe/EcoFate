@@ -23,6 +23,7 @@ from storage.engine import create_engine
 from storage.revisions import current_revision, head_revision
 from storage.tables import TABLES
 from storage.threads import PostgresThreadStore
+from storage.turns import TurnRepository
 from tests.postgres import SETTINGS, Database, database, migrated_schema, run_alembic, test_url
 
 pytestmark = [pytest.mark.postgres, pytest.mark.anyio]
@@ -131,6 +132,30 @@ async def test_an_expired_lease_can_be_claimed() -> None:
         )
         assert not await db.store.running(THREAD)
         assert await db.store.claim(THREAD)
+
+
+async def test_concurrent_turns_from_two_processes_open_exactly_one() -> None:
+    async with database() as db:
+        other = create_engine(db.url, SETTINGS, search_path=db.schema)
+        try:
+            second = TurnRepository(async_sessionmaker(other))
+            for trial in range(10):
+                thread = f"turn-race-{trial}"
+                results = await asyncio.gather(db.store.turns.begin(thread), second.begin(thread))
+                assert sorted(result is None for result in results) == [False, True], thread
+        finally:
+            await other.dispose()
+
+
+async def test_the_database_refuses_a_second_open_turn_written_directly() -> None:
+    async with database() as db:
+        assert await db.store.turns.begin(THREAD) is not None
+        with pytest.raises(IntegrityError):
+            await _sql(
+                db,
+                "INSERT INTO turns (id, thread_id, status) VALUES ('direct', :id, 'queued')",
+                id=THREAD,
+            )
 
 
 # --- retention ------------------------------------------------------------------------------

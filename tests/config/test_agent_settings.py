@@ -16,6 +16,7 @@ api_key_env_var = "TEST_KEY_VAR"  # pragma: allowlist secret
 timeout_seconds = 5
 recursion_limit = 10
 temperature = 0.3
+max_resumes_per_turn = 2
 """
 
 
@@ -37,6 +38,7 @@ def test_values(tmp_path: Path) -> None:
     assert settings.timeout_seconds == 5.0
     assert settings.recursion_limit == 10
     assert settings.temperature == 0.3
+    assert settings.max_resumes_per_turn == 2
 
 
 def test_shipped_settings_load() -> None:
@@ -44,6 +46,7 @@ def test_shipped_settings_load() -> None:
     assert settings.provider == "openai"
     assert settings.model
     assert settings.temperature == 0.0  # reproducible screening runs
+    assert settings.max_resumes_per_turn >= 1
 
 
 @pytest.mark.parametrize(
@@ -61,6 +64,11 @@ def test_shipped_settings_load() -> None:
         ("temperature", "temperature = 2.5", "agent.temperature"),
         ("temperature", "temperature = true", "agent.temperature"),
         ("temperature", "", "agent.temperature"),
+        ("max_resumes_per_turn", "max_resumes_per_turn = 0", "agent.max_resumes_per_turn"),
+        ("max_resumes_per_turn", "max_resumes_per_turn = -1", "agent.max_resumes_per_turn"),
+        ("max_resumes_per_turn", "max_resumes_per_turn = true", "agent.max_resumes_per_turn"),
+        ("max_resumes_per_turn", "max_resumes_per_turn = 1.5", "agent.max_resumes_per_turn"),
+        ("max_resumes_per_turn", "", "agent.max_resumes_per_turn"),
     ],
 )
 def test_invalid_entry_names_key(tmp_path: Path, line_start: str, new_line: str, key: str) -> None:

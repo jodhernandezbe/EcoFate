@@ -18,6 +18,7 @@ from agent.graph import build_agent
 from app import telemetry
 from app.telemetry import (
     SCRUBBED,
+    TurnSegment,
     configure_telemetry,
     flush_telemetry,
     run_tracer,
@@ -113,6 +114,16 @@ def test_session_span_carries_id_question_model_and_outcome(exporter: TestExport
     assert attributes[ATTRS.session_id] == "thread-7"
     assert (attributes[ATTRS.question], attributes[ATTRS.model]) == ("Assess X", "gpt-x")
     assert attributes[ATTRS.outcome] == "ok"
+    assert ATTRS.turn_id not in attributes and ATTRS.resume_index not in attributes
+
+
+def test_a_web_turn_span_carries_its_turn_id_and_resume_index(exporter: TestExporter) -> None:
+    segment = TurnSegment(turn_id="turn-9", resume_index=2)
+    with session_span(SETTINGS, SETTINGS.spans.web_turn, "thread-7", "q", "m", segment):
+        pass
+    attributes = _named(_spans(exporter), SETTINGS.spans.web_turn).attributes or {}
+    assert (attributes[ATTRS.turn_id], attributes[ATTRS.resume_index]) == ("turn-9", 2)
+    assert attributes[ATTRS.session_id] == "thread-7"
 
 
 def test_a_run_that_raises_ends_with_error_and_keeps_its_spans(exporter: TestExporter) -> None:

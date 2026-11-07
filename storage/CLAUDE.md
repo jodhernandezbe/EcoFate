@@ -4,7 +4,8 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
 
 - PostgreSQL for the web program: `engine.py` (the async engine and the URL), `tables.py` (the
   schema, SQLAlchemy Core), `migrations/` (Alembic), `codec.py` (rows to and from the program's
-  types), `threads.py` (`PostgresThreadStore`), `health.py`, `purge.py`, `revisions.py`, and
+  types), `threads.py` (`PostgresThreadStore`), `turn_model.py` (`Turn`, statuses and allowed
+  moves), `turns.py` (`TurnRepository`), `health.py`, `purge.py`, `revisions.py`, and
   `__main__.py` (`python -m storage upgrade | current | downgrade <rev>`).
 - Imports: `config` and `commons`, plus types only from `app.usage_meter` (`CallUsage`) and
   `tools.schemas` (`ConfirmationRequest`, `MissingEntry`). Never `api` (the workspace model class

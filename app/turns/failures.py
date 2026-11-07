@@ -12,9 +12,11 @@ from collections.abc import Mapping
 from enum import StrEnum
 from typing import cast
 
+from langgraph.errors import GraphRecursionError
+
 
 class FailureReason(StrEnum):
-    """Why a turn failed."""
+    """Why a turn stopped before its answer."""
 
     NO_KEY = "no_key"
     KEYCHAIN_UNAVAILABLE = "keychain_unavailable"
@@ -22,13 +24,32 @@ class FailureReason(StrEnum):
     RATE_LIMITED = "rate_limited"
     BAD_KEY = "bad_key"
     FORBIDDEN = "forbidden"
-    PROVIDER_DOWN = "provider_down"
-    UNREACHABLE = "unreachable"
+    PROVIDER_DOWN = "provider_down"  # the provider failed on its side or could not be reached
+    STEP_LIMIT = "step_limit"
+    WORKER_LOST = "worker_lost"  # the process running the turn stopped (never classified)
+    SUPERSEDED = "superseded"  # a new message abandoned the interrupted turn (never classified)
     UNEXPECTED = "unexpected"
 
 
 # Reasons the user can act on before the turn started (no key); nothing worth logging.
 SETUP_REASONS = frozenset({FailureReason.NO_KEY, FailureReason.KEYCHAIN_UNAVAILABLE})
+# Reasons the user can fix (or that a stopped process caused) after which the turn continues
+# from its last checkpoint. Anything else (``forbidden``, an unexpected bug) fails the turn.
+RESUMABLE_REASONS = frozenset(
+    {
+        FailureReason.OUT_OF_CREDITS,
+        FailureReason.RATE_LIMITED,
+        FailureReason.BAD_KEY,
+        FailureReason.PROVIDER_DOWN,
+        FailureReason.STEP_LIMIT,
+        FailureReason.WORKER_LOST,
+    },
+)
+
+
+def resumable(reason: FailureReason) -> bool:
+    """Whether a turn stopped for ``reason`` is interrupted (resumable) rather than failed."""
+    return reason in RESUMABLE_REASONS
 
 
 class KeysUnavailableError(Exception):
@@ -83,10 +104,12 @@ def classify(exc: BaseException) -> FailureReason:
     """The reason a turn failed with ``exc``; ``unexpected`` when it is no known failure."""
     if isinstance(exc, KeysUnavailableError):
         return exc.reason
+    if isinstance(exc, GraphRecursionError):
+        return FailureReason.STEP_LIMIT
     status = _status(exc)
     reason = _by_status(exc, status) if status is not None else None
     if reason is not None:
         return reason
     if any(cls.__name__ in _NETWORK_FAILURES for cls in type(exc).__mro__):
-        return FailureReason.UNREACHABLE
+        return FailureReason.PROVIDER_DOWN
     return FailureReason.UNEXPECTED

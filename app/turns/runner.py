@@ -30,7 +30,7 @@ from agent.completion import CompletionGuard
 from agent.graph import build_agent
 from agent.guardrails import REDIRECT_NAME, ScopeGuard
 from agent.state import AgentState
-from app.telemetry import SessionSpan, run_tracer, session_span
+from app.telemetry import SessionSpan, TurnSegment, run_tracer, session_span
 from app.turns.events import (
     AgentStarted,
     AssistantText,
@@ -49,6 +49,7 @@ from app.turns.events import (
     TurnUsage,
 )
 from app.turns.failures import SETUP_REASONS, FailureReason, classify, new_correlation_id
+from app.turns.history import not_run_results
 from app.turns.keys import TurnKeys, provided
 from app.usage_meter import CallUsage, UsageRecorder
 from config.telemetry import TelemetrySettings
@@ -69,12 +70,17 @@ class TurnRequest:
         question: What the user typed, as recorded on the span.
         message: The message the agent receives (the question, or the answers to a request).
         note: The note on the user's answers for the agent; empty when there is none.
+        resume: Continue the thread's interrupted run from its last checkpoint instead of
+            sending ``message`` (the message and note are then not used).
+        segment: The turn and resume index the span records; None records neither.
     """
 
     thread_id: str
     question: str
     message: str
     note: str = ""
+    resume: bool = False
+    segment: TurnSegment | None = None
 
 
 @dataclass(frozen=True)
@@ -158,8 +164,14 @@ def _turn_span(request: TurnRequest, settings: TurnSettings) -> AbstractContextM
     telemetry = settings.telemetry
     if telemetry is None:
         return nullcontext(SessionSpan.inactive())
-    name = telemetry.spans.web_turn
-    return session_span(telemetry, name, request.thread_id, request.question, settings.model_name)
+    return session_span(
+        telemetry,
+        telemetry.spans.web_turn,
+        request.thread_id,
+        request.question,
+        settings.model_name,
+        request.segment,
+    )
 
 
 async def _closing_events(
@@ -217,13 +229,40 @@ async def _agent_events(
     agent = _build(model, services, settings)
     config = await _run_config(request, services, settings, recorder)
     yield AgentStarted()
-    inputs: AgentState = {
-        "messages": [HumanMessage(content=request.message)],
-        "answers_note": request.note,
-    }
+    # A resume sends no input: the run continues from the last checkpoint with a fresh step
+    # budget (the recursion limit applies to each run), so nothing finished runs again.
+    inputs = None if request.resume else await _new_message(agent, config, request)
     async for mode, payload in agent.astream(inputs, config, stream_mode=["messages", "updates"]):
         for event in translate(mode, payload):
             yield event
+
+
+async def _new_message(agent: Agent, config: RunnableConfig, request: TurnRequest) -> AgentState:
+    """The input of a new message; first, tool calls an abandoned turn left without a result
+    get a "not run" result, so the history the model receives is valid."""
+    state = await agent.aget_state(config)
+    closing = not_run_results(cast(AgentState, state.values).get("messages", []))
+    if closing:
+        await agent.aupdate_state(config, {"messages": closing}, as_node="tools")
+    return {"messages": [HumanMessage(content=request.message)], "answers_note": request.note}
+
+
+async def pending_steps(
+    thread_id: str,
+    services: TurnServices,
+    settings: TurnSettings,
+) -> tuple[str, ...]:
+    """The graph nodes the thread's last checkpoint would run next (empty when it finished).
+
+    Builds the agent with the stored model key but calls no model and runs no tool.
+
+    Raises:
+        KeysUnavailableError: The keychain cannot be used, or no model key is stored.
+    """
+    keys = services.load_keys()
+    agent = _build(services.build_model(keys.openai), services, settings)
+    snapshot = await agent.aget_state({"configurable": {"thread_id": thread_id}})
+    return tuple(snapshot.next)
 
 
 def _build(model: BaseChatModel, services: TurnServices, settings: TurnSettings) -> Agent:

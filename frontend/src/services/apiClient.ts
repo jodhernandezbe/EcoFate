@@ -101,6 +101,22 @@ export async function resetThread(threadId: string): Promise<void> {
   await request(`/chat/threads/${encodeURIComponent(threadId)}`, { method: "DELETE" });
 }
 
+/** Read a server-sent event stream into its events as they arrive. */
+async function* events(response: Response): AsyncGenerator<StreamEvent> {
+  if (!response.body) throw new ApiError("The server sent no stream.", response.status);
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const { events: parsed, rest } = parseSseFrames(buffer);
+    buffer = rest;
+    yield* parsed;
+  }
+}
+
 /** Stream the events of one chat turn as they arrive. */
 export async function* streamChat(
   body: ChatRequest,
@@ -112,16 +128,15 @@ export async function* streamChat(
     body: JSON.stringify(body),
     signal,
   });
-  if (!response.body) throw new ApiError("The server sent no stream.", response.status);
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const { events, rest } = parseSseFrames(buffer);
-    buffer = rest;
-    yield* events;
-  }
+  yield* events(response);
+}
+
+/**
+ * Continue the thread's interrupted turn where it stopped and stream the rest of it; rejects
+ * with a 409 `ApiError` (fixed message) when there is nothing to resume, the turn was resumed
+ * too often, a turn is running or no key is set, and 404 when the thread is gone.
+ */
+export async function* resumeChat(threadId: string, signal?: AbortSignal): AsyncGenerator<StreamEvent> {
+  const path = `/chat/threads/${encodeURIComponent(threadId)}/resume`;
+  yield* events(await request(path, { method: "POST", signal }));
 }

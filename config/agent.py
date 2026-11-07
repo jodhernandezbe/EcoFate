@@ -25,6 +25,7 @@ class AgentSettings:
         timeout_seconds: Per-request timeout, in seconds.
         recursion_limit: LangGraph step limit of one agent run.
         temperature: Sampling temperature, 0 (most reproducible) to 2.
+        max_resumes_per_turn: How many times one interrupted turn may be resumed.
     """
 
     provider: str
@@ -33,6 +34,7 @@ class AgentSettings:
     timeout_seconds: float
     recursion_limit: int
     temperature: float
+    max_resumes_per_turn: int
 
 
 def chat_provider(table: dict[str, object], key: str, name: str) -> str:
@@ -72,6 +74,7 @@ def load_agent_settings(path: Path | None = None) -> AgentSettings:
         timeout_seconds=require_number(table, "timeout_seconds", minimum=0.001, name=_NAME),
         recursion_limit=require_int(table, "recursion_limit", minimum=1, name=_NAME),
         temperature=_temperature(table),
+        max_resumes_per_turn=require_int(table, "max_resumes_per_turn", minimum=1, name=_NAME),
     )
 
 

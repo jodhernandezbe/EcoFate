@@ -25,7 +25,7 @@ def lookup(name: str) -> dict[str, str]:
 
 
 def _settings(recursion_limit: int) -> AgentSettings:
-    return AgentSettings("openai", "fake", "UNUSED_KEY_VAR", 1.0, recursion_limit, 0.0)
+    return AgentSettings("openai", "fake", "UNUSED_KEY_VAR", 1.0, recursion_limit, 0.0, 3)
 
 
 def _call(call_id: str, name: str = "abc") -> AIMessage:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from datetime import UTC, datetime
 from typing import cast
 
 import pytest
@@ -11,6 +12,7 @@ from pydantic import BaseModel, ConfigDict
 
 from app.usage_meter import CallUsage
 from storage import codec
+from storage.turn_model import TurnStatus
 from tools.schemas import ConfirmationRequest
 
 THREAD = "thread-1"
@@ -189,3 +191,50 @@ def test_answers() -> None:
 )
 def test_bad_answer_is_absent(key: object, value: object, declined: object) -> None:
     assert codec.answer_from_row(THREAD, key, value, declined) is None
+
+
+def _turn_row(**changes: object) -> dict[str, object]:
+    now = datetime(2026, 1, 1, tzinfo=UTC)
+    row: dict[str, object] = {
+        "id": "t1",
+        "thread_id": "th",
+        "status": "interrupted",
+        "reason": "out_of_credits",
+        "resume_count": 1,
+        "created_at": now,
+        "started_at": now,
+        "updated_at": now,
+        "finished_at": None,
+    }
+    return row | changes
+
+
+def test_a_turn_row_decodes() -> None:
+    turn = codec.turn_from_row(_turn_row())
+    assert turn is not None
+    assert (turn.status, turn.reason, turn.resume_count) == (
+        TurnStatus.INTERRUPTED,
+        "out_of_credits",
+        1,
+    )
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"status": "paused"},
+        {"status": 3},
+        {"resume_count": -1},
+        {"resume_count": True},
+        {"reason": None},  # an interrupted turn needs a reason
+        {"status": "completed"},  # a completed one has none
+        {"reason": 7},
+    ],
+)
+def test_a_turn_row_that_does_not_fit_is_absent_with_a_warning(
+    changes: dict[str, object],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.WARNING, logger="storage.codec"):
+        assert codec.turn_from_row(_turn_row(**changes)) is None
+    assert "turn" in caplog.text and "th" in caplog.text

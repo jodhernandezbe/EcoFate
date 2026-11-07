@@ -28,6 +28,7 @@ SETTINGS = AgentSettings(
     timeout_seconds=5.0,
     recursion_limit=7,
     temperature=0.0,
+    max_resumes_per_turn=3,
 )
 ENV = {"TEST_KEY_VAR": "not-a-real-key"}  # pragma: allowlist secret
 

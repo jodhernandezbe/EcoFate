@@ -29,6 +29,14 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   awaited; a turn claims its thread (409 when busy) and releases it on every path.
   `services/database.py` opens the database in the lifespan and refuses to start without a
   migrated one; tests pass `create_app(..., threads=InMemoryThreadStore())` and never touch it.
+- Turn status (`services/turn_lifecycle.py`, store `ThreadStore.turns`): each turn has a record;
+  with the lease held, a turn left open is stale (`interrupted/worker_lost`), and a new message
+  marks an interrupted latest turn `failed/superseded` (the runner closes its unanswered tool
+  calls). A `FailureReason` that `app.turns.resumable` accepts interrupts the turn
+  (`turn_interrupted`); any other fails it (`error`). `POST .../resume` continues only the
+  latest interrupted turn, under `[agent].max_resumes_per_turn`, with a key and a next step
+  (none: mark it completed); every refusal is 409 with a fixed message and changes nothing. A
+  stream the client leaves interrupts its turn (`worker_lost`); start-up does the same.
 - The chat model is built only through `app.chat_model`. The OpenAI, Census and CompTox keys
   are read once per turn from `app.key_vault.ServiceKeys` by the runner (`app.turns.load_turn_keys`,
   passed in as its key loader), given to the tools for that turn only, protected from the logs,

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager
+from dataclasses import dataclass
 from functools import lru_cache
 from typing import Any, Literal
 
@@ -172,6 +173,34 @@ def usage_fields(
     return fields
 
 
+@dataclass(frozen=True)
+class TurnSegment:
+    """Which web turn a span records, and which of its runs (0 first, then each resume)."""
+
+    turn_id: str
+    resume_index: int
+
+
+def _span_attributes(
+    settings: TelemetrySettings,
+    session_id: str,
+    question: str,
+    model: str,
+    segment: TurnSegment | None,
+) -> dict[str, Any]:
+    # Any: logfire.span takes attributes as free keywords, which a str-valued dict would also
+    # match against its typed options (tags, level, links).
+    names = settings.attributes
+    attributes: dict[str, Any] = {
+        names.session_id: session_id,
+        names.question: question,
+        names.model: model,
+    }
+    if segment is not None:
+        attributes |= {names.turn_id: segment.turn_id, names.resume_index: segment.resume_index}
+    return attributes
+
+
 @contextmanager
 def session_span(
     settings: TelemetrySettings,
@@ -179,23 +208,19 @@ def session_span(
     session_id: str,
     question: str,
     model: str,
+    segment: TurnSegment | None = None,
 ) -> Generator[SessionSpan]:
-    """Open the span of a command-line run or a web turn.
+    """Open the span of a command-line run or a web turn (one span per resume of a turn).
 
-    The span carries the session id, the question and the model, and ends with the outcome:
-    ``error`` when the run raised or the caller called ``fail``, otherwise ``ok``.
+    The span carries the session id, the question and the model (and, for a web turn, its turn
+    id and resume index), and ends with the outcome: ``error`` when the run raised or the
+    caller called ``fail``, otherwise ``ok``.
     """
     if not settings.enabled:
         yield SessionSpan(None, settings)
         return
     names = settings.attributes
-    # Any: logfire.span takes attributes as free keywords, which a str-valued dict would also
-    # match against its typed options (tags, level, links).
-    attributes: dict[str, Any] = {
-        names.session_id: session_id,
-        names.question: question,
-        names.model: model,
-    }
+    attributes = _span_attributes(settings, session_id, question, model, segment)
     with logfire.span(name, **attributes) as span:
         handle = SessionSpan(span, settings)
         try:

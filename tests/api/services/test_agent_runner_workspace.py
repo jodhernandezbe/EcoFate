@@ -8,10 +8,11 @@ from langchain_core.messages import AIMessage, ToolCall
 from langchain_core.tools import StructuredTool, ToolException
 
 from api.schemas.chat import ChatRequest, StreamEvent, WorkspaceUpdate
-from api.services.agent_runner import AgentRuntime, run_turn
+from api.services.agent_runner import AgentRuntime
 from api.services.threads import ThreadStore
 from app.key_vault import default_service_keys
 from tests.api.services.projectors.factories import RULES, record
+from tests.api.streams import begun_turn
 from tests.fakes import OPENAI_ENTRY, FakeCredentialStore, InMemoryThreadStore, ScriptedChatModel
 
 pytestmark = pytest.mark.anyio
@@ -66,7 +67,7 @@ async def _turn(
     store = FakeCredentialStore()
     store.entries[OPENAI_ENTRY] = "sk-proj-" + "w1X2y3Z4a5" * 3  # pragma: allowlist secret
     runtime = AgentRuntime(lambda key: model, 10, workspace_rules=RULES if with_rules else None)
-    run = run_turn(
+    run = begun_turn(
         ChatRequest(thread_id="t1", message="go"),
         keys=default_service_keys(store),
         threads=threads,

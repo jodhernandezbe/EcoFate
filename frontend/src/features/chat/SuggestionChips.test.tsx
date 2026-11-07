@@ -41,7 +41,7 @@ describe("onboarding in the message stream", () => {
   it("hides the onboarding once the conversation has started", () => {
     render(
       <MessageStream
-        messages={[{ id: "u", role: "user", text: "hi", error: null, streaming: false, tools: [] }]}
+        messages={[{ id: "u", role: "user", text: "hi", error: null, streaming: false, tools: [], interrupted: null }]}
         suggestions={SUGGESTIONS}
         canSend
         onSend={vi.fn()}

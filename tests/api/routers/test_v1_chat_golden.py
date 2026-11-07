@@ -113,7 +113,12 @@ def _runtime(model: BaseChatModel, **extra: Any) -> AgentRuntime:
     )
 
 
-START = {"keys": ["seq", "thread_id", "turn_id", "type"], "type": "turn_started", "thread_id": "g1"}
+START = {
+    "keys": ["resumed", "seq", "thread_id", "turn_id", "type"],
+    "type": "turn_started",
+    "thread_id": "g1",
+    "resumed": False,
+}
 USAGE = {"keys": ["seq", "session", "turn", "type"], "type": "usage"}
 FINISHED = {"keys": ["seq", "type"], "type": "turn_finished"}
 STATUS_KEYS = ["call_id", "label", "phase", "seq", "status", "tool_name", "type"]
@@ -176,13 +181,20 @@ def test_off_topic_turn_is_redirected(stream: Any) -> None:
     ]
 
 
-def test_provider_failure_is_a_fixed_message(stream: Any) -> None:
+def test_provider_failure_interrupts_with_a_fixed_message(stream: Any) -> None:
     def build(key: SecretStr) -> BaseChatModel:
         raise _OutOfCredits("raw provider text")
 
     runtime = AgentRuntime(build, 10, model_name="m")
     events = stream(runtime)
-    assert [e["type"] for e in events] == ["turn_started", "error", "usage", "turn_finished"]
-    error = events[1]
-    assert error["keys"] == ["correlation_id", "message", "seq", "type"]
-    assert "no credits" in error["message"] and "raw provider text" not in error["message"]
+    assert [e["type"] for e in events] == [
+        "turn_started",
+        "turn_interrupted",
+        "usage",
+        "turn_finished",
+    ]
+    interrupted = events[1]
+    assert interrupted["keys"] == ["message", "reason", "resumable", "seq", "type"]
+    assert (interrupted["reason"], interrupted["resumable"]) == ("out_of_credits", True)
+    assert "no credits" in interrupted["message"]
+    assert "raw provider text" not in interrupted["message"]

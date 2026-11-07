@@ -13,11 +13,12 @@ from logfire.testing import TestExporter
 from opentelemetry.sdk.trace import ReadableSpan
 
 from api.schemas.chat import ChatRequest, StreamEvent
-from api.services.agent_runner import AgentRuntime, run_turn
+from api.services.agent_runner import AgentRuntime
 from api.services.threads import ThreadStore
 from app.key_vault import default_service_keys
 from app.telemetry import flush_telemetry
 from config.telemetry import TelemetrySettings
+from tests.api.streams import begun_turn
 from tests.app.test_usage_meter import PRICING
 from tests.fakes import (
     OPENAI_ENTRY,
@@ -55,7 +56,7 @@ def _turn(
 ) -> AsyncGenerator[StreamEvent]:
     store = FakeCredentialStore()
     store.entries[OPENAI_ENTRY] = KEY
-    return run_turn(
+    return begun_turn(
         ChatRequest(thread_id=thread_id, message=message),
         keys=default_service_keys(store),
         threads=threads,
@@ -109,7 +110,7 @@ async def test_a_missing_key_ends_the_turn_span_as_an_error(
     exporter: TestExporter,
 ) -> None:
     runtime = _runtime(ScriptedChatModel([reply("never", 1, 1)]), monitoring)
-    events = run_turn(
+    events = begun_turn(
         ChatRequest(thread_id="t9", message="hi"),
         keys=default_service_keys(FakeCredentialStore()),  # no OpenAI key stored
         threads=InMemoryThreadStore(),

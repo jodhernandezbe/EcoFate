@@ -42,6 +42,8 @@ export type {
   Stack,
   ToolStatus,
   TurnFinished,
+  TurnInterrupted,
+  TurnInterruption,
   TurnStarted,
   Usage,
   UsageTotals,

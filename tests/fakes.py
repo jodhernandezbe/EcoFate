@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -20,6 +20,14 @@ from pydantic import PrivateAttr
 
 from api.schemas.workspace import WorkspaceState
 from app.usage_meter import CallUsage
+from storage.turn_model import (
+    OPEN_STATUSES,
+    REASONED_STATUSES,
+    Turn,
+    TurnStatus,
+    TurnTransitionError,
+    check_transition,
+)
 from tools.schemas import ConfirmationRequest
 
 
@@ -216,6 +224,95 @@ def _utc_now() -> datetime:
     return datetime.now(UTC)
 
 
+class InMemoryTurnStore:
+    """The ``TurnStore`` contract in process memory (same moves and refusals as PostgreSQL)."""
+
+    def __init__(self, clock: Callable[[], datetime] = _utc_now) -> None:
+        self._clock = clock
+        self._turns: dict[str, Turn] = {}  # in creation order
+        self._count = 0
+
+    def _open(self, thread_id: str) -> Turn | None:
+        return next(
+            (
+                t
+                for t in self._turns.values()
+                if t.thread_id == thread_id and t.status in OPEN_STATUSES
+            ),
+            None,
+        )
+
+    def _set(self, turn: Turn, status: TurnStatus, reason: str | None, **extra: Any) -> Turn:
+        now = self._clock()
+        changes: dict[str, Any] = {"status": status, "reason": reason, "updated_at": now}
+        if status is TurnStatus.RUNNING:
+            changes |= {"started_at": turn.started_at or now, "finished_at": None}
+        if status in (TurnStatus.COMPLETED, TurnStatus.FAILED):
+            changes["finished_at"] = now
+        self._turns[turn.id] = replace(turn, **changes, **extra)
+        return self._turns[turn.id]
+
+    async def begin(self, thread_id: str) -> Turn | None:
+        if self._open(thread_id) is not None:
+            return None
+        self._count += 1
+        now = self._clock()
+        turn = Turn(
+            f"turn-{self._count}",
+            thread_id,
+            TurnStatus.RUNNING,
+            None,
+            0,
+            now,
+            now,
+            now,
+            None,
+        )
+        self._turns[turn.id] = turn
+        return turn
+
+    async def resume(self, turn_id: str, max_resumes: int) -> Turn | None:
+        turn = self._turns.get(turn_id)
+        if turn is None or turn.status is not TurnStatus.INTERRUPTED:
+            return None
+        if turn.resume_count >= max_resumes or self._open(turn.thread_id) is not None:
+            return None
+        return self._set(turn, TurnStatus.RUNNING, None, resume_count=turn.resume_count + 1)
+
+    async def move(self, turn_id: str, target: TurnStatus, reason: str | None = None) -> Turn:
+        if (reason is not None) != (target in REASONED_STATUSES):
+            raise ValueError(f"reason does not fit {target}")
+        turn = self._turns.get(turn_id)
+        if turn is None:
+            raise TurnTransitionError(f"turn {turn_id} does not exist")
+        check_transition(turn_id, turn.status, target)
+        return self._set(turn, target, reason)
+
+    async def abandon(self, turn_id: str, reason: str) -> bool:
+        turn = self._turns.get(turn_id)
+        if turn is None or turn.status not in OPEN_STATUSES:
+            return False
+        self._set(turn, TurnStatus.INTERRUPTED, reason)
+        return True
+
+    async def interrupt_open(self, reason: str, thread_id: str | None = None) -> list[str]:
+        stale = [
+            t
+            for t in self._turns.values()
+            if t.status in OPEN_STATUSES and thread_id in (None, t.thread_id)
+        ]
+        for turn in stale:
+            self._set(turn, TurnStatus.INTERRUPTED, reason)
+        return [turn.thread_id for turn in stale]
+
+    async def latest(self, thread_id: str) -> Turn | None:
+        return next((t for t in reversed(self._turns.values()) if t.thread_id == thread_id), None)
+
+    def forget(self, thread_id: str) -> None:
+        """Delete the thread's turns (its thread was deleted)."""
+        self._turns = {k: t for k, t in self._turns.items() if t.thread_id != thread_id}
+
+
 @dataclass
 class _ThreadRow:
     last_used_at: datetime
@@ -237,10 +334,11 @@ class InMemoryThreadStore:
         clock: Callable[[], datetime] = _utc_now,
     ) -> None:
         self.checkpointer = InMemorySaver()
+        self.turns = InMemoryTurnStore(clock)
         self._lease = lease
         self._clock = clock
         self._rows: dict[str, _ThreadRow] = {}
-        self._usage: dict[str, list[CallUsage]] = {}
+        self._usage: dict[str, list[tuple[str | None, CallUsage]]] = {}
         self._tool_messages: dict[str, list[BaseMessage]] = {}
         self._workspaces: dict[str, WorkspaceState] = {}
         self._pending: dict[str, ConfirmationRequest] = {}
@@ -280,12 +378,20 @@ class InMemoryThreadStore:
             return []
         return list(found.checkpoint["channel_values"].get("messages", []))
 
-    async def add_usage(self, thread_id: str, calls: Sequence[CallUsage]) -> None:
+    async def add_usage(
+        self,
+        thread_id: str,
+        calls: Sequence[CallUsage],
+        turn_id: str | None = None,
+    ) -> None:
         self._row(thread_id)
-        self._usage.setdefault(thread_id, []).extend(calls)
+        self._usage.setdefault(thread_id, []).extend((turn_id, call) for call in calls)
 
     async def session_calls(self, thread_id: str) -> list[CallUsage]:
-        return list(self._usage.get(thread_id, []))
+        return [call for _, call in self._usage.get(thread_id, [])]
+
+    async def turn_calls(self, thread_id: str, turn_id: str) -> list[CallUsage]:
+        return [call for owner, call in self._usage.get(thread_id, []) if owner == turn_id]
 
     async def add_tool_messages(self, thread_id: str, messages: Sequence[BaseMessage]) -> None:
         self._row(thread_id)
@@ -332,6 +438,7 @@ class InMemoryThreadStore:
 
     def _forget(self, thread_id: str) -> None:
         self.checkpointer.delete_thread(thread_id)
+        self.turns.forget(thread_id)
         for table in (self._rows, self._usage, self._tool_messages, self._workspaces):
             table.pop(thread_id, None)
         self._pending.pop(thread_id, None)

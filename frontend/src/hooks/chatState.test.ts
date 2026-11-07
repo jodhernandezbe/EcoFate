@@ -169,6 +169,7 @@ describe("restore", () => {
     workspace: {} as never,
     usage: totals,
     confirmation: null,
+    interrupted: null,
   };
 
   it("replaces the conversation with the held messages, idle, without tool steps", () => {
@@ -188,6 +189,98 @@ describe("restore", () => {
   it("shows no usage for a thread that made no model call", () => {
     const empty = { ...snapshot, usage: { ...totals, calls: 0 } };
     expect(chatReducer(sent, { type: "restore", snapshot: empty, ids: [] }).usage).toBeNull();
+  });
+});
+
+describe("interrupted turns", () => {
+  const interrupted: StreamEvent = {
+    type: "turn_interrupted",
+    seq: 3,
+    reason: "out_of_credits",
+    resumable: true,
+    message: "No credits left. Add credits, then press Resume.",
+  };
+  const finished: StreamEvent = { type: "turn_finished", seq: 5 };
+  const feed = (state: ChatState, events: StreamEvent[]): ChatState =>
+    events.reduce((current, event) => chatReducer(current, { type: "event", event }), state);
+  const stopped = feed(sent, [token("Partial "), interrupted, finished]);
+
+  it("keeps the partial text, records the stop and ends the stream", () => {
+    const message = stopped.messages[1];
+    expect(message?.text).toBe("Partial ");
+    expect(message?.interrupted).toEqual({
+      reason: "out_of_credits",
+      resumable: true,
+      message: "No credits left. Add credits, then press Resume.",
+    });
+    expect(message?.streaming).toBe(false);
+    expect(message?.error).toBeNull();
+    expect(stopped.busy).toBe(false);
+  });
+
+  it("continues the same assistant message when resumed", () => {
+    let state = chatReducer(stopped, { type: "resume_sent" });
+    expect(state.busy).toBe(true);
+    expect(state.messages).toHaveLength(2);
+    expect(state.messages[1]?.streaming).toBe(true);
+    const started: StreamEvent = { type: "turn_started", seq: 0, thread_id: "t", turn_id: "turn-1", resumed: true };
+    state = feed(state, [started, token("rest."), finished]);
+    expect(state.messages).toHaveLength(2);
+    expect(state.messages[1]?.text).toBe("Partial rest.");
+    expect(state.messages[1]?.interrupted).toBeNull();
+    expect(state.busy).toBe(false);
+  });
+
+  it("keeps the stop when the server refuses the resume", () => {
+    let state = chatReducer(stopped, { type: "resume_sent" });
+    state = chatReducer(state, { type: "failed", message: "Resumed too many times." });
+    expect(state.messages[1]?.interrupted?.reason).toBe("out_of_credits");
+    expect(state.messages[1]?.error).toBe("Resumed too many times.");
+    expect(state.busy).toBe(false);
+  });
+
+  it("a new message drops the stop's Resume control", () => {
+    const state = chatReducer(stopped, { type: "user_sent", id: "u2", assistantId: "a2", text: "next" });
+    expect(state.messages.map((m) => m.interrupted)).toEqual([null, null, null, null]);
+    expect(state.messages[1]?.text).toBe("Partial ");
+  });
+
+  const totals = {
+    calls: 1,
+    input_tokens: 1,
+    cached_input_tokens: 0,
+    output_tokens: 1,
+    complete: true,
+    cost_usd: null,
+    cost_status: "unpriced" as const,
+    priced_on: null,
+  };
+  const stop = { reason: "bad_key" as const, resumable: true, message: "Key rejected." };
+  const held = (messages: { role: "user" | "assistant"; text: string }[]) => ({
+    thread_id: "t",
+    messages,
+    workspace: {} as never,
+    usage: totals,
+    confirmation: null,
+    interrupted: stop,
+  });
+
+  it("restores the stop onto the last assistant message of a held thread", () => {
+    const snapshot = held([
+      { role: "user", text: "hi" },
+      { role: "assistant", text: "partial" },
+    ]);
+    const state = chatReducer(initialChatState, { type: "restore", snapshot, ids: ["a", "b"] });
+    expect(state.messages.map((m) => m.interrupted)).toEqual([null, stop]);
+  });
+
+  it("adds an empty assistant message for a stop before any text", () => {
+    const snapshot = held([{ role: "user", text: "hi" }]);
+    const state = chatReducer(initialChatState, { type: "restore", snapshot, ids: ["a"] });
+    expect(state.messages.map((m) => [m.role, m.text, m.interrupted])).toEqual([
+      ["user", "hi", null],
+      ["assistant", "", stop],
+    ]);
   });
 });
 

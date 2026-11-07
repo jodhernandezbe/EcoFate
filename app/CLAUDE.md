@@ -32,5 +32,9 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   collaborators come in as `TurnServices` (key loader, model factory, checkpointer, the user's
   values, usage store). Every front end runs turns only through it; a caller's own failure while
   presenting an event is thrown back in (`athrow`) and reported as the turn's failure.
+  `TurnRequest(resume=True)` continues the thread's checkpoint with no input (fresh step budget;
+  `pending_steps` says what would run next); a new message first answers tool calls an abandoned
+  turn left without a result (`history.py`). `failures.resumable` names the reasons that
+  interrupt a turn instead of failing it.
 - `redaction.py` is the one log-redaction filter (`protect_secrets`, `redact`,
   `install_redaction`); it holds no HTTP knowledge. Front ends only configure their loggers.

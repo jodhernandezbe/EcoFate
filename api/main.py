@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import logging
 import os
 from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import asynccontextmanager
@@ -22,10 +23,13 @@ from api.services.database import open_database
 from api.services.threads import ThreadStore
 from app.redaction import install_redaction, protect_secrets
 from app.telemetry import flush_telemetry
+from app.turns import FailureReason
 from config.database import DatabaseSettings, get_database_settings
 from config.telemetry import get_telemetry_settings
 from config.ui import UiSettings
 from storage.purge import purge_periodically
+
+logger = logging.getLogger(__name__)
 
 
 def _environment_keys() -> list[str]:
@@ -55,10 +59,19 @@ async def _purging(threads: ThreadStore, settings: DatabaseSettings) -> AsyncGen
             await task
 
 
+async def _recover_turns(threads: ThreadStore) -> None:
+    """Turns a stopped server left queued or running become resumable (``worker_lost``)."""
+    recovered = await threads.turns.interrupt_open(FailureReason.WORKER_LOST)
+    if recovered:
+        logger.info("Interrupted %d turn(s) left running by a stopped server", len(recovered))
+
+
 @asynccontextmanager
 async def _thread_state(app: FastAPI) -> AsyncGenerator[None]:
-    """Open the database and its thread store, unless a store was injected (tests)."""
+    """Open the database and its thread store, unless a store was injected (tests), and
+    recover the turns a stopped server left running."""
     if app.state.threads is not None:
+        await _recover_turns(app.state.threads)
         yield
         return
     settings = get_database_settings()
@@ -68,6 +81,7 @@ async def _thread_state(app: FastAPI) -> AsyncGenerator[None]:
     ):
         app.state.threads = database.threads
         app.state.health_check = database.health_check
+        await _recover_turns(database.threads)
         yield
 
 

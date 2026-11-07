@@ -7,6 +7,7 @@ SSE, wire schemas, step labels or user-facing text.
 
 from __future__ import annotations
 
+from app.telemetry import TurnSegment
 from app.turns.events import (
     AgentStarted,
     AssistantText,
@@ -24,9 +25,15 @@ from app.turns.events import (
     TurnFailed,
     TurnUsage,
 )
-from app.turns.failures import FailureReason, KeysUnavailableError, classify, new_correlation_id
+from app.turns.failures import (
+    FailureReason,
+    KeysUnavailableError,
+    classify,
+    new_correlation_id,
+    resumable,
+)
 from app.turns.keys import TurnKeys, load_turn_keys
-from app.turns.runner import TurnRequest, TurnServices, TurnSettings, execute_turn
+from app.turns.runner import TurnRequest, TurnServices, TurnSettings, execute_turn, pending_steps
 
 __all__ = [
     "AgentStarted",
@@ -47,6 +54,7 @@ __all__ = [
     "TurnFailed",
     "TurnKeys",
     "TurnRequest",
+    "TurnSegment",
     "TurnServices",
     "TurnSettings",
     "TurnUsage",
@@ -54,4 +62,6 @@ __all__ = [
     "execute_turn",
     "load_turn_keys",
     "new_correlation_id",
+    "pending_steps",
+    "resumable",
 ]

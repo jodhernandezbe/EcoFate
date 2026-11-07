@@ -124,6 +124,7 @@ Icons are Lucide, sized `size-4` inline and `size-7` as icon buttons; icon-only 
 | Error | `role="alert"`, `text-bad`, inside a hairline `rounded-xl` box (or a plain line in the rail) | What failed and what to do; never a raw exception |
 | Ready | Value in `text-sm font-medium tabular-nums` with its unit; status as a pill with words | Scientific notation as `1.2 × 10⁻⁵`; digits from configuration |
 | Streaming or partial | `aria-live="polite"` text in `text-fg2` while the assistant works | What the assistant is doing (tool pill) |
+| Interrupted | Under the partial answer, `role="status"` in a hairline `rounded-xl` box with a `text-fg2` pause icon; an accent **Resume** (disabled with its reason while a turn runs) and, for a rejected key, a hairline **Open Settings**; the header status reads "Stopped" | The server's fixed message only: why the turn stopped and what to do before resuming |
 | Interactive | Visible focus ring, `aria-pressed` on toggles, disabled controls dimmed and inert | Labels on every icon-only control; a disabled control says why (tooltip and `aria-description`) |
 
 ## Copy

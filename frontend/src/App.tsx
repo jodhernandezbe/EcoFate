@@ -109,6 +109,7 @@ export function App() {
             onAnswer={(answers, summary) => {
               if (chat.confirmation) void chat.answer(answers, summary, chat.confirmation);
             }}
+            onResume={() => void chat.resume()}
             onOpenSettings={() => setSettingsOpen(true)}
             onCollapse={collapse}
           />
