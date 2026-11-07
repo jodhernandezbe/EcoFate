@@ -58,6 +58,28 @@ the CLI), imports `agent`, `config`, `tools.credentials`, and never imports `api
    through `/api/v1/chat/stream` and stores the event types and payload shapes in order; the
    same test must pass after the move without edits.
 
+7. **Adjustments found during implementation (approved 2026-11-07).** Keeping zero behaviour
+   change against the existing `tests/api` suite needed these refinements of 1-3 and 5:
+   - *Collaborators, not values.* `execute_turn(request, services, settings)` takes
+     `TurnServices`: a key loader (`load_turn_keys(ServiceKeys)` for the API; raises
+     `KeysUnavailableError(reason)`), a model factory, the checkpointer, a `user_values`
+     callable and a `record_usage` callable (stores the turn's calls, returns the thread's).
+     Key reading, model building, the user's values and the usage store stay inside the turn
+     span, so a missing key or a store failure still marks the span as an error.
+   - *Correlation id from the runner.* `TurnFailed(reason, correlation_id)`: the runner logs
+     the failure (traceback only for `unexpected`; nothing for a missing key) under the id
+     the browser shows. The id is random, not presentation text.
+   - *Reasons.* `user_facing` is replaced by `no_key` and `keychain_unavailable` (the closed
+     set holds no text); the API maps them to the existing fixed messages.
+   - *Extra events.* `TurnBegan` (first; the span is open), `AgentStarted` (keys provided and
+     agent built; the API rebuilds the workspace for supplied answers), `AssistantText` (final
+     message of a non-streaming model), `ScopePassed`, and `ToolResults` (end of a tool batch,
+     where the API rebuilds the workspace once). `ToolFinished` carries `failed`.
+   - *Presenter failures.* A failure in the API's own bookkeeping while presenting an event is
+     thrown back into the runner (`athrow`) and reported as the turn's failure, so the stream
+     still ends error, usage, turn_finished. Nested generators are closed with `aclosing`, so
+     an early client disconnect releases keys and ends the span at once, in the same context.
+
 ## Risks / Trade-offs
 
 - A refactor of the hottest module can change event order subtly -> the golden test and the

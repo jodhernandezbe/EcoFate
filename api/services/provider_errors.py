@@ -1,15 +1,19 @@
-"""Plain-language messages for the model provider's failures, safe to show the user.
+"""Plain-language messages for a failed turn, safe to show the user.
 
-The provider's own message is never shown (it can echo request details); each failure maps to
-one fixed message. The provider package is not imported: a failure is recognised by what it
-carries (an HTTP ``status_code`` and an error ``code``) and by the names of its classes.
+The runner (``app.turns``) classifies a failure as a ``FailureReason``; this module maps each
+reason to one fixed message. The provider's own message is never shown (it can echo request
+details).
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import cast
+from types import MappingProxyType
 
+from api.core.exceptions import GENERIC_ERROR
+from app.turns import FailureReason, classify
+
+NO_KEY_MESSAGE = "Add your OpenAI API key in Settings (the gear icon) to start."
+KEYCHAIN_UNAVAILABLE = "The OS keychain is unavailable."
 OUT_OF_CREDITS = (
     "Your OpenAI account has no credits left. Add credits in your OpenAI billing settings "
     "(platform.openai.com), then try again."
@@ -20,39 +24,30 @@ UNREACHABLE = "Could not reach OpenAI. Check your connection and try again."
 PROVIDER_DOWN = "OpenAI is having trouble right now. Try again in a little while."
 FORBIDDEN = "OpenAI refused the request for this account or model. Check your OpenAI account."
 
-_NO_CREDIT_CODES = frozenset({"insufficient_quota", "credit_balance_exhausted"})
-_NETWORK_FAILURES = frozenset({"APIConnectionError", "APITimeoutError", "ConnectTimeout"})
-_HTTP_UNAUTHORIZED, _HTTP_FORBIDDEN, _HTTP_RATE_LIMITED, _HTTP_SERVER_ERROR = 401, 403, 429, 500
+_PROVIDER_MESSAGES = MappingProxyType(
+    {
+        FailureReason.OUT_OF_CREDITS: OUT_OF_CREDITS,
+        FailureReason.RATE_LIMITED: RATE_LIMITED,
+        FailureReason.BAD_KEY: BAD_KEY,
+        FailureReason.FORBIDDEN: FORBIDDEN,
+        FailureReason.PROVIDER_DOWN: PROVIDER_DOWN,
+        FailureReason.UNREACHABLE: UNREACHABLE,
+    },
+)
+_MESSAGES = MappingProxyType(
+    {
+        **_PROVIDER_MESSAGES,
+        FailureReason.NO_KEY: NO_KEY_MESSAGE,
+        FailureReason.KEYCHAIN_UNAVAILABLE: KEYCHAIN_UNAVAILABLE,
+    },
+)
 
 
-def _codes(exc: BaseException) -> set[str]:
-    """The error codes the failure carries, as the provider's SDK exposes them."""
-    found = {getattr(exc, "code", None)}
-    body = getattr(exc, "body", None)
-    if isinstance(body, dict):
-        outer = cast(Mapping[str, object], body)
-        error = outer.get("error", outer)
-        if isinstance(error, dict):
-            found.add(cast(Mapping[str, object], error).get("code"))
-    return {code for code in found if isinstance(code, str)}
-
-
-def _status(exc: BaseException) -> int | None:
-    status = getattr(exc, "status_code", None)
-    return status if isinstance(status, int) and not isinstance(status, bool) else None
+def message_for(reason: FailureReason) -> str:
+    """The fixed message for a failure reason; the generic one for an unexpected failure."""
+    return _MESSAGES.get(reason, GENERIC_ERROR)
 
 
 def explain(exc: BaseException) -> str | None:
     """A fixed, user-facing message for a provider failure, or None when it is not one."""
-    status = _status(exc)
-    if status == _HTTP_RATE_LIMITED:
-        return OUT_OF_CREDITS if _codes(exc) & _NO_CREDIT_CODES else RATE_LIMITED
-    if status == _HTTP_UNAUTHORIZED:
-        return BAD_KEY
-    if status == _HTTP_FORBIDDEN:
-        return FORBIDDEN
-    if status is not None and status >= _HTTP_SERVER_ERROR:
-        return PROVIDER_DOWN
-    if any(cls.__name__ in _NETWORK_FAILURES for cls in type(exc).__mro__):
-        return UNREACHABLE
-    return None
+    return _PROVIDER_MESSAGES.get(classify(exc))

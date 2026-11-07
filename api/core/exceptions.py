@@ -7,7 +7,6 @@ exception text, request headers, request bodies or submitted values.
 from __future__ import annotations
 
 import logging
-import uuid
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -15,14 +14,11 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.key_vault import InvalidKeyError, KeychainUnavailableError
+from app.turns.failures import new_correlation_id
 
 logger = logging.getLogger("api")
 GENERIC_ERROR = "Something went wrong. Try again."
-
-
-def new_correlation_id() -> str:
-    """A short random id that ties a user-visible error to its log entry."""
-    return uuid.uuid4().hex[:12]
+__all__ = ["GENERIC_ERROR", "error_body", "install_exception_handlers", "new_correlation_id"]
 
 
 def error_body(message: str, correlation_id: str) -> dict[str, str]:

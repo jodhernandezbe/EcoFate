@@ -148,9 +148,15 @@ Recording runs the scenario once against the live services (it needs the CompTox
 
 ## Architecture
 
-The code is split into packages with one-way dependencies: `agent` -> `tools` -> `models`, and `agent` -> `prompts`. `models` knows nothing about LLMs or LangChain.
+The code is split into packages with one-way dependencies: `agent` -> `tools` -> `models`, and `agent` -> `prompts`. `models` knows nothing about LLMs or LangChain. `api` -> `app`; `app` never imports `api`, and nothing imports `api` (`tests/test_layering.py`).
 
     agent/                   graph.py (build_agent(model, ...) -> compiled LangGraph), state.py (AgentState)
+    app/                     the program: chat_model.py (the one model factory), key_vault.py, run.py (CLI),
+                             redaction.py (log redaction), telemetry.py, usage_meter.py
+      turns/                 the one turn runner: execute_turn(...) yields transport-neutral TurnEvents
+                             (keys, agent build, span, usage, failure reasons); every front end uses it
+    api/                     web backend (FastAPI, SSE); services/agent_runner.py presents TurnEvents as
+                             wire events and never runs the graph itself
     commons/                 generic pure utilities shared across layers (units.py: Pint)
     models/                  pure NumPy physics, no LLM/LangChain imports, grouped by what they model
       transport/             dispersion.py (sigmas, Gaussian plume), plume_rise.py, wind_profile.py,

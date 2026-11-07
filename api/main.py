@@ -15,12 +15,12 @@ from fastapi.staticfiles import StaticFiles
 
 from api.core.config import ui_settings
 from api.core.exceptions import install_exception_handlers
-from api.core.logging_filter import install_redaction, protect_secrets
 from api.core.origin_guard import OriginGuard
 from api.dependencies import key_variables
 from api.routers import v1_chat, v1_facilities, v1_health, v1_monitoring, v1_settings
 from api.services.database import open_database
 from api.services.threads import ThreadStore
+from app.redaction import install_redaction, protect_secrets
 from app.telemetry import flush_telemetry
 from config.database import DatabaseSettings, get_database_settings
 from config.telemetry import get_telemetry_settings

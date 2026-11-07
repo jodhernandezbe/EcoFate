@@ -7,9 +7,14 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   `models/`. If the UI needs a new fact, it needs a tool, not an `api/` function.
 - Layering: `routers/` (thin handlers, no logic) -> `services/` (orchestration: agent runner,
   state serializer, threads, usage) -> the agent core. `core/` holds config view, keyring,
-  log redaction and exception handlers; `schemas/` holds every wire model.
+  the uvicorn log config (the filter itself is `app.redaction`) and exception handlers;
+  `schemas/` holds every wire model.
+- `services/agent_runner.py` presents a turn and never runs the graph itself: it calls
+  `app.turns.execute_turn` and turns each `TurnEvent` into wire events (sequence numbers, step
+  labels, workspace rebuild, pending confirmation, usage summary) and does the `ThreadStore`
+  bookkeeping. `services/provider_errors.py` maps a `FailureReason` to its fixed message.
 - Allowed imports: `app`, `agent`, `config`, `commons`, `prompts`, `storage`, `tools.schemas` (types
-  only) and `tools.credentials` (to give the turn's keys to the tools that need them). Never import tool modules, provider packages or `evals`; nothing imports `api`.
+  only) and `tools.user_values` (checks an entered value). Never import tool modules, provider packages or `evals`; nothing imports `api`.
 - Settings come from `[ui]` in `config/settings.toml` via `config.ui`; `api/core/config.py`
   only exposes them to `Depends()`. Never read ports, origins or names from the environment.
   The container bind address comes only from `[ui.container]`, used when `python -m api
@@ -25,9 +30,9 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   `services/database.py` opens the database in the lifespan and refuses to start without a
   migrated one; tests pass `create_app(..., threads=InMemoryThreadStore())` and never touch it.
 - The chat model is built only through `app.chat_model`. The OpenAI, Census and CompTox keys
-  are read once per turn from `app.key_vault.ServiceKeys`, given to the tools through
-  `tools.credentials.HOLDERS` for that turn only, protected from the logs, and never stored on
-  anything that outlives the turn. Only the OpenAI key is required.
+  are read once per turn from `app.key_vault.ServiceKeys` by the runner (`app.turns.load_turn_keys`,
+  passed in as its key loader), given to the tools for that turn only, protected from the logs,
+  and never stored on anything that outlives the turn. Only the OpenAI key is required.
 - `api/schemas/` is the single wire contract with `frontend/`. After changing it run
   `uv run python -m scripts.export_contract` and `npm --prefix frontend run gen:types`.
 - Responses, events and logs never contain exception text, request headers or key material;

@@ -23,4 +23,14 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   of them to the tools through `run.stored_keys_provided`. The program uses the stored keys and
   falls back to each key's environment variable for headless runs. `EnvironmentVault` (same
   `KeyVault` protocol) reads a key from its variable and never stores one; the web program
-  uses it only in container mode. `app` never imports `api`.
+  uses it only in container mode. `app` never imports `api` (`tests/test_layering.py`).
+- `turns/` is the one turn runner. `execute_turn(request, services, settings)` yields
+  transport-neutral `TurnEvent`s (frozen dataclasses: no sequence numbers, labels, user-facing
+  text or wire schemas) and owns key provision for the turn (`keys.provided`, released on
+  every exit), agent build, run config, callbacks, the session span, usage recording and
+  failure classification (`failures.FailureReason`, a closed set; never exception text). Its
+  collaborators come in as `TurnServices` (key loader, model factory, checkpointer, the user's
+  values, usage store). Every front end runs turns only through it; a caller's own failure while
+  presenting an event is thrown back in (`athrow`) and reported as the turn's failure.
+- `redaction.py` is the one log-redaction filter (`protect_secrets`, `redact`,
+  `install_redaction`); it holds no HTTP knowledge. Front ends only configure their loggers.
