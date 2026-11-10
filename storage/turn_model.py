@@ -13,6 +13,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 from types import MappingProxyType
+from uuid import UUID
+
+from storage.keys import ThreadKey
 
 
 class TurnStatus(StrEnum):
@@ -50,7 +53,8 @@ class Turn:
 
     Attributes:
         id: The turn's id (also the ``turn_id`` of its stream events).
-        thread_id: The conversation it belongs to.
+        owner_id: The user whose turn it is.
+        thread_id: The conversation it belongs to (one of that user's).
         status: Where it is in its life.
         reason: Why it was interrupted or failed; None otherwise.
         resume_count: How many times it was resumed (each resume counts, even one that stopped).
@@ -61,6 +65,7 @@ class Turn:
     """
 
     id: str
+    owner_id: UUID
     thread_id: str
     status: TurnStatus
     reason: str | None
@@ -69,6 +74,11 @@ class Turn:
     started_at: datetime | None
     updated_at: datetime
     finished_at: datetime | None
+
+    @property
+    def key(self) -> ThreadKey:
+        """The thread the turn belongs to, with its owner."""
+        return ThreadKey(self.owner_id, self.thread_id)
 
 
 def check_transition(turn_id: str, current: TurnStatus, target: TurnStatus) -> None:

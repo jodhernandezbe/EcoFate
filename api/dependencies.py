@@ -12,7 +12,9 @@ from agent.graph import DEFAULT_SYSTEM_PROMPT
 from agent.guardrails import ScopeGuard
 from api.core.config import ui_settings
 from api.core.security_keyring import default_service_keys
+from api.core.session_guard import auth_runtime
 from api.services.agent_runner import AgentRuntime
+from api.services.auth.throttle import client_address
 from api.services.monitoring.service import MonitoringService
 from api.services.projectors.rules import WorkspaceRules
 from api.services.threads import ThreadStore
@@ -111,6 +113,17 @@ def get_threads(request: Request) -> ThreadStore:
     return cast(ThreadStore, request.app.state.threads)
 
 
-def get_monitoring() -> MonitoringService:
-    """The monitoring service; it finds the Logfire read token in the server's environment."""
-    return MonitoringService(get_telemetry_settings(), ui_settings().step_labels, os.environ)
+def get_monitoring(request: Request) -> MonitoringService:
+    """The monitoring service; it finds the Logfire read token in the server's environment and
+    resolves the accounts of the sessions through the application database."""
+    emails = auth_runtime(request).accounts.users.emails
+    settings = get_telemetry_settings()
+    return MonitoringService(settings, ui_settings().step_labels, os.environ, emails=emails)
+
+
+def get_client_address(request: Request) -> str:
+    """The address the request came from: the socket peer, or the ``X-Forwarded-For`` entry the
+    configured number of trusted proxies vouch for (none by default)."""
+    hops = auth_runtime(request).settings.trusted_proxy_hops
+    peer = request.client.host if request.client else None
+    return client_address(peer, request.headers.get("x-forwarded-for"), hops)

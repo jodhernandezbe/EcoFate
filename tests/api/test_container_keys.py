@@ -13,10 +13,10 @@ from pydantic import SecretStr
 
 from api import dependencies
 from api.dependencies import AgentRuntime, get_runtime, key_variables
-from api.main import create_app
 from app.key_vault import default_service_keys
 from config.ui import UiSettings
-from tests.api.conftest import ORIGIN
+from tests.api.auth_support import build_app
+from tests.api.conftest import ORIGIN, make_user, sign_in_as
 from tests.api.streams import parse_sse
 from tests.fakes import OPENAI_ENTRY, FakeCredentialStore, InMemoryThreadStore, scripted
 
@@ -34,7 +34,7 @@ def environment_key(monkeypatch: pytest.MonkeyPatch) -> str:
 
 
 def _client(settings: UiSettings, *, container: bool, used: list[str]) -> Iterator[TestClient]:
-    app = create_app(settings, keys_from_environment=container, threads=InMemoryThreadStore())
+    app = build_app(settings, keys_from_environment=container, threads=InMemoryThreadStore())
     model = scripted("an answer")
 
     def build(key: SecretStr) -> object:
@@ -43,6 +43,7 @@ def _client(settings: UiSettings, *, container: bool, used: list[str]) -> Iterat
 
     app.dependency_overrides[get_runtime] = lambda: AgentRuntime(build, 10)  # pyright: ignore[reportArgumentType]
     with TestClient(app, base_url=ORIGIN, raise_server_exceptions=False) as client:
+        sign_in_as(app, client, make_user(app, admin=True))
         yield client
 
 
@@ -98,7 +99,7 @@ def test_native_mode_ignores_the_environment_key(
 ) -> None:
     store = FakeCredentialStore()
     monkeypatch.setattr(dependencies, "default_service_keys", lambda: default_service_keys(store))
-    native = create_app(settings, threads=InMemoryThreadStore())
+    native = build_app(settings, threads=InMemoryThreadStore())
     keys = dependencies.get_service_keys(cast(Request, SimpleNamespace(app=native)))
     assert keys.vault("openai").load() is None
     assert store.calls == [("get", *OPENAI_ENTRY)]
@@ -108,7 +109,7 @@ def test_container_mode_selects_the_environment_vaults(
     settings: UiSettings,
     environment_key: str,
 ) -> None:
-    app = create_app(settings, keys_from_environment=True, threads=InMemoryThreadStore())
+    app = build_app(settings, keys_from_environment=True, threads=InMemoryThreadStore())
     keys = dependencies.get_service_keys(cast(Request, SimpleNamespace(app=app)))
     loaded = keys.vault("openai").load()
     assert loaded is not None

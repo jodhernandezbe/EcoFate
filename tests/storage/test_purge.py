@@ -5,22 +5,25 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import timedelta
+from uuid import UUID
 
 import pytest
 
+from storage.keys import ThreadKey
 from storage.purge import purge_once, purge_periodically
 from tests.storage.test_engine import SETTINGS
 
+OWNER = UUID(int=1)
 pytestmark = pytest.mark.anyio
 
 
 class Store:
-    def __init__(self, purged: list[str] | None = None, *, fail: bool = False) -> None:
+    def __init__(self, purged: list[ThreadKey] | None = None, *, fail: bool = False) -> None:
         self.calls: list[timedelta] = []
         self.purged = purged or []
         self.fail = fail
 
-    async def purge_idle(self, older_than: timedelta) -> list[str]:
+    async def purge_idle(self, older_than: timedelta) -> list[ThreadKey]:
         self.calls.append(older_than)
         if self.fail:
             raise OSError("database down")
@@ -28,7 +31,7 @@ class Store:
 
 
 async def test_purge_uses_the_retention_in_days() -> None:
-    store = Store(["a", "b"])
+    store = Store([ThreadKey(OWNER, "a"), ThreadKey(OWNER, "b")])
     assert await purge_once(store, SETTINGS) == 2
     assert store.calls == [timedelta(days=SETTINGS.thread_retention_days)]
 
@@ -43,7 +46,7 @@ async def test_a_database_failure_is_logged_and_the_loop_survives(
 
 async def test_an_unexpected_error_is_not_swallowed() -> None:
     class Broken(Store):
-        async def purge_idle(self, older_than: timedelta) -> list[str]:
+        async def purge_idle(self, older_than: timedelta) -> list[ThreadKey]:
             raise KeyError("bug")
 
     with pytest.raises(KeyError):

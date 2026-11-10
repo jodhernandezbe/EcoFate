@@ -6,7 +6,8 @@ rule every thread id already follows). That is why bandit's B608 is silenced on 
 below: nothing else is ever interpolated into them. The result columns the parsers read are the
 aliases used here: ``trace_id``, ``start_timestamp``, ``duration`` (seconds), ``sid``, ``question``,
 ``model``, ``outcome``, ``input_tokens``, ``cached_input_tokens``, ``output_tokens``,
-``cost_usd``, ``cost_status``, ``model_calls``, ``tool_calls`` for the sessions listing, and
+``cost_usd``, ``cost_status``, ``user_id``, ``model_calls``, ``tool_calls`` for the sessions
+listing, and
 ``span_name``, ``op``, ``tool``, ``usage``, ``status``, ``is_exception`` for the detail.
 """
 
@@ -55,7 +56,8 @@ def _turn_columns(settings: TelemetrySettings) -> str:
     usage = ", ".join(f"{_attribute(names.usage_prefix + f)} as {f}" for f in _USAGE_FIELDS)
     return (
         f"{_attribute(names.session_id)} as sid, {_attribute(names.question)} as question, "
-        f"{_attribute(names.model)} as model, {_attribute(names.outcome)} as outcome, {usage}"
+        f"{_attribute(names.model)} as model, {_attribute(names.outcome)} as outcome, "
+        f"{_attribute(names.user_id)} as user_id, {usage}"
     )
 
 

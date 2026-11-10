@@ -1,5 +1,8 @@
 """Command line: ``uv run python -m api`` serves the web interface on loopback.
 
+``create-admin --email <address>`` creates (or promotes) the first administrator; see
+``api/admin_command.py``.
+
 ``--container`` binds the address in ``[ui.container]`` instead (inside a container, where the
 port is published on the host's loopback only) and reads the keys from the environment, since a
 container has no OS keychain; the origin checks still use ``[ui]``.
@@ -16,6 +19,7 @@ import uvicorn
 from dotenv import load_dotenv
 from uvicorn.config import LOGGING_CONFIG
 
+from api.admin_command import main as create_admin
 from api.core.config import ui_settings
 from api.core.logging_filter import uvicorn_log_config
 from api.main import create_app
@@ -52,6 +56,10 @@ def main(argv: Sequence[str] = ()) -> None:
     Args:
         argv: Command line arguments after the program name (``--container``).
     """
+    if list(argv)[:1] == ["create-admin"]:
+        load_dotenv()
+        create_admin(argv[1:])
+        return
     container = _arguments(argv).container
     load_dotenv()
     configure_telemetry(get_telemetry_settings())  # after .env, which may hold the token

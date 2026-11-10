@@ -1,5 +1,21 @@
 {
   "$defs": {
+    "AcceptedResponse": {
+      "additionalProperties": false,
+      "description": "The same answer whether or not the email has an account.",
+      "properties": {
+        "status": {
+          "const": "accepted",
+          "default": "accepted",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "AcceptedResponse",
+      "type": "object"
+    },
     "AssistantMessage": {
       "additionalProperties": false,
       "properties": {
@@ -75,6 +91,30 @@
         "naics_edition"
       ],
       "title": "CdrSector",
+      "type": "object"
+    },
+    "ChangePasswordRequest": {
+      "additionalProperties": false,
+      "description": "``POST /api/v1/account/password``.",
+      "properties": {
+        "current_password": {
+          "format": "password",
+          "maxLength": 1024,
+          "type": "string",
+          "writeOnly": true
+        },
+        "new_password": {
+          "format": "password",
+          "maxLength": 1024,
+          "type": "string",
+          "writeOnly": true
+        }
+      },
+      "required": [
+        "current_password",
+        "new_password"
+      ],
+      "title": "ChangePasswordRequest",
       "type": "object"
     },
     "ChatLayout": {
@@ -409,6 +449,23 @@
       "title": "ConfirmationRequested",
       "type": "object"
     },
+    "DeleteAccountRequest": {
+      "additionalProperties": false,
+      "description": "``POST /api/v1/account/delete``: the account's password confirms it.",
+      "properties": {
+        "password": {
+          "format": "password",
+          "maxLength": 1024,
+          "type": "string",
+          "writeOnly": true
+        }
+      },
+      "required": [
+        "password"
+      ],
+      "title": "DeleteAccountRequest",
+      "type": "object"
+    },
     "Dose": {
       "additionalProperties": false,
       "description": "Inhalation average daily dose, mg/(kg\u00b7day), of the worst case, by age band of the residents.\n\n``highest_band`` is the band with the largest dose (``highest_mg_kg_day``); ``by_band`` has\nevery band that has residents. Children get larger doses because they breathe more per kg.",
@@ -448,6 +505,21 @@
         "by_band"
       ],
       "title": "Dose",
+      "type": "object"
+    },
+    "EmailRequest": {
+      "additionalProperties": false,
+      "description": "``POST /api/v1/auth/resend`` and ``/forgot``: the address to mail.",
+      "properties": {
+        "email": {
+          "maxLength": 320,
+          "type": "string"
+        }
+      },
+      "required": [
+        "email"
+      ],
+      "title": "EmailRequest",
       "type": "object"
     },
     "EntryAnswer": {
@@ -2267,6 +2339,28 @@
       "title": "Receptors",
       "type": "object"
     },
+    "ResetRequest": {
+      "additionalProperties": false,
+      "description": "``POST /api/v1/auth/reset``: the token from the emailed link and the new password.",
+      "properties": {
+        "password": {
+          "format": "password",
+          "maxLength": 1024,
+          "type": "string",
+          "writeOnly": true
+        },
+        "token": {
+          "maxLength": 256,
+          "type": "string"
+        }
+      },
+      "required": [
+        "token",
+        "password"
+      ],
+      "title": "ResetRequest",
+      "type": "object"
+    },
     "RiskSummary": {
       "additionalProperties": false,
       "description": "Highest worst-case and representative HQ and cancer risk; ``reason`` when none exists.",
@@ -2873,8 +2967,18 @@
     },
     "SessionSummary": {
       "additionalProperties": false,
-      "description": "A session as listed: a web thread or one command-line run.\n\nCounts come from the trace's spans; tokens and cost are the sums of the turns' recorded\nusage and are None when any turn did not record them. ``cost_status`` is the weakest status\nof its turns (``unknown`` when one is missing).",
+      "description": "A session as listed: a web thread or one command-line run.\n\nCounts come from the trace's spans; tokens and cost are the sums of the turns' recorded\nusage and are None when any turn did not record them. ``cost_status`` is the weakest status\nof its turns (``unknown`` when one is missing). ``account`` is the email of the user who ran\nit, looked up in the application database from the opaque user id on the spans; None when the\nspans carry none (a command-line run) or the account no longer exists.",
       "properties": {
+        "account": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "cached_input_tokens": {
           "anyOf": [
             {
@@ -3014,7 +3118,8 @@
         "cost_usd",
         "cost_status",
         "duration_ms",
-        "outcome"
+        "outcome",
+        "account"
       ],
       "title": "SessionSummary",
       "type": "object"
@@ -3123,6 +3228,79 @@
         "sessions"
       ],
       "title": "SessionsResponse",
+      "type": "object"
+    },
+    "SignInRequest": {
+      "additionalProperties": false,
+      "description": "``POST /api/v1/auth/signin``.",
+      "properties": {
+        "email": {
+          "maxLength": 320,
+          "type": "string"
+        },
+        "password": {
+          "format": "password",
+          "maxLength": 1024,
+          "type": "string",
+          "writeOnly": true
+        }
+      },
+      "required": [
+        "email",
+        "password"
+      ],
+      "title": "SignInRequest",
+      "type": "object"
+    },
+    "SignInResponse": {
+      "additionalProperties": false,
+      "description": "``signed_in`` (with the user; the session is the cookie) or ``verification_required``\n(the password was right but the email is not verified; no session was made).",
+      "properties": {
+        "state": {
+          "enum": [
+            "signed_in",
+            "verification_required"
+          ],
+          "type": "string"
+        },
+        "user": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UserInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "state",
+        "user"
+      ],
+      "title": "SignInResponse",
+      "type": "object"
+    },
+    "SignUpRequest": {
+      "additionalProperties": false,
+      "description": "``POST /api/v1/auth/signup``.",
+      "properties": {
+        "email": {
+          "maxLength": 320,
+          "type": "string"
+        },
+        "password": {
+          "format": "password",
+          "maxLength": 1024,
+          "type": "string",
+          "writeOnly": true
+        }
+      },
+      "required": [
+        "email",
+        "password"
+      ],
+      "title": "SignUpRequest",
       "type": "object"
     },
     "Stack": {
@@ -3500,6 +3678,21 @@
       "title": "Token",
       "type": "object"
     },
+    "TokenRequest": {
+      "additionalProperties": false,
+      "description": "``POST /api/v1/auth/verify``: the token from the emailed link (sent in the body).",
+      "properties": {
+        "token": {
+          "maxLength": 256,
+          "type": "string"
+        }
+      },
+      "required": [
+        "token"
+      ],
+      "title": "TokenRequest",
+      "type": "object"
+    },
     "ToolStatus": {
       "additionalProperties": false,
       "description": "A tool step: ``started`` carries the label; ``finished`` adds the outcome.",
@@ -3795,6 +3988,36 @@
         "priced_on"
       ],
       "title": "UsageTotals",
+      "type": "object"
+    },
+    "UserInfo": {
+      "additionalProperties": false,
+      "description": "The signed-in user: never a password hash or a token.",
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "user",
+            "admin"
+          ],
+          "type": "string"
+        },
+        "verified": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "role",
+        "verified"
+      ],
+      "title": "UserInfo",
       "type": "object"
     },
     "VentilationTier": {
@@ -4273,11 +4496,23 @@
   },
   "additionalProperties": false,
   "properties": {
+    "AcceptedResponse": {
+      "$ref": "#/$defs/AcceptedResponse"
+    },
+    "ChangePasswordRequest": {
+      "$ref": "#/$defs/ChangePasswordRequest"
+    },
     "ChatRequest": {
       "$ref": "#/$defs/ChatRequest"
     },
     "ClientConfig": {
       "$ref": "#/$defs/ClientConfig"
+    },
+    "DeleteAccountRequest": {
+      "$ref": "#/$defs/DeleteAccountRequest"
+    },
+    "EmailRequest": {
+      "$ref": "#/$defs/EmailRequest"
     },
     "KeyStatusResponse": {
       "$ref": "#/$defs/KeyStatusResponse"
@@ -4288,11 +4523,23 @@
     "KeysStatusResponse": {
       "$ref": "#/$defs/KeysStatusResponse"
     },
+    "ResetRequest": {
+      "$ref": "#/$defs/ResetRequest"
+    },
     "SessionDetailResponse": {
       "$ref": "#/$defs/SessionDetailResponse"
     },
     "SessionsResponse": {
       "$ref": "#/$defs/SessionsResponse"
+    },
+    "SignInRequest": {
+      "$ref": "#/$defs/SignInRequest"
+    },
+    "SignInResponse": {
+      "$ref": "#/$defs/SignInResponse"
+    },
+    "SignUpRequest": {
+      "$ref": "#/$defs/SignUpRequest"
     },
     "StreamEventSchema": {
       "$ref": "#/$defs/StreamEventSchema"
@@ -4300,24 +4547,40 @@
     "ThreadSnapshot": {
       "$ref": "#/$defs/ThreadSnapshot"
     },
+    "TokenRequest": {
+      "$ref": "#/$defs/TokenRequest"
+    },
     "UsageTotals": {
       "$ref": "#/$defs/UsageTotals"
+    },
+    "UserInfo": {
+      "$ref": "#/$defs/UserInfo"
     },
     "WorkspaceState": {
       "$ref": "#/$defs/WorkspaceState"
     }
   },
   "required": [
+    "AcceptedResponse",
+    "ChangePasswordRequest",
     "ChatRequest",
     "ClientConfig",
+    "DeleteAccountRequest",
+    "EmailRequest",
     "KeyStatusResponse",
     "KeyUpdatePayload",
     "KeysStatusResponse",
+    "ResetRequest",
     "SessionDetailResponse",
     "SessionsResponse",
+    "SignInRequest",
+    "SignInResponse",
+    "SignUpRequest",
     "StreamEventSchema",
     "ThreadSnapshot",
+    "TokenRequest",
     "UsageTotals",
+    "UserInfo",
     "WorkspaceState"
   ],
   "title": "ApiContract",

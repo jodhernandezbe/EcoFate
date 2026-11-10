@@ -34,6 +34,8 @@ from api.services.threads import ThreadStore
 from app.key_vault import ServiceKeys, default_service_keys
 from app.usage_meter import CallUsage
 from config.ui import ModelPrice
+from storage.keys import ThreadKey
+from tests.api.keys import owned
 from tests.api.streams import begun_turn
 from tests.fakes import (
     CENSUS_ENTRY,
@@ -157,7 +159,9 @@ async def test_follow_up_turn_sees_the_earlier_history() -> None:
     store = FakeCredentialStore()
     await _run("one", store, _factory(model), threads)
     await _run("two", store, _factory(model), threads)
-    saved = threads.checkpointer.get_tuple({"configurable": {"thread_id": "t1"}})
+    saved = threads.checkpointer.get_tuple(
+        {"configurable": {"thread_id": owned("t1").checkpoint_id}},
+    )
     assert saved is not None
     texts = [m.content for m in saved.checkpoint["channel_values"]["messages"]]
     assert texts == ["one", "first answer", "two", "second answer"]
@@ -181,7 +185,9 @@ async def test_tools_see_the_turns_key_and_it_is_cleared_after(
     monkeypatch.setattr("agent.graph.get_all_tools", lambda: [probe_key])
     threads = InMemoryThreadStore()
     await _run("go", FakeCredentialStore(), _factory(_calling_probe()), threads)
-    saved = threads.checkpointer.get_tuple({"configurable": {"thread_id": "t1"}})
+    saved = threads.checkpointer.get_tuple(
+        {"configurable": {"thread_id": owned("t1").checkpoint_id}},
+    )
     assert saved is not None
     tool_messages = [m for m in saved.checkpoint["channel_values"]["messages"] if m.type == "tool"]
     assert [m.content for m in tool_messages] == [KEY]
@@ -206,7 +212,9 @@ async def test_concurrent_turns_keep_their_own_keys(monkeypatch: pytest.MonkeyPa
             runtime=AgentRuntime(_factory(_calling_probe()), 10),
         )
         [event async for event in events]
-        saved = threads.checkpointer.get_tuple({"configurable": {"thread_id": thread_id}})
+        saved = threads.checkpointer.get_tuple(
+            {"configurable": {"thread_id": owned(thread_id).checkpoint_id}},
+        )
         assert saved is not None
         messages = saved.checkpoint["channel_values"]["messages"]
         seen[thread_id] = next(m.content for m in messages if m.type == "tool")
@@ -351,8 +359,8 @@ async def test_session_totals_add_up_and_a_reset_clears_them() -> None:
     assert second.turn.input_tokens == 200
     assert second.session.input_tokens == first.turn.input_tokens + 200 == 300
     assert second.session.calls == 2
-    await threads.reset("t1")
-    assert await threads.session_calls("t1") == []
+    await threads.reset(owned("t1"))
+    assert await threads.session_calls(owned("t1")) == []
 
 
 async def test_a_failed_turn_still_reports_the_calls_it_made(
@@ -443,7 +451,9 @@ async def _probe_turn(
         runtime=AgentRuntime(_factory(_service_probe_model()), 10),
     )
     [event async for event in run]
-    saved = threads.checkpointer.get_tuple({"configurable": {"thread_id": "t1"}})
+    saved = threads.checkpointer.get_tuple(
+        {"configurable": {"thread_id": owned("t1").checkpoint_id}},
+    )
     assert saved is not None
     messages = saved.checkpoint["channel_values"]["messages"]
     return {m.name: m.content for m in messages if m.type == "tool"}
@@ -513,7 +523,9 @@ async def test_concurrent_turns_keep_their_own_service_keys(
             runtime=AgentRuntime(_factory(_service_probe_model()), 10),
         )
         [event async for event in run]
-        saved = threads.checkpointer.get_tuple({"configurable": {"thread_id": thread_id}})
+        saved = threads.checkpointer.get_tuple(
+            {"configurable": {"thread_id": owned(thread_id).checkpoint_id}},
+        )
         assert saved is not None
         tools = [m for m in saved.checkpoint["channel_values"]["messages"] if m.type == "tool"]
         seen[thread_id] = next(m.content for m in tools if m.name == "probe_census")
@@ -673,7 +685,7 @@ class _DatabaseDown(InMemoryThreadStore):
 
     async def add_usage(
         self,
-        thread_id: str,
+        key: ThreadKey,
         calls: Sequence[CallUsage],
         turn_id: str | None = None,
     ) -> None:

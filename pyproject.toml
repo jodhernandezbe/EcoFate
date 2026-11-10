@@ -9,7 +9,9 @@ authors = [{ name = "Jose Hernandez-Betancur" }]
 requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.20.1",
+    "argon2-cffi>=25.1.0",
     "chromadb>=1.5.9",
+    "email-validator>=2.3.0",
     "evidently>=0.7.23,<0.8",
     "fastapi>=0.156.4",
     "httpx>=0.28.1",

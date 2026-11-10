@@ -7,6 +7,7 @@ import pytest
 from api.schemas.chat import ChatRequest
 from api.services.confirmation import ConfirmationError, plan_turn, request_event
 from api.services.threads import ThreadStore
+from tests.api.keys import owned
 from tests.fakes import InMemoryThreadStore
 from tools.schemas import ConfirmationRequest, MissingEntry
 
@@ -34,7 +35,7 @@ async def _open(threads: ThreadStore, *keys: tuple[str, str]) -> ConfirmationReq
         request_id="req1",
         entries=[_entry(key, quantity) for key, quantity in keys],
     )
-    await threads.set_pending(THREAD, request)
+    await threads.set_pending(owned(THREAD), request)
     return request
 
 
@@ -55,11 +56,11 @@ def _decline(entry_id: str) -> dict[str, object]:
 async def test_valid_answer_is_recorded_in_target_unit_and_closes_the_request() -> None:
     threads = InMemoryThreadStore()
     await _open(threads, (IUR, "iur"))
-    plan = await plan_turn(_reply([_supply(IUR, 0.002, "1/(mg/m^3)")]), threads)
-    supplied, declined = await threads.answers(THREAD)
+    plan = await plan_turn(_reply([_supply(IUR, 0.002, "1/(mg/m^3)")]), threads, owned(THREAD))
+    supplied, declined = await threads.answers(owned(THREAD))
     assert supplied[IUR] == pytest.approx(2e-6)
     assert declined == frozenset()
-    assert await threads.pending(THREAD) is None
+    assert await threads.pending(owned(THREAD)) is None
     assert "iur for 71-43-2 = 0.002 1/(mg/m^3)" in plan.message
     assert "supplied" in plan.note
 
@@ -67,8 +68,8 @@ async def test_valid_answer_is_recorded_in_target_unit_and_closes_the_request() 
 async def test_decline_is_recorded_and_the_note_says_not_to_ask_again() -> None:
     threads = InMemoryThreadStore()
     await _open(threads, (RFC, "rfc"))
-    plan = await plan_turn(_reply([_decline(RFC)]), threads)
-    assert (await threads.answers(THREAD))[1] == frozenset({RFC})
+    plan = await plan_turn(_reply([_decline(RFC)]), threads, owned(THREAD))
+    assert (await threads.answers(owned(THREAD)))[1] == frozenset({RFC})
     assert "proceed without these values" in plan.note
     assert "do not ask again" in plan.note
 
@@ -77,16 +78,20 @@ async def test_reply_to_a_closed_or_other_request_is_409_and_changes_nothing() -
     threads = InMemoryThreadStore()
     await _open(threads, (IUR, "iur"))
     with pytest.raises(ConfirmationError) as closed:
-        await plan_turn(_reply([_supply(IUR, 2e-6, "1/(ug/m^3)")], request_id="other"), threads)
+        await plan_turn(
+            _reply([_supply(IUR, 2e-6, "1/(ug/m^3)")], request_id="other"),
+            threads,
+            owned(THREAD),
+        )
     assert closed.value.status == 409
-    assert await threads.pending(THREAD) is not None
-    assert await threads.answers(THREAD) == ({}, frozenset())
+    assert await threads.pending(owned(THREAD)) is not None
+    assert await threads.answers(owned(THREAD)) == ({}, frozenset())
 
 
 async def test_reply_with_no_open_request_is_409() -> None:
     threads = InMemoryThreadStore()
     with pytest.raises(ConfirmationError) as closed:
-        await plan_turn(_reply([_decline(IUR)]), threads)
+        await plan_turn(_reply([_decline(IUR)]), threads, owned(THREAD))
     assert closed.value.status == 409
 
 
@@ -94,17 +99,17 @@ async def test_answer_for_an_entry_not_asked_is_422_and_changes_nothing() -> Non
     threads = InMemoryThreadStore()
     await _open(threads, (IUR, "iur"))
     with pytest.raises(ConfirmationError) as bad:
-        await plan_turn(_reply([_supply("rfc:other", 1.0, "mg/m^3")]), threads)
+        await plan_turn(_reply([_supply("rfc:other", 1.0, "mg/m^3")]), threads, owned(THREAD))
     assert bad.value.status == 422
-    assert await threads.pending(THREAD) is not None
-    assert await threads.answers(THREAD) == ({}, frozenset())
+    assert await threads.pending(owned(THREAD)) is not None
+    assert await threads.answers(owned(THREAD)) == ({}, frozenset())
 
 
 async def test_unanswered_entry_is_422() -> None:
     threads = InMemoryThreadStore()
     await _open(threads, (IUR, "iur"), (RFC, "rfc"))
     with pytest.raises(ConfirmationError, match=RFC) as incomplete:
-        await plan_turn(_reply([_decline(IUR)]), threads)
+        await plan_turn(_reply([_decline(IUR)]), threads, owned(THREAD))
     assert incomplete.value.status == 422
 
 
@@ -112,7 +117,7 @@ async def test_repeated_entry_is_422() -> None:
     threads = InMemoryThreadStore()
     await _open(threads, (IUR, "iur"))
     with pytest.raises(ConfirmationError) as repeated:
-        await plan_turn(_reply([_decline(IUR), _decline(IUR)]), threads)
+        await plan_turn(_reply([_decline(IUR), _decline(IUR)]), threads, owned(THREAD))
     assert repeated.value.status == 422
 
 
@@ -139,19 +144,19 @@ async def test_out_of_range_or_incomplete_value_is_422_and_changes_nothing(
         "unit": unit,
     }
     with pytest.raises(ConfirmationError) as bad:
-        await plan_turn(_reply([entry]), threads)
+        await plan_turn(_reply([entry]), threads, owned(THREAD))
     assert bad.value.status == 422
-    assert await threads.pending(THREAD) is not None
-    assert await threads.answers(THREAD) == ({}, frozenset())
+    assert await threads.pending(owned(THREAD)) is not None
+    assert await threads.answers(owned(THREAD)) == ({}, frozenset())
 
 
 async def test_free_message_while_open_counts_every_entry_as_declined() -> None:
     threads = InMemoryThreadStore()
     await _open(threads, (IUR, "iur"), (RFC, "rfc"))
     message = ChatRequest.model_validate({"thread_id": THREAD, "message": "what about benzene?"})
-    plan = await plan_turn(message, threads)
-    assert await threads.pending(THREAD) is None
-    assert (await threads.answers(THREAD))[1] == frozenset({IUR, RFC})
+    plan = await plan_turn(message, threads, owned(THREAD))
+    assert await threads.pending(owned(THREAD)) is None
+    assert (await threads.answers(owned(THREAD)))[1] == frozenset({IUR, RFC})
     assert plan.message == "what about benzene?"
     assert "did not answer" in plan.note
 
@@ -159,16 +164,16 @@ async def test_free_message_while_open_counts_every_entry_as_declined() -> None:
 async def test_free_message_with_nothing_open_has_no_note_about_answers() -> None:
     threads = InMemoryThreadStore()
     message = ChatRequest.model_validate({"thread_id": THREAD, "message": "hello"})
-    plan = await plan_turn(message, threads)
+    plan = await plan_turn(message, threads, owned(THREAD))
     assert plan.note == ""
     assert plan.message == "hello"
 
 
 async def test_a_recorded_value_is_never_replaced_by_a_later_answer() -> None:
     threads = InMemoryThreadStore()
-    await threads.record_answers(THREAD, {IUR: 1e-6}, [])
-    await threads.record_answers(THREAD, {IUR: 5e-6}, [])
-    assert (await threads.answers(THREAD))[0] == {IUR: 1e-6}
+    await threads.record_answers(owned(THREAD), {IUR: 1e-6}, [])
+    await threads.record_answers(owned(THREAD), {IUR: 5e-6}, [])
+    assert (await threads.answers(owned(THREAD)))[0] == {IUR: 1e-6}
 
 
 async def test_request_event_lists_each_entry_for_the_user() -> None:

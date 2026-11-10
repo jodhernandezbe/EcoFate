@@ -6,8 +6,10 @@ import type {
   KeyStatusResponse,
   SessionDetailResponse,
   SessionsResponse,
+  SignInResponse,
   StreamEvent,
   ThreadSnapshot,
+  UserInfo,
 } from "../types/workspace";
 import { parseSseFrames } from "./sse";
 
@@ -16,12 +18,24 @@ const JSON_HEADERS = { "content-type": "application/json" };
 
 export class ApiError extends Error {
   readonly status: number;
+  /** Seconds the server asked the client to wait (a 429's `Retry-After`); null otherwise. */
+  readonly retryAfter: number | null;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, retryAfter: number | null = null) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.retryAfter = retryAfter;
   }
+}
+
+/** The first field message of a 422 body (`fields: [{ loc, msg }]`), which says what to fix. */
+function fieldMessage(body: object): string | null {
+  const fields = (body as { fields?: unknown }).fields;
+  if (!Array.isArray(fields) || fields.length === 0) return null;
+  const first: unknown = fields[0];
+  const msg = typeof first === "object" && first !== null ? (first as { msg?: unknown }).msg : null;
+  return typeof msg === "string" ? msg : null;
 }
 
 async function errorMessage(response: Response): Promise<string> {
@@ -29,6 +43,7 @@ async function errorMessage(response: Response): Promise<string> {
     const body: unknown = await response.json();
     if (typeof body === "object" && body !== null && "error" in body) {
       const { error } = body as { error: unknown };
+      if (response.status === 422) return fieldMessage(body) ?? String(error);
       if (typeof error === "string") return error;
     }
   } catch {
@@ -37,9 +52,33 @@ async function errorMessage(response: Response): Promise<string> {
   return `Request failed (${response.status}).`;
 }
 
+function retryAfter(response: Response): number | null {
+  const seconds = Number(response.headers.get("retry-after"));
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : null;
+}
+
+type Listener = () => void;
+const unauthorizedListeners = new Set<Listener>();
+
+/**
+ * Call `listener` whenever the server answers 401 to a request made while signed in (the
+ * session ended). Sign-in and the session probe are exempt: their 401 is an answer, not an end.
+ */
+export function onUnauthorized(listener: Listener): () => void {
+  unauthorizedListeners.add(listener);
+  return () => unauthorizedListeners.delete(listener);
+}
+
+const ANSWERS_OWN_401 = ["/auth/"];
+
 async function request(path: string, init?: RequestInit): Promise<Response> {
   const response = await fetch(BASE + path, init);
-  if (!response.ok) throw new ApiError(await errorMessage(response), response.status);
+  if (!response.ok) {
+    if (response.status === 401 && !ANSWERS_OWN_401.some((prefix) => path.startsWith(prefix))) {
+      unauthorizedListeners.forEach((listener) => listener());
+    }
+    throw new ApiError(await errorMessage(response), response.status, retryAfter(response));
+  }
   return response;
 }
 
@@ -140,3 +179,52 @@ export async function* resumeChat(threadId: string, signal?: AbortSignal): Async
   const path = `/chat/threads/${encodeURIComponent(threadId)}/resume`;
   yield* events(await request(path, { method: "POST", signal }));
 }
+
+
+// --- accounts -------------------------------------------------------------------------------
+
+const post = (path: string, body: object): Promise<Response> =>
+  request(path, { method: "POST", headers: JSON_HEADERS, body: JSON.stringify(body) });
+
+/** The signed-in user; rejects with a 401 `ApiError` when there is no session. */
+export const getMe = (): Promise<UserInfo> => json("/auth/me");
+
+export const signUp = async (email: string, password: string): Promise<void> => {
+  await post("/auth/signup", { email, password });
+};
+
+export const signIn = async (email: string, password: string): Promise<SignInResponse> =>
+  (await (await post("/auth/signin", { email, password })).json()) as SignInResponse;
+
+export const signOut = async (): Promise<void> => {
+  await request("/auth/signout", { method: "POST" });
+};
+
+/** The token comes from the emailed link's fragment and travels in the body only. */
+export const verifyEmail = async (token: string): Promise<void> => {
+  await post("/auth/verify", { token });
+};
+
+export const resendVerification = async (email: string): Promise<void> => {
+  await post("/auth/resend", { email });
+};
+
+export const forgotPassword = async (email: string): Promise<void> => {
+  await post("/auth/forgot", { email });
+};
+
+export const resetPassword = async (token: string, password: string): Promise<void> => {
+  await post("/auth/reset", { token, password });
+};
+
+export const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+  await post("/account/password", { current_password: currentPassword, new_password: newPassword });
+};
+
+export const signOutEverywhere = async (): Promise<void> => {
+  await request("/account/sign-out-everywhere", { method: "POST" });
+};
+
+export const deleteAccount = async (password: string): Promise<void> => {
+  await post("/account/delete", { password });
+};

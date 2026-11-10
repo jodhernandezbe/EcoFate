@@ -6,6 +6,7 @@ import pytest
 from uvicorn.config import LOGGING_CONFIG
 
 from api.core.logging_filter import LITERAL_REDACTED, redact, uvicorn_log_config
+from tests.api.auth_support import build_app
 from tests.fakes import InMemoryThreadStore
 
 CENSUS = "c3n5u5k3y" + "7f" * 16  # pragma: allowlist secret
@@ -28,11 +29,9 @@ def test_keys_from_the_environment_are_protected_while_the_app_runs(
 ) -> None:
     from fastapi.testclient import TestClient
 
-    from api.main import create_app
-
     monkeypatch.setenv("CENSUS_API_KEY", CENSUS)
     monkeypatch.setenv("COMPTOX_API_KEY", "ct0x-key-" + "9d" * 14)  # pragma: allowlist secret
-    with TestClient(create_app(threads=InMemoryThreadStore())):
+    with TestClient(build_app(threads=InMemoryThreadStore())):
         assert CENSUS not in redact(f"plain text {CENSUS} in a log")
         assert "ct0x-key-" not in redact("value ct0x-key-" + "9d" * 14)
     assert redact(f"plain text {CENSUS}") != "plain text " + LITERAL_REDACTED  # not after shutdown

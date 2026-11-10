@@ -14,6 +14,7 @@ from api.schemas.chat import ChatRequest, ConfirmationRequested, EntryAnswer, Mi
 from api.services.threads import ThreadStore
 from config.loader import get_unit_settings
 from config.user_values import get_user_value_settings
+from storage.keys import ThreadKey
 from tools.schemas import ConfirmationRequest, MissingEntry
 from tools.user_values import check_entered_value
 
@@ -84,7 +85,7 @@ def _describe(answer: EntryAnswer, entry: MissingEntry) -> str:
 
 async def _record(
     threads: ThreadStore,
-    thread_id: str,
+    key: ThreadKey,
     answers: Sequence[EntryAnswer],
     index: Mapping[str, MissingEntry],
 ) -> str:
@@ -99,7 +100,7 @@ async def _record(
             declined.append(answer.entry_id)
         else:
             supplied[answer.entry_id] = _supplied_value(answer, entry)
-    await threads.record_answers(thread_id, supplied, declined)
+    await threads.record_answers(key, supplied, declined)
     return "; ".join(parts)
 
 
@@ -117,19 +118,19 @@ def _answers_note(supplied: Mapping[str, float], declined: Sequence[str]) -> str
     return " ".join(lines)
 
 
-async def _all_declined(threads: ThreadStore, thread_id: str, pending: ConfirmationRequest) -> str:
+async def _all_declined(threads: ThreadStore, key: ThreadKey, pending: ConfirmationRequest) -> str:
     """A new message while a request is open: its entries count as proceed without.
 
     Returns the note for the model.
     """
     keys = [entry["entry_id"] for entry in pending["entries"]]
-    await threads.record_answers(thread_id, {}, keys)
-    await threads.set_pending(thread_id, None)
-    supplied, declined = await threads.answers(thread_id)
+    await threads.record_answers(key, {}, keys)
+    await threads.set_pending(key, None)
+    supplied, declined = await threads.answers(key)
     return f"The user did not answer the open request. {_answers_note(supplied, sorted(declined))}"
 
 
-async def plan_turn(request: ChatRequest, threads: ThreadStore) -> TurnPlan:
+async def plan_turn(request: ChatRequest, threads: ThreadStore, key: ThreadKey) -> TurnPlan:
     """Check the reply against the open request, record it, and say what the turn starts with.
 
     Raises:
@@ -137,16 +138,16 @@ async def plan_turn(request: ChatRequest, threads: ThreadStore) -> TurnPlan:
             an answer is incomplete, names a value not asked for, or is out of range. Nothing is
             recorded when it raises.
     """
-    pending = await threads.pending(request.thread_id)
+    pending = await threads.pending(key)
     if request.answers is None:
-        return await _plan_free_message(request, threads, pending)
+        return await _plan_free_message(request, threads, key, pending)
     if pending is None or pending["request_id"] != request.answers.request_id:
         raise ConfirmationError(409, CLOSED)
     index = _index(pending)
     _check_listed(request.answers.entries, index)
-    summary = await _record(threads, request.thread_id, request.answers.entries, index)
-    await threads.set_pending(request.thread_id, None)
-    supplied, declined = await threads.answers(request.thread_id)
+    summary = await _record(threads, key, request.answers.entries, index)
+    await threads.set_pending(key, None)
+    supplied, declined = await threads.answers(key)
     return TurnPlan(
         message=f"Answers to the open request: {summary}.",
         note=_answers_note(supplied, sorted(declined)),
@@ -156,13 +157,14 @@ async def plan_turn(request: ChatRequest, threads: ThreadStore) -> TurnPlan:
 async def _plan_free_message(
     request: ChatRequest,
     threads: ThreadStore,
+    key: ThreadKey,
     pending: ConfirmationRequest | None,
 ) -> TurnPlan:
     if pending is None:
-        supplied, declined = await threads.answers(request.thread_id)
+        supplied, declined = await threads.answers(key)
         note = _answers_note(supplied, sorted(declined))
         return TurnPlan(message=request.message, note=note)
-    note = await _all_declined(threads, request.thread_id, pending)
+    note = await _all_declined(threads, key, pending)
     return TurnPlan(message=request.message, note=note)
 
 

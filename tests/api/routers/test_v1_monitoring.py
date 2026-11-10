@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from api.dependencies import get_monitoring
 from api.services.monitoring.client import MonitoringUnavailableError
 from api.services.monitoring.service import MonitoringService
-from tests.api.conftest import ORIGIN
+from tests.api.conftest import signed_in
 from tests.api.services.monitoring.factories import call_row, labels, root_row, settings, turn_row
 from tests.api.services.monitoring.fakes import FakeQuery, opener
 
@@ -21,7 +21,7 @@ def _client(app: FastAPI, query: FakeQuery, *, token: bool = True) -> TestClient
     environ = {SETTINGS.read_token_env_var: TOKEN} if token else {}
     service = MonitoringService(SETTINGS, labels(), environ, opener(query))
     app.dependency_overrides[get_monitoring] = lambda: service
-    return TestClient(app, base_url=ORIGIN)
+    return signed_in(app, admin=True)
 
 
 def test_sessions_are_listed(app: FastAPI) -> None:

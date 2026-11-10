@@ -6,10 +6,11 @@ state and a user-safe message with no sessions; the cause only goes to the log.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Iterable, Mapping
 from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 from typing import Literal
+from uuid import UUID
 
 from pydantic import SecretStr
 
@@ -22,12 +23,13 @@ from api.services.monitoring.client import (
     logfire_query,
 )
 from api.services.monitoring.queries import detail_sql, sessions_sql
-from api.services.monitoring.rows import Row, parse_turn
+from api.services.monitoring.rows import Row, TurnRecord, parse_turn
 from api.services.monitoring.sessions import group_sessions, summarize_session
 from api.services.monitoring.timeline import build_turns
 from config.telemetry import TelemetrySettings
 
 QueryOpener = Callable[[SecretStr, TelemetrySettings], AbstractAsyncContextManager[LogfireQuery]]
+EmailResolver = Callable[[Iterable[UUID]], Awaitable[Mapping[UUID, str]]]
 Problem = Literal["not_configured", "unavailable", "unauthorized"]
 NOT_CONFIGURED = (
     "Monitoring is not set up on this server: there is no Logfire read token. "
@@ -53,12 +55,23 @@ class MonitoringService:
         step_labels: Tool name -> label shown for its step.
         environ: Where the read token is looked up (injected; tests pass a dict).
         open_query: Opens the Logfire query API with the token.
+        emails: Looks up the email of each account by its opaque id in the application database
+            (never in Logfire); None shows every account as absent.
     """
 
     settings: TelemetrySettings
     step_labels: Mapping[str, str]
     environ: Mapping[str, str]
     open_query: QueryOpener = logfire_query
+    emails: EmailResolver | None = None
+
+    async def _accounts(self, turns: list[TurnRecord]) -> dict[str, str]:
+        """The email of each user who ran one of the turns (a deleted account is left out)."""
+        ids = {UUID(turn.user_id) for turn in turns if turn.user_id is not None}
+        if self.emails is None or not ids:
+            return {}
+        found = await self.emails(ids)
+        return {str(user_id): email for user_id, email in found.items()}
 
     def _token(self) -> SecretStr | None:
         value = self.environ.get(self.settings.read_token_env_var, "").strip()
@@ -85,7 +98,8 @@ class MonitoringService:
         except _Stopped as stopped:
             return SessionsResponse(state=stopped.state, message=stopped.message, sessions=[])
         turns = [turn for turn in map(parse_turn, rows) if turn is not None]
-        return SessionsResponse(state="ok", message=None, sessions=group_sessions(turns))
+        accounts = await self._accounts(turns)
+        return SessionsResponse(state="ok", message=None, sessions=group_sessions(turns, accounts))
 
     async def session(self, session_id: str) -> SessionDetailResponse:
         """One session with its turns; ``session`` is None when no such session was recorded."""
@@ -100,5 +114,5 @@ class MonitoringService:
                 turns=[],
             )
         records, turns = build_turns(rows, self.settings, self.step_labels, project)
-        summary = summarize_session(records) if records else None
+        summary = summarize_session(records, await self._accounts(records)) if records else None
         return SessionDetailResponse(state="ok", message=None, session=summary, turns=turns)

@@ -21,17 +21,46 @@ export type StreamEventSchema =
   | TurnFinished;
 
 export interface ApiContract {
+  AcceptedResponse: AcceptedResponse;
+  ChangePasswordRequest: ChangePasswordRequest;
   ChatRequest: ChatRequest;
   ClientConfig: ClientConfig;
+  DeleteAccountRequest: DeleteAccountRequest;
+  EmailRequest: EmailRequest;
   KeyStatusResponse: KeyStatusResponse;
   KeyUpdatePayload: KeyUpdatePayload;
   KeysStatusResponse: KeysStatusResponse;
+  ResetRequest: ResetRequest;
   SessionDetailResponse: SessionDetailResponse;
   SessionsResponse: SessionsResponse;
+  SignInRequest: SignInRequest;
+  SignInResponse: SignInResponse;
+  SignUpRequest: SignUpRequest;
   StreamEventSchema: StreamEventSchema;
   ThreadSnapshot: ThreadSnapshot;
+  TokenRequest: TokenRequest;
   UsageTotals: UsageTotals;
+  UserInfo: UserInfo;
   WorkspaceState: WorkspaceState;
+}
+/**
+ * The same answer whether or not the email has an account.
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "AcceptedResponse".
+ */
+export interface AcceptedResponse {
+  status: "accepted";
+}
+/**
+ * ``POST /api/v1/account/password``.
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "ChangePasswordRequest".
+ */
+export interface ChangePasswordRequest {
+  current_password: string;
+  new_password: string;
 }
 /**
  * Body of ``POST /api/v1/chat/stream``: a message, or answers to an open request.
@@ -184,6 +213,24 @@ export interface WorkerThresholds {
   ratio_exceedance: number;
 }
 /**
+ * ``POST /api/v1/account/delete``: the account's password confirms it.
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "DeleteAccountRequest".
+ */
+export interface DeleteAccountRequest {
+  password: string;
+}
+/**
+ * ``POST /api/v1/auth/resend`` and ``/forgot``: the address to mail.
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "EmailRequest".
+ */
+export interface EmailRequest {
+  email: string;
+}
+/**
  * Whether a key is stored; never the key or any part of it.
  *
  * This interface was referenced by `ApiContract`'s JSON-Schema
@@ -216,6 +263,16 @@ export interface KeysStatusResponse {
   openai: KeyStatusResponse;
 }
 /**
+ * ``POST /api/v1/auth/reset``: the token from the emailed link and the new password.
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "ResetRequest".
+ */
+export interface ResetRequest {
+  password: string;
+  token: string;
+}
+/**
  * ``GET /api/v1/monitoring/sessions/{session_id}``: one session and its turns.
  *
  * This interface was referenced by `ApiContract`'s JSON-Schema
@@ -232,12 +289,15 @@ export interface SessionDetailResponse {
  *
  * Counts come from the trace's spans; tokens and cost are the sums of the turns' recorded
  * usage and are None when any turn did not record them. ``cost_status`` is the weakest status
- * of its turns (``unknown`` when one is missing).
+ * of its turns (``unknown`` when one is missing). ``account`` is the email of the user who ran
+ * it, looked up in the application database from the opaque user id on the spans; None when the
+ * spans carry none (a command-line run) or the account no longer exists.
  *
  * This interface was referenced by `ApiContract`'s JSON-Schema
  * via the `definition` "SessionSummary".
  */
 export interface SessionSummary {
+  account: string | null;
   cached_input_tokens: number | null;
   cost_status: "estimate" | "lower_bound" | "unpriced" | "unknown";
   cost_usd: number | null;
@@ -306,6 +366,49 @@ export interface SessionsResponse {
   message: string | null;
   sessions: SessionSummary[];
   state: "ok" | "not_configured" | "unavailable" | "unauthorized";
+}
+/**
+ * ``POST /api/v1/auth/signin``.
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "SignInRequest".
+ */
+export interface SignInRequest {
+  email: string;
+  password: string;
+}
+/**
+ * ``signed_in`` (with the user; the session is the cookie) or ``verification_required``
+ * (the password was right but the email is not verified; no session was made).
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "SignInResponse".
+ */
+export interface SignInResponse {
+  state: "signed_in" | "verification_required";
+  user: UserInfo | null;
+}
+/**
+ * The signed-in user: never a password hash or a token.
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "UserInfo".
+ */
+export interface UserInfo {
+  email: string;
+  id: string;
+  role: "user" | "admin";
+  verified: boolean;
+}
+/**
+ * ``POST /api/v1/auth/signup``.
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "SignUpRequest".
+ */
+export interface SignUpRequest {
+  email: string;
+  password: string;
 }
 /**
  * This interface was referenced by `ApiContract`'s JSON-Schema
@@ -1307,6 +1410,15 @@ export interface TurnInterruption {
 export interface ThreadMessage {
   role: "user" | "assistant";
   text: string;
+}
+/**
+ * ``POST /api/v1/auth/verify``: the token from the emailed link (sent in the body).
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "TokenRequest".
+ */
+export interface TokenRequest {
+  token: string;
 }
 /**
  * A box on the map, decimal degrees (WGS84, west negative).

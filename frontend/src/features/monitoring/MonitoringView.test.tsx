@@ -24,6 +24,7 @@ const SESSION: SessionSummary = {
   cost_status: "estimate",
   duration_ms: 8707,
   outcome: "ok",
+  account: "ana@example.com",
 };
 
 const TURN: SessionTurn = {
@@ -124,7 +125,7 @@ describe("MonitoringView sessions", () => {
     ]) {
       expect(row).toHaveTextContent(text);
     }
-    expect(within(row).getAllByRole("cell")[3]).toHaveTextContent("3"); // model calls
+    expect(within(row).getAllByRole("cell")[4]).toHaveTextContent("3"); // model calls
   });
 
   it("says 'not reported' for a figure the server did not send, never 0 or a dash", async () => {

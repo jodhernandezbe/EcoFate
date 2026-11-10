@@ -10,6 +10,7 @@ from typing import Protocol
 
 from config.database import DatabaseSettings
 from storage.errors import DATABASE_ERRORS
+from storage.keys import ThreadKey
 
 logger = logging.getLogger(__name__)
 _SECONDS_PER_MINUTE = 60
@@ -18,7 +19,7 @@ _SECONDS_PER_MINUTE = 60
 class Purgeable(Protocol):
     """A thread store that can delete its idle threads."""
 
-    async def purge_idle(self, older_than: timedelta) -> list[str]: ...
+    async def purge_idle(self, older_than: timedelta) -> list[ThreadKey]: ...
 
 
 async def purge_once(store: Purgeable, settings: DatabaseSettings) -> int:

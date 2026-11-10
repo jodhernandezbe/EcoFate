@@ -1,4 +1,4 @@
-import { ApiError, resumeChat } from "./apiClient";
+import { ApiError, getMe, getKeysStatus, onUnauthorized, resumeChat, signIn } from "./apiClient";
 
 function sse(...events: object[]): Response {
   const body = events
@@ -50,5 +50,37 @@ describe("resumeChat", () => {
     await expect(run.next()).rejects.toEqual(
       new ApiError("Nothing to resume.", 409),
     );
+  });
+});
+
+const failure = (status: number, body: object, headers: Record<string, string> = {}) =>
+  new Response(JSON.stringify(body), { status, headers });
+
+describe("errors", () => {
+  it("reads the wait a 429 asks for", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(failure(429, { error: "Too many attempts." }, { "Retry-After": "30" })));
+    await expect(signIn("a@example.com", "x")).rejects.toMatchObject({ status: 429, retryAfter: 30, message: "Too many attempts." });
+  });
+
+  it("shows the first field message of a 422 instead of the generic one", async () => {
+    const body = { error: "Invalid request.", fields: [{ loc: ["body", "password"], msg: "Use at least 12 characters." }] };
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(failure(422, body)));
+    await expect(signIn("a@example.com", "x")).rejects.toMatchObject({ status: 422, message: "Use at least 12 characters." });
+  });
+});
+
+describe("a 401 while signed in", () => {
+  it("tells the listeners, but not for the sign-in or session-probe routes", async () => {
+    const listener = vi.fn();
+    const stop = onUnauthorized(listener);
+    vi.stubGlobal("fetch", vi.fn().mockImplementation(() => Promise.resolve(failure(401, { error: "Sign in to continue." }))));
+    await expect(signIn("a@example.com", "x")).rejects.toBeInstanceOf(ApiError);
+    await expect(getMe()).rejects.toBeInstanceOf(ApiError);
+    expect(listener).not.toHaveBeenCalled();
+    await expect(getKeysStatus()).rejects.toMatchObject({ status: 401 });
+    expect(listener).toHaveBeenCalledTimes(1);
+    stop();
+    await expect(getKeysStatus()).rejects.toBeInstanceOf(ApiError);
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 });

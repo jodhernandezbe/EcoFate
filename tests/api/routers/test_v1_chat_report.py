@@ -15,7 +15,8 @@ from api.dependencies import AgentRuntime, get_runtime
 from api.schemas.workspace import WorkspaceState
 from api.services.report.builder import MEDIA_TYPE
 from api.services.threads import ThreadStore
-from tests.api.conftest import ORIGIN
+from tests.api.conftest import ORIGIN, signed_in
+from tests.api.keys import owned
 from tests.api.services.report.fixtures import assessed, lines, load
 from tests.fakes import OPENAI_ENTRY, FakeCredentialStore, scripted
 
@@ -29,7 +30,7 @@ def chat(app: FastAPI, store: FakeCredentialStore) -> Iterator[TestClient]:
     store.entries[OPENAI_ENTRY] = KEY
     model = scripted("The **assistant** answer.")
     app.dependency_overrides[get_runtime] = lambda: AgentRuntime(lambda key: model, 10)
-    with TestClient(app, base_url=ORIGIN, raise_server_exceptions=False) as client:
+    with signed_in(app, raise_server_exceptions=False) as client:
         yield client
 
 
@@ -40,7 +41,7 @@ def _threads(app: FastAPI) -> ThreadStore:
 def _assessed_thread(chat: TestClient, app: FastAPI, thread: str = "t1") -> None:
     body = {"thread_id": thread, "message": "assess"}
     assert chat.post("/api/v1/chat/stream", json=body, headers=OWN).status_code == 200
-    asyncio.run(_threads(app).set_workspace(thread, assessed()))
+    asyncio.run(_threads(app).set_workspace(owned(thread), assessed()))
 
 
 def _refuse_model(app: FastAPI) -> None:
@@ -81,7 +82,7 @@ def test_unknown_thread_is_a_generic_404(chat: TestClient) -> None:
 def test_empty_thread_is_409(chat: TestClient, app: FastAPI) -> None:
     body = {"thread_id": "t1", "message": "hello"}
     chat.post("/api/v1/chat/stream", json=body, headers=OWN)
-    asyncio.run(_threads(app).set_workspace("t1", WorkspaceState()))
+    asyncio.run(_threads(app).set_workspace(owned("t1"), WorkspaceState()))
     response = chat.get(URL.format("t1"), headers=OWN)
     assert response.status_code == 409
     assert set(response.json()) == {"error", "correlation_id"}
@@ -90,10 +91,10 @@ def test_empty_thread_is_409(chat: TestClient, app: FastAPI) -> None:
 def test_running_thread_is_409_and_left_running(chat: TestClient, app: FastAPI) -> None:
     _assessed_thread(chat, app)
     threads = _threads(app)
-    asyncio.run(threads.claim("t1"))
+    asyncio.run(threads.claim(owned("t1")))
     assert chat.get(URL.format("t1"), headers=OWN).status_code == 409
-    assert asyncio.run(threads.running("t1"))
-    asyncio.run(threads.release("t1"))
+    assert asyncio.run(threads.running(owned("t1")))
+    asyncio.run(threads.release(owned("t1")))
 
 
 def test_malformed_id_is_422(chat: TestClient) -> None:

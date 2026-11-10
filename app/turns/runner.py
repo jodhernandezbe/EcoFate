@@ -73,6 +73,10 @@ class TurnRequest:
         resume: Continue the thread's interrupted run from its last checkpoint instead of
             sending ``message`` (the message and note are then not used).
         segment: The turn and resume index the span records; None records neither.
+        user_id: The signed-in user's opaque id, recorded on the span; None (the command line)
+            records none. Never an email.
+        checkpoint_id: The checkpointer's key for the thread when it is not ``thread_id`` (the
+            web program scopes it to the owner); None uses ``thread_id``.
     """
 
     thread_id: str
@@ -81,6 +85,13 @@ class TurnRequest:
     note: str = ""
     resume: bool = False
     segment: TurnSegment | None = None
+    user_id: str | None = None
+    checkpoint_id: str | None = None
+
+    @property
+    def checkpoint(self) -> str:
+        """The key the thread's history is stored under."""
+        return self.checkpoint_id or self.thread_id
 
 
 @dataclass(frozen=True)
@@ -171,6 +182,7 @@ def _turn_span(request: TurnRequest, settings: TurnSettings) -> AbstractContextM
         request.question,
         settings.model_name,
         request.segment,
+        request.user_id,
     )
 
 
@@ -293,7 +305,7 @@ async def _run_config(
     return {
         "recursion_limit": settings.recursion_limit,
         "configurable": {
-            "thread_id": request.thread_id,
+            "thread_id": request.checkpoint,
             "user_values": {"supplied": dict(supplied), "declined": sorted(declined)},
         },
         "callbacks": _callbacks(settings, recorder),

@@ -35,6 +35,7 @@ usage_prefix = "u."
 session_usage_prefix = "s."
 turn_id = "t"
 resume_index = "r"
+user_id = "enduser.id"
 
 [telemetry.bridge]
 operation = "op"
@@ -67,6 +68,7 @@ def test_values(tmp_path: Path) -> None:
     assert settings.max_rows == 100
     assert settings.spans.cli_session == "cli run"
     assert settings.attributes.usage_prefix == "u."
+    assert settings.attributes.user_id == "enduser.id"
     assert (settings.bridge.model_operation, settings.bridge.tool_operation) == ("chat", "tool_run")
 
 
@@ -112,6 +114,7 @@ def test_shipped_settings_load() -> None:
         ("outcome", 'outcome = ""', "telemetry.attributes.outcome"),
         ("turn_id", 'turn_id = ""', "telemetry.attributes.turn_id"),
         ("resume_index", "resume_index = 1", "telemetry.attributes.resume_index"),
+        ("user_id", 'user_id = ""', "telemetry.attributes.user_id"),
         ("tool_operation", "tool_operation = 3", "telemetry.bridge.tool_operation"),
         ("usage_metadata", 'usage_metadata = " "', "telemetry.bridge.usage_metadata"),
     ],

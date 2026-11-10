@@ -8,7 +8,7 @@ a cost is never reported for turns that were not all priced.
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 
 from api.schemas.monitoring import CostStatus, Outcome, SessionSummary
@@ -51,9 +51,24 @@ def iso(moment: datetime) -> str:
     return moment.astimezone(UTC).isoformat()
 
 
-def summarize_session(turns: Sequence[TurnRecord]) -> SessionSummary:
-    """The listing entry of one session from its turns (at least one)."""
+def _account(first: TurnRecord, accounts: Mapping[str, str] | None) -> str | None:
+    """The email shown for the session: that of the user who ran its first turn, if known."""
+    return None if first.user_id is None else (accounts or {}).get(first.user_id)
+
+
+def summarize_session(
+    turns: Sequence[TurnRecord],
+    accounts: Mapping[str, str] | None = None,
+) -> SessionSummary:
+    """The listing entry of one session from its turns (at least one).
+
+    ``accounts`` maps a user id to the email shown; the account is that of the first turn.
+    """
     ordered = sorted(turns, key=lambda turn: turn.started)
+    return _summary(ordered, _account(ordered[0], accounts))
+
+
+def _summary(ordered: Sequence[TurnRecord], account: str | None) -> SessionSummary:
     cost, status = _cost(ordered)
     return SessionSummary(
         session_id=ordered[0].session_id,
@@ -70,13 +85,17 @@ def summarize_session(turns: Sequence[TurnRecord]) -> SessionSummary:
         cost_status=status,
         duration_ms=_duration_ms(ordered),
         outcome=_outcome(ordered),
+        account=account,
     )
 
 
-def group_sessions(turns: Sequence[TurnRecord]) -> list[SessionSummary]:
+def group_sessions(
+    turns: Sequence[TurnRecord],
+    accounts: Mapping[str, str] | None = None,
+) -> list[SessionSummary]:
     """One summary per session, newest first."""
     grouped: defaultdict[str, list[TurnRecord]] = defaultdict(list)
     for turn in turns:
         grouped[turn.session_id].append(turn)
-    sessions = [summarize_session(group) for group in grouped.values()]
+    sessions = [summarize_session(group, accounts) for group in grouped.values()]
     return sorted(sessions, key=lambda session: session.started_at, reverse=True)

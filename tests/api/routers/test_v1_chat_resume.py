@@ -15,14 +15,15 @@ from langchain_core.tools import tool
 from pydantic import PrivateAttr
 
 from api.dependencies import AgentRuntime, get_runtime, get_service_keys
-from api.main import create_app
 from api.routers.v1_chat import _frames  # pyright: ignore[reportPrivateUsage]
 from api.schemas.chat import StreamEvent, TurnFinished
 from api.services import provider_errors
 from api.services.turn_lifecycle import BUSY, NOTHING_TO_RESUME, RESUME_CAP
 from app.key_vault import default_service_keys
 from storage.turn_model import Turn, TurnStatus
-from tests.api.conftest import ORIGIN
+from tests.api.auth_support import build_app
+from tests.api.conftest import ORIGIN, signed_in
+from tests.api.keys import OWNER, owned
 from tests.api.streams import parse_sse
 from tests.fakes import (
     OPENAI_ENTRY,
@@ -97,7 +98,7 @@ def keyed(store: FakeCredentialStore) -> FakeCredentialStore:
 def _client(app: FastAPI, model: ScriptedChatModel, max_resumes: int = 3) -> TestClient:
     runtime = AgentRuntime(lambda key: model, 10, max_resumes_per_turn=max_resumes)
     app.dependency_overrides[get_runtime] = lambda: runtime
-    return TestClient(app, base_url=ORIGIN, raise_server_exceptions=False)
+    return signed_in(app, raise_server_exceptions=False)
 
 
 @pytest.fixture
@@ -118,7 +119,7 @@ def _resume(client: TestClient, thread: str = THREAD) -> Response:
 
 
 def _latest(app: FastAPI, thread: str = THREAD) -> Turn | None:
-    return asyncio.run(app.state.threads.turns.latest(thread))
+    return asyncio.run(app.state.threads.turns.latest(owned(thread)))
 
 
 def _types(response: Response) -> list[str]:
@@ -130,13 +131,13 @@ def _interrupted_turn(app: FastAPI, *, resumes: int = 0, reason: str = "out_of_c
     threads: InMemoryThreadStore = app.state.threads
 
     async def make() -> Turn:
-        await threads.touch(THREAD)
-        turn = await threads.turns.begin(THREAD)
+        await threads.touch(owned(THREAD))
+        turn = await threads.turns.begin(owned(THREAD))
         assert turn is not None
-        turn = await threads.turns.move(turn.id, TurnStatus.INTERRUPTED, reason)
+        turn = await threads.turns.move(OWNER, turn.id, TurnStatus.INTERRUPTED, reason)
         for _ in range(resumes):
-            assert await threads.turns.resume(turn.id, 99) is not None
-            turn = await threads.turns.move(turn.id, TurnStatus.INTERRUPTED, reason)
+            assert await threads.turns.resume(OWNER, turn.id, 99) is not None
+            turn = await threads.turns.move(OWNER, turn.id, TurnStatus.INTERRUPTED, reason)
         return turn
 
     return asyncio.run(make())
@@ -175,7 +176,7 @@ def test_the_step_limit_interrupts_the_turn(app: FastAPI, keyed: FakeCredentialS
     model = ScriptedChatModel([_calls("a"), _calls("b"), _calls("c"), reply("x", 1, 1)])
     runtime = AgentRuntime(lambda key: model, 2)
     app.dependency_overrides[get_runtime] = lambda: runtime
-    with TestClient(app, base_url=ORIGIN, raise_server_exceptions=False) as client:
+    with signed_in(app, raise_server_exceptions=False) as client:
         events = parse_sse(_send(client).text)
     interrupted = next(e for e in events if e["type"] == "turn_interrupted")
     assert (interrupted["reason"], interrupted["resumable"]) == ("step_limit", True)
@@ -230,7 +231,7 @@ def test_resume_streams_only_the_rest_of_the_turn(flaky: TestClient, app: FastAP
 def test_the_resumed_message_is_not_sent_again(flaky: TestClient, app: FastAPI) -> None:
     _send(flaky)
     _resume(flaky)
-    messages = asyncio.run(app.state.threads.messages(THREAD))
+    messages = asyncio.run(app.state.threads.messages(owned(THREAD)))
     assert [m.content for m in messages if isinstance(m, HumanMessage)] == ["Assess 1-1-1"]
 
 
@@ -295,12 +296,12 @@ def test_resume_while_a_turn_runs_is_409_and_leaves_it_running(
     keyed: FakeCredentialStore,
 ) -> None:
     turn = _interrupted_turn(app)
-    asyncio.run(app.state.threads.claim(THREAD))
+    asyncio.run(app.state.threads.claim(owned(THREAD)))
     with _client(app, ScriptedChatModel([])) as client:
         response = _resume(client)
     assert (response.status_code, response.json()["error"]) == (409, BUSY)
     assert _latest(app) == turn
-    assert asyncio.run(app.state.threads.running(THREAD))
+    assert asyncio.run(app.state.threads.running(owned(THREAD)))
 
 
 def test_resume_without_a_key_is_409_and_changes_nothing(app: FastAPI) -> None:
@@ -309,7 +310,7 @@ def test_resume_without_a_key_is_409_and_changes_nothing(app: FastAPI) -> None:
         response = _resume(client)
     assert (response.status_code, response.json()["error"]) == (409, provider_errors.NO_KEY_MESSAGE)
     assert _latest(app) == turn
-    assert not asyncio.run(app.state.threads.running(THREAD))  # the lease was given back
+    assert not asyncio.run(app.state.threads.running(owned(THREAD)))  # the lease was given back
 
 
 def test_resume_with_nothing_left_to_run_completes_the_turn_and_is_409(
@@ -358,8 +359,8 @@ def test_a_stream_the_client_leaves_interrupts_its_turn_and_frees_the_thread() -
     threads = InMemoryThreadStore()
 
     async def scenario() -> Turn | None:
-        assert await threads.claim(THREAD)
-        turn = await threads.turns.begin(THREAD)
+        assert await threads.claim(owned(THREAD))
+        turn = await threads.turns.begin(owned(THREAD))
         assert turn is not None
 
         async def events() -> AsyncGenerator[StreamEvent]:
@@ -369,8 +370,8 @@ def test_a_stream_the_client_leaves_interrupts_its_turn_and_frees_the_thread() -
         frames = _frames(events(), threads, turn)
         await anext(frames)
         await frames.aclose()  # the client went away mid-stream
-        assert not await threads.running(THREAD)
-        return await threads.turns.latest(THREAD)
+        assert not await threads.running(owned(THREAD))
+        return await threads.turns.latest(owned(THREAD))
 
     turn = asyncio.run(scenario())
     assert turn is not None and (turn.status, turn.reason) == (
@@ -381,12 +382,12 @@ def test_a_stream_the_client_leaves_interrupts_its_turn_and_frees_the_thread() -
 
 def test_turns_left_running_are_interrupted_at_start_up(store: FakeCredentialStore) -> None:
     threads = InMemoryThreadStore()
-    asyncio.run(threads.touch(THREAD))
-    left = asyncio.run(threads.turns.begin(THREAD))
+    asyncio.run(threads.touch(owned(THREAD)))
+    left = asyncio.run(threads.turns.begin(owned(THREAD)))
     assert left is not None
-    app = create_app(threads=threads)
+    app = build_app(threads=threads)
     app.dependency_overrides[get_service_keys] = lambda: default_service_keys(store)
-    with TestClient(app, base_url=ORIGIN, raise_server_exceptions=False) as client:
+    with signed_in(app, raise_server_exceptions=False) as client:
         turn = _latest(app)
         assert turn is not None and (turn.status, turn.reason) == (
             TurnStatus.INTERRUPTED,
@@ -395,4 +396,4 @@ def test_turns_left_running_are_interrupted_at_start_up(store: FakeCredentialSto
         snapshot: dict[str, Any] = client.get(f"/api/v1/chat/threads/{THREAD}", headers=OWN).json()
     assert snapshot["interrupted"]["reason"] == "worker_lost"
     assert snapshot["interrupted"]["resumable"] is True
-    assert asyncio.run(threads.turns.begin(THREAD)) is not None  # the thread is not blocked
+    assert asyncio.run(threads.turns.begin(owned(THREAD))) is not None  # the thread is not blocked

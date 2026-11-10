@@ -59,7 +59,9 @@ class SessionSummary(ContractModel):
 
     Counts come from the trace's spans; tokens and cost are the sums of the turns' recorded
     usage and are None when any turn did not record them. ``cost_status`` is the weakest status
-    of its turns (``unknown`` when one is missing).
+    of its turns (``unknown`` when one is missing). ``account`` is the email of the user who ran
+    it, looked up in the application database from the opaque user id on the spans; None when the
+    spans carry none (a command-line run) or the account no longer exists.
     """
 
     session_id: str
@@ -76,6 +78,7 @@ class SessionSummary(ContractModel):
     cost_status: CostStatus
     duration_ms: int | None = Field(ge=0)
     outcome: Outcome
+    account: str | None
 
 
 class SessionsResponse(ContractModel):

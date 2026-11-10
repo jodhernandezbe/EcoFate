@@ -12,11 +12,17 @@ from fastapi.testclient import TestClient
 
 from api.core.logging_filter import REDACTED, SecretRedactionFilter
 from app.key_vault import default_service_keys
-from tests.api.conftest import ORIGIN
+from tests.api.conftest import ORIGIN, signed_in
 from tests.fakes import FakeCredentialStore
 
 KEY = "sk-proj-" + "Zx9Cv8Bn7M" * 3  # pragma: allowlist secret
 OWN = {"Origin": ORIGIN}
+
+
+@pytest.fixture
+def client(admin_client: TestClient) -> TestClient:
+    """These tests manage the server's keys, which only an administrator may change."""
+    return admin_client
 
 
 def _logger_with_filter() -> tuple[logging.Logger, io.StringIO]:
@@ -76,14 +82,14 @@ def test_no_get_endpoint_returns_the_key(app: FastAPI, store: FakeCredentialStor
     default_service_keys(store).vault("openai").save(KEY)
     get_paths = _get_paths(app)
     assert "/api/v1/settings/openai-key" in get_paths
-    with TestClient(app, base_url=ORIGIN) as client:
+    with signed_in(app) as client:
         for path in get_paths:
             assert KEY not in client.get(path).text, path
 
 
 def test_status_is_only_a_boolean(app: FastAPI, store: FakeCredentialStore) -> None:
     default_service_keys(store).vault("openai").save(KEY)
-    with TestClient(app, base_url=ORIGIN) as client:
+    with signed_in(app) as client:
         body = client.get("/api/v1/settings/openai-key").json()
     assert body == {"configured": True}
     assert KEY[-4:] not in str(body)
@@ -110,7 +116,7 @@ def test_no_get_endpoint_returns_any_of_the_three_keys(
     keys = default_service_keys(store)
     for name, secret in secrets.items():
         keys.vault(name).save(secret)  # pyright: ignore[reportArgumentType]
-    with TestClient(app, base_url=ORIGIN) as client:
+    with signed_in(app) as client:
         for path in _get_paths(app):
             for secret in secrets.values():
                 assert secret not in client.get(path).text, path

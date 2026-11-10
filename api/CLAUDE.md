@@ -22,13 +22,34 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   `GET /api/health` (container health checks) answers `ok` only when the database answers
   `SELECT 1` within `[database].health_timeout_seconds`, else 503 `unavailable`; it reads no
   key and runs no agent.
+- Accounts (`services/auth/`, `routers/v1_auth.py`, `v1_account.py`, `core/session_guard.py`):
+  layered as stores (`stores.py` protocols; `storage/` in production, `tests/fakes_accounts.py` in
+  tests) -> one module per concern (`passwords` Argon2id, `tokens` keyed hashes and single-use
+  tokens, `sessions`, `throttle`, `mailer`/`messages`) -> `flows.AuthService` -> thin routers. Every
+  route needs `Depends(current_user)` (401, generic) except health, the static UI, the client
+  display settings and the public auth routes; Monitoring needs `require_admin` (404 like an unknown
+  route); saving or clearing the server's API keys needs `require_admin_action` (403 with a fixed
+  message, since the key status routes stay visible to every signed-in user). Answers are fixed messages: sign-up, resend and forgot answer alike for any email, a failed
+  sign-in is one message, and an unknown email still pays for one password verification. Emails are
+  returned by the flows and sent after the response (`mailer.deliver`, which logs only the exception
+  class); links carry the token in the URL fragment and no route takes a token in a query string. The
+  session secret comes from the environment variable named in `[auth]` (the app refuses to start
+  without it), and so does the SMTP server (`services/auth/smtp.py` reads the `SMTP_*` variables
+  `[mail]` names, checks each and names a bad one; in container mode a loopback host is Mailpit) and only the keyed hash of a session or token is stored. Passwords are `SecretStr`.
+- Ownership: the owner is always `current_user.id`, never read from a body, path or query.
+  Routers build `ThreadKey(user.id, thread_id)` and pass it to every `ThreadStore` call; a thread of
+  another user is simply not found (404 with the body of an unknown id, for reads, report, reset,
+  resume, confirmation replies and facilities). The checkpointer key is `ThreadKey.checkpoint_id`.
+  No module-level mutable object may hold user data (`tests/api/test_tenant_isolation.py` scans
+  `api/`; a new reviewed constant table goes in its allow-list). `python -m api create-admin` is the
+  only way to make an admin (hidden prompt or `--password-stdin`, never an argument).
 - Threads (history, usage, tool messages, workspace, pending request, answers) live in
   PostgreSQL behind the `services/threads.ThreadStore` protocol (`storage.threads` in
   production, `tests/fakes.InMemoryThreadStore` in tests). Never hold thread state on the app
   object or in module globals: another process may serve the next turn. Every store call is
   awaited; a turn claims its thread (409 when busy) and releases it on every path.
   `services/database.py` opens the database in the lifespan and refuses to start without a
-  migrated one; tests pass `create_app(..., threads=InMemoryThreadStore())` and never touch it.
+  migrated one; tests pass `create_app(..., threads=InMemoryThreadStore(), accounts=...)` (see `tests/api/auth_support.build_app`) and never touch it.
 - Turn status (`services/turn_lifecycle.py`, store `ThreadStore.turns`): each turn has a record;
   with the lease held, a turn left open is stale (`interrupted/worker_lost`), and a new message
   marks an interrupted latest turn `failed/superseded` (the runner closes its unanswered tool

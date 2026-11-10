@@ -1,11 +1,13 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { App } from "./App";
+import { meResponse, renderApp } from "./test/session";
+
 
 function stubApi() {
   const fetchMock = vi.fn((input: RequestInfo | URL) => {
     const url = String(input);
+    if (url.endsWith("/auth/me")) return Promise.resolve(meResponse());
     const none = { configured: false };
     let body: object = { openai: { configured: true }, census: none, comptox: none };
     if (url.endsWith("/settings/client")) body = { model: "test-model" };
@@ -25,7 +27,7 @@ describe("App Monitoring view", () => {
   it("opens Monitoring over the analysis area and marks it as the current page", async () => {
     stubApi();
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     expect(screen.queryByRole("region", { name: "Monitoring" })).toBeNull();
     await user.click(entry("Monitoring"));
     expect(await screen.findByRole("region", { name: "Monitoring" })).toBeInTheDocument();
@@ -36,7 +38,7 @@ describe("App Monitoring view", () => {
   it("keeps the overview, the map and the copilot mounted, the first two inert underneath", async () => {
     stubApi();
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await user.click(entry("Monitoring"));
     await screen.findByRole("region", { name: "Monitoring" });
     for (const name of ["Overview", "Map"]) {
@@ -51,7 +53,7 @@ describe("App Monitoring view", () => {
   it("returns to the workspace exactly as it was left", async () => {
     stubApi();
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await user.click(entry("Monitoring"));
     await screen.findByRole("region", { name: "Monitoring" });
     await user.click(entry("Workspace"));
@@ -64,7 +66,7 @@ describe("App Monitoring view", () => {
   it("closes the settings drawer when Monitoring is opened", async () => {
     stubApi();
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await user.click(entry("Settings"));
     expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument();
     await user.click(entry("Monitoring"));
@@ -75,7 +77,7 @@ describe("App Monitoring view", () => {
   it("reads the sessions each time the view is opened", async () => {
     const fetchMock = stubApi();
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     const reads = () =>
       fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/monitoring/sessions")).length;
     await user.click(entry("Monitoring"));
@@ -89,7 +91,7 @@ describe("App Monitoring view", () => {
   it("asks nothing of the user for a token", async () => {
     stubApi();
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await user.click(entry("Monitoring"));
     await screen.findByRole("region", { name: "Monitoring" });
     expect(within(screen.getByRole("region", { name: "Monitoring" })).queryByRole("textbox")).toBeNull();

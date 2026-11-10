@@ -7,6 +7,7 @@ from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, Tool
 
 from agent.completion import NUDGE_NAME
 from api.services.snapshots import last_answer, thread_messages, thread_snapshot
+from tests.api.keys import OTHER_OWNER, owned
 from tests.fakes import InMemoryThreadStore
 
 pytestmark = pytest.mark.anyio
@@ -44,13 +45,13 @@ async def test_text_blocks_are_read_and_other_blocks_dropped() -> None:
 
 
 async def test_unknown_thread_has_no_snapshot() -> None:
-    assert await thread_snapshot(InMemoryThreadStore(), "nope", {}, 3) is None
+    assert await thread_snapshot(InMemoryThreadStore(), owned("nope"), {}, 3) is None
 
 
 async def test_held_thread_without_turns_has_an_empty_snapshot() -> None:
     threads = InMemoryThreadStore()
-    await threads.claim("a")
-    snapshot = await thread_snapshot(threads, "a", {}, 3)
+    await threads.claim(owned("a"))
+    snapshot = await thread_snapshot(threads, owned("a"), {}, 3)
     assert snapshot is not None
     assert snapshot.messages == []
     assert snapshot.workspace.facilities == []
@@ -87,3 +88,9 @@ async def test_last_answer_is_the_last_assistant_text() -> None:
 async def test_no_answer_without_an_assistant_message() -> None:
     assert last_answer([HumanMessage(content="q")]) is None
     assert last_answer([]) is None
+
+
+async def test_another_users_thread_has_no_snapshot() -> None:
+    threads = InMemoryThreadStore()
+    await threads.claim(owned("a"))
+    assert await thread_snapshot(threads, owned("a", OTHER_OWNER), {}, 3) is None

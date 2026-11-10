@@ -13,7 +13,6 @@ from typing import Any
 
 import pytest
 from fastapi import FastAPI
-from fastapi.testclient import TestClient
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, ToolCall
 from langchain_core.tools import StructuredTool
@@ -22,7 +21,7 @@ from pydantic import SecretStr
 from agent.guardrails import ScopeGuard
 from agent.missing import ask_text
 from api.dependencies import AgentRuntime, get_runtime
-from tests.api.conftest import ORIGIN
+from tests.api.conftest import ORIGIN, signed_in
 from tests.api.services.projectors.factories import RULES, record
 from tests.api.streams import parse_sse
 from tests.fakes import OPENAI_ENTRY, FakeCredentialStore, ScriptedChatModel, reply, verdict
@@ -90,7 +89,7 @@ def stream(
 
     def run(runtime: AgentRuntime) -> list[dict[str, Any]]:
         app.dependency_overrides[get_runtime] = lambda: runtime
-        with TestClient(app, base_url=ORIGIN, raise_server_exceptions=False) as client:
+        with signed_in(app, raise_server_exceptions=False) as client:
             body = {"thread_id": "g1", "message": "Assess 1-1-1"}
             response = client.post("/api/v1/chat/stream", json=body, headers=OWN)
         events = parse_sse(response.text)

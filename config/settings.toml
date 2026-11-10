@@ -926,6 +926,64 @@ thread_retention_days = 30
 # Minutes between purges of idle threads.
 purge_interval_minutes = 60
 
+# Accounts of the web program (api/). Passwords are hashed with Argon2id; sessions are random
+# tokens kept hashed in PostgreSQL and sent in an HttpOnly cookie. Secrets (the session secret)
+# come only from the environment variable named here, never from this file.
+[auth]
+# False closes sign-up (the endpoint answers 403); existing accounts keep working.
+signup_open = true
+# Password length limits, in characters. No composition rules (NIST SP 800-63B).
+password_min_length = 12
+password_max_length = 128
+# A session ends after this many minutes without a request, and in any case after the
+# absolute lifetime in days.
+session_idle_minutes = 720
+session_absolute_days = 14
+# How long an emailed single-use link stays valid.
+verification_token_hours = 24
+reset_token_minutes = 30
+cookie_name = "ecofate_session"
+# Send the session cookie only over HTTPS. Set to false only for plain-HTTP local runs; loading
+# the settings refuses false when [telemetry].environment is "production".
+cookie_secure = false
+# Reverse proxies in front of the API whose X-Forwarded-For entries are trusted. 0 uses the
+# socket address and ignores the header.
+trusted_proxy_hops = 0
+session_secret_env_var = "ECOFATE_SESSION_SECRET"  # pragma: allowlist secret
+
+# Argon2id cost (RFC 9106 low-memory profile). Memory is in KiB.
+[auth.argon2]
+time_cost = 3
+memory_cost_kib = 65536
+parallelism = 4
+
+# Failed sign-in and recovery attempts allowed per email and per client address within the
+# window; past the limit the API answers 429.
+[auth.throttle]
+attempts = 5
+window_minutes = 15
+
+# Outgoing email (verification and recovery links). The SMTP server is configured in `.env` (one
+# place for Docker and native runs): this section only names the variables. See .env.example;
+# the shipped values there send to the `mailpit` service (`docker compose --profile dev up`),
+# whose inbox is http://127.0.0.1:8025.
+[mail]
+host_env_var = "SMTP_HOST"
+port_env_var = "SMTP_PORT"
+security_env_var = "SMTP_SECURITY"  # starttls (587), tls (implicit, 465) or none
+username_env_var = "SMTP_USERNAME"  # empty or unset when the server needs no login
+password_env_var = "SMTP_PASSWORD"  # pragma: allowlist secret
+from_env_var = "SMTP_FROM"
+# Origin of the web app, used to build the links in emails (the token goes in the fragment).
+app_base_url = "http://127.0.0.1:8000"
+timeout_seconds = 10.0
+
+# Inside a container (`python -m api --container`, used by compose) a loopback SMTP host would be
+# the container itself, so a loopback SMTP_HOST means this service instead (Mailpit). Any other
+# host is used as written.
+[mail.container]
+loopback_host = "mailpit"
+
 # Monitoring (Pydantic Logfire). `app` and `api` configure it once at start-up; nothing is sent
 # unless a write token (`write_token_env_var`, or `logfire projects use`) is present; Logfire reads
 # that variable itself, the program only keeps its value out of the logs. The Monitoring view
@@ -959,6 +1017,7 @@ usage_prefix = "exposure.usage."
 session_usage_prefix = "exposure.session_usage."
 turn_id = "exposure.turn_id"
 resume_index = "exposure.resume_index"
+user_id = "enduser.id"
 
 # What the LangChain-to-OpenTelemetry bridge writes on its spans (read by the Monitoring view).
 [telemetry.bridge]

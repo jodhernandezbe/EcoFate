@@ -1,13 +1,14 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { App } from "./App";
 import { EMPTY_WORKSPACE } from "./hooks/useWorkspaceStore";
 import { extremum, workspace } from "./test/fixtures";
+import { meResponse, renderApp } from "./test/session";
 
 function stubApi(keyConfigured: boolean) {
   const fetchMock = vi.fn((input: RequestInfo | URL) => {
     const url = String(input);
+    if (url.endsWith("/auth/me")) return Promise.resolve(meResponse());
     const status = { configured: keyConfigured };
     const none = { configured: false };
     const body = url.endsWith("/settings/client")
@@ -24,7 +25,7 @@ afterEach(() => vi.unstubAllGlobals());
 describe("App", () => {
   it("renders the workspace with the rail, both analysis panels and the copilot", async () => {
     stubApi(true);
-    render(<App />);
+    await renderApp();
     expect(screen.getByRole("navigation", { name: "Navigation" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Overview" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Map" })).toBeInTheDocument();
@@ -34,7 +35,7 @@ describe("App", () => {
 
   it("points to Settings and blocks sending while no key is stored", async () => {
     stubApi(false);
-    render(<App />);
+    await renderApp();
     expect(await screen.findByText(/Add your OpenAI API key to start/)).toBeInTheDocument();
     expect(screen.getByLabelText("Message")).toBeDisabled();
   });
@@ -42,7 +43,7 @@ describe("App", () => {
   it("opens the settings drawer from the rail without disturbing the workspace", async () => {
     stubApi(true);
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await user.click(screen.getByRole("button", { name: "Settings" }));
     expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Map" })).toBeInTheDocument();
@@ -56,7 +57,7 @@ describe("App", () => {
   it("opens the drawer from the composer's link while no key is stored", async () => {
     stubApi(false);
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await user.click(await screen.findByRole("button", { name: "Open Settings" }));
     expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Assistant" })).toHaveAttribute("aria-expanded", "true");
@@ -84,6 +85,7 @@ describe("onboarding and clearing the workspace", () => {
       "fetch",
       vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
+    if (url.endsWith("/auth/me")) return Promise.resolve(meResponse());
         calls.push({ url, method: init?.method ?? "GET" });
         const stored = { configured: true };
         const none = { configured: false };
@@ -111,7 +113,7 @@ describe("onboarding and clearing the workspace", () => {
     ];
     stubWithChips(events);
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await user.click(await screen.findByRole("button", { name: "Assess benzene" }));
     expect(await screen.findByText(/I can't help with that, but I can map releases/)).toBeInTheDocument();
     expect(screen.queryByRole("alert")).toBeNull();
@@ -125,7 +127,7 @@ describe("onboarding and clearing the workspace", () => {
   it("runs a chip, shows its tool pill and answer, then clears the workspace", async () => {
     const calls = stubWithChips();
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await user.click(await screen.findByRole("button", { name: "Assess benzene" }));
     expect(await screen.findByText("All done.")).toBeInTheDocument();
     expect(screen.getByLabelText("Queried EPA TRI releases, done")).toBeInTheDocument();
@@ -149,7 +151,7 @@ describe("onboarding and clearing the workspace", () => {
       { type: "turn_finished", seq: 2 },
     ]);
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await user.click(await screen.findByRole("button", { name: "Assess benzene" }));
     expect(await screen.findByText("Above concern")).toBeInTheDocument();
     await clearWorkspace(user);

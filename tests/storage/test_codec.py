@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from datetime import UTC, datetime
 from typing import cast
+from uuid import UUID
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
@@ -12,9 +13,11 @@ from pydantic import BaseModel, ConfigDict
 
 from app.usage_meter import CallUsage
 from storage import codec
+from storage.keys import ThreadKey
 from storage.turn_model import TurnStatus
 from tools.schemas import ConfirmationRequest
 
+OWNER = UUID(int=1)
 THREAD = "thread-1"
 
 
@@ -197,6 +200,7 @@ def _turn_row(**changes: object) -> dict[str, object]:
     now = datetime(2026, 1, 1, tzinfo=UTC)
     row: dict[str, object] = {
         "id": "t1",
+        "user_id": OWNER,
         "thread_id": "th",
         "status": "interrupted",
         "reason": "out_of_credits",
@@ -217,6 +221,7 @@ def test_a_turn_row_decodes() -> None:
         "out_of_credits",
         1,
     )
+    assert turn.key == ThreadKey(OWNER, "th")
 
 
 @pytest.mark.parametrize(
@@ -229,6 +234,8 @@ def test_a_turn_row_decodes() -> None:
         {"reason": None},  # an interrupted turn needs a reason
         {"status": "completed"},  # a completed one has none
         {"reason": 7},
+        {"user_id": None},  # every turn has an owner
+        {"user_id": "not-a-uuid"},
     ],
 )
 def test_a_turn_row_that_does_not_fit_is_absent_with_a_warning(

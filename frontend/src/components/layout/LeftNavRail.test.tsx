@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 
 import { LeftNavRail } from "./LeftNavRail";
 
-const ENTRIES = ["Workspace", "Clear workspace", "Generate report", "Monitoring", "Settings"];
+const ENTRIES = ["Workspace", "Clear workspace", "Generate report", "Monitoring", "Account", "Settings"];
 
 function setup(over: Partial<Parameters<typeof LeftNavRail>[0]> = {}) {
   const props = {
@@ -19,6 +19,9 @@ function setup(over: Partial<Parameters<typeof LeftNavRail>[0]> = {}) {
     reporting: false,
     reportError: null,
     onOpenSettings: vi.fn(),
+    email: "ana@example.com",
+    admin: true,
+    onAccount: vi.fn(),
     ...over,
   };
   render(<LeftNavRail {...props} />);
@@ -61,6 +64,20 @@ describe("LeftNavRail expanded", () => {
     expect(props.onClear).toHaveBeenCalledTimes(1);
     expect(props.onReport).toHaveBeenCalledTimes(1);
     expect(props.onOpenSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the signed-in email under the Account entry and opens the account sheet from it", async () => {
+    const user = userEvent.setup();
+    const props = setup();
+    expect(screen.getByText("ana@example.com")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Account" }));
+    expect(props.onAccount).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a regular user every entry but Monitoring, Account and Settings last", () => {
+    setup({ admin: false });
+    expect(names()).toEqual(["Workspace", "Clear workspace", "Generate report", "Account", "Settings"]);
+    expect(screen.queryByRole("button", { name: "Monitoring" })).toBeNull();
   });
 
   it("disables blocked entries and says why in their tooltip", async () => {

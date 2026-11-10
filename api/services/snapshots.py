@@ -14,6 +14,7 @@ from api.services.threads import ThreadStore
 from api.services.turn_lifecycle import interruption
 from api.services.usage_meter import summarize
 from config.ui import ModelPrice
+from storage.keys import ThreadKey
 from tools.schemas import ConfirmationRequest
 
 
@@ -63,7 +64,7 @@ def _prompt(pending: ConfirmationRequest | None) -> ConfirmationPrompt | None:
 
 async def thread_snapshot(
     threads: ThreadStore,
-    thread_id: str,
+    key: ThreadKey,
     pricing: Mapping[str, ModelPrice],
     max_resumes: int,
 ) -> ThreadSnapshot | None:
@@ -72,14 +73,14 @@ async def thread_snapshot(
     ``interrupted`` reports the latest turn when it was interrupted (resumable while it has been
     resumed fewer than ``max_resumes`` times).
     """
-    if not await threads.holds(thread_id):
+    if not await threads.holds(key):
         return None
-    await threads.touch(thread_id)
+    await threads.touch(key)
     return ThreadSnapshot(
-        thread_id=thread_id,
-        messages=thread_messages(await threads.messages(thread_id)),
-        workspace=await threads.workspace(thread_id) or WorkspaceState(),
-        usage=summarize(await threads.session_calls(thread_id), pricing),
-        confirmation=_prompt(await threads.pending(thread_id)),
-        interrupted=interruption(await threads.turns.latest(thread_id), max_resumes),
+        thread_id=key.thread_id,
+        messages=thread_messages(await threads.messages(key)),
+        workspace=await threads.workspace(key) or WorkspaceState(),
+        usage=summarize(await threads.session_calls(key), pricing),
+        confirmation=_prompt(await threads.pending(key)),
+        interrupted=interruption(await threads.turns.latest(key), max_resumes),
     )

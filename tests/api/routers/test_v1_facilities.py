@@ -10,19 +10,20 @@ from fastapi.testclient import TestClient
 from api.dependencies import get_threads
 from api.services.state_serializer import build_workspace
 from api.services.threads import ThreadStore
-from tests.api.conftest import ORIGIN
+from tests.api.conftest import signed_in
+from tests.api.keys import owned
 from tests.api.services.projectors.factories import RULES, inventory, record
 from tests.fakes import InMemoryThreadStore
 
 
 def _client(app: FastAPI, threads: ThreadStore) -> TestClient:
     app.dependency_overrides[get_threads] = lambda: threads
-    return TestClient(app, base_url=ORIGIN)
+    return signed_in(app)
 
 
 def _threads_with_facility() -> ThreadStore:
     threads = InMemoryThreadStore()
-    asyncio.run(threads.set_workspace("t1", build_workspace(inventory(record("A")), RULES)))
+    asyncio.run(threads.set_workspace(owned("t1"), build_workspace(inventory(record("A")), RULES)))
     return threads
 
 

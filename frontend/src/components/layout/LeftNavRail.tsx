@@ -8,6 +8,7 @@ import {
   PanelLeftOpen,
   Settings,
   Trash2,
+  UserRound,
 } from "lucide-react";
 import type { ElementType } from "react";
 
@@ -35,6 +36,12 @@ interface LeftNavRailProps {
   /** Why the last report failed; null when it did not. */
   reportError?: string | null | undefined;
   onOpenSettings: () => void;
+  /** The signed-in user's email, shown on the Account entry. */
+  email: string;
+  /** Administrators see the Monitoring entry; nobody else does. */
+  admin: boolean;
+  /** Open the account sheet (sign out, password, delete). */
+  onAccount: () => void;
 }
 
 interface ItemProps {
@@ -98,7 +105,10 @@ function ReportError({ text, collapsed }: { text: string; collapsed: boolean }) 
   );
 }
 
-/** The left rail: brand and toggle; Workspace, Clear workspace, Generate report, Monitoring; Settings. */
+/**
+ * The left rail: brand and toggle; Workspace, Clear workspace, Generate report, Monitoring
+ * (administrators only); Account (with the email) and Settings.
+ */
 export function LeftNavRail({
   collapsed,
   onToggle,
@@ -112,6 +122,9 @@ export function LeftNavRail({
   reporting,
   reportError,
   onOpenSettings,
+  email,
+  admin,
+  onAccount,
 }: LeftNavRailProps) {
   const Toggle = collapsed ? PanelLeftOpen : PanelLeftClose;
   return (
@@ -168,14 +181,22 @@ export function LeftNavRail({
           busy={reporting}
         />
         {reportError ? <ReportError text={reportError} collapsed={collapsed} /> : null}
-        <Item
-          icon={Activity}
-          label="Monitoring"
-          collapsed={collapsed}
-          onClick={onMonitoring}
-          page={view === "monitoring"}
-        />
+        {admin ? (
+          <Item
+            icon={Activity}
+            label="Monitoring"
+            collapsed={collapsed}
+            onClick={onMonitoring}
+            page={view === "monitoring"}
+          />
+        ) : null}
       </div>
+      <Item icon={UserRound} label="Account" collapsed={collapsed} onClick={onAccount} />
+      {collapsed ? null : (
+        <p title={email} className="truncate px-3 pb-1 text-xs text-fg2">
+          {email}
+        </p>
+      )}
       <Item icon={Settings} label="Settings" collapsed={collapsed} onClick={onOpenSettings} />
     </div>
   );

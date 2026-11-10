@@ -42,6 +42,18 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  mailpit:
+    # Development only (`--profile dev`): catches the emails the API sends (verification and
+    # password-reset links) so no real mail server is needed. Read them at http://127.0.0.1:8025.
+    # SMTP (1025) is published on the host's loopback for native runs; the API container reaches
+    # it by this service's name. Never on all interfaces.
+    profiles: [dev]
+    image: axllent/mailpit:v1.21
+    ports:
+      - "127.0.0.1:8025:8025"  # the inbox, host loopback only
+      - "127.0.0.1:1025:1025"  # SMTP, host loopback only
+    restart: unless-stopped
+
   migrate:
     # One shot: `python -m storage upgrade`, then exit. Gets only the database URL, no API key.
     build: *api-build

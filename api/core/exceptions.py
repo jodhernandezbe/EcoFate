@@ -18,7 +18,33 @@ from app.turns.failures import new_correlation_id
 
 logger = logging.getLogger("api")
 GENERIC_ERROR = "Something went wrong. Try again."
-__all__ = ["GENERIC_ERROR", "error_body", "install_exception_handlers", "new_correlation_id"]
+__all__ = [
+    "GENERIC_ERROR",
+    "FieldRejected",
+    "Refusal",
+    "error_body",
+    "install_exception_handlers",
+    "new_correlation_id",
+]
+
+
+class Refusal(Exception):  # noqa: N818  # not an error: an expected, answered refusal
+    """A request the service refuses with a fixed, user-safe message (and maybe headers)."""
+
+    def __init__(self, status: int, detail: str, headers: dict[str, str] | None = None) -> None:
+        super().__init__(detail)
+        self.status = status
+        self.detail = detail
+        self.headers = headers
+
+
+class FieldRejected(Exception):  # noqa: N818  # not an error: an expected, answered refusal
+    """One field of the request body is not acceptable; the answer is a 422 naming it."""
+
+    def __init__(self, field: str, message: str) -> None:
+        super().__init__(message)
+        self.field = field
+        self.message = message
 
 
 def error_body(message: str, correlation_id: str) -> dict[str, str]:
@@ -42,7 +68,19 @@ async def _http(request: Request, exc: StarletteHTTPException) -> JSONResponse:
     return JSONResponse(
         error_body(str(exc.detail), new_correlation_id()),
         status_code=exc.status_code,
+        headers=exc.headers,
     )
+
+
+async def _refusal(request: Request, exc: Refusal) -> JSONResponse:
+    body = error_body(exc.detail, new_correlation_id())
+    return JSONResponse(body, status_code=exc.status, headers=exc.headers)
+
+
+async def _field(request: Request, exc: FieldRejected) -> JSONResponse:
+    fields = [{"loc": ["body", exc.field], "msg": exc.message}]
+    body = {**error_body("Invalid request.", new_correlation_id()), "fields": fields}
+    return JSONResponse(body, status_code=422)
 
 
 async def _invalid_key(request: Request, exc: InvalidKeyError) -> JSONResponse:
@@ -58,5 +96,7 @@ def install_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(Exception, _unhandled)
     app.add_exception_handler(RequestValidationError, _validation)  # pyright: ignore[reportArgumentType]
     app.add_exception_handler(StarletteHTTPException, _http)  # pyright: ignore[reportArgumentType]
+    app.add_exception_handler(Refusal, _refusal)  # pyright: ignore[reportArgumentType]
+    app.add_exception_handler(FieldRejected, _field)  # pyright: ignore[reportArgumentType]
     app.add_exception_handler(InvalidKeyError, _invalid_key)  # pyright: ignore[reportArgumentType]
     app.add_exception_handler(KeychainUnavailableError, _keychain)  # pyright: ignore[reportArgumentType]

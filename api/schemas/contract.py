@@ -8,6 +8,18 @@ from typing import Any, cast
 from pydantic import BaseModel
 from pydantic.json_schema import JsonSchemaMode, models_json_schema
 
+from api.schemas.auth import (
+    AcceptedResponse,
+    ChangePasswordRequest,
+    DeleteAccountRequest,
+    EmailRequest,
+    ResetRequest,
+    SignInRequest,
+    SignInResponse,
+    SignUpRequest,
+    TokenRequest,
+    UserInfo,
+)
 from api.schemas.chat import ChatRequest, StreamEventSchema, ThreadSnapshot, UsageTotals
 from api.schemas.monitoring import SessionDetailResponse, SessionsResponse
 from api.schemas.settings import (
@@ -30,6 +42,16 @@ _MODELS: tuple[tuple[type[BaseModel], JsonSchemaMode], ...] = (
     (WorkspaceState, "serialization"),
     (SessionsResponse, "serialization"),
     (SessionDetailResponse, "serialization"),
+    (SignUpRequest, "validation"),
+    (SignInRequest, "validation"),
+    (EmailRequest, "validation"),
+    (TokenRequest, "validation"),
+    (ResetRequest, "validation"),
+    (ChangePasswordRequest, "validation"),
+    (DeleteAccountRequest, "validation"),
+    (AcceptedResponse, "serialization"),
+    (UserInfo, "serialization"),
+    (SignInResponse, "serialization"),
 )
 
 

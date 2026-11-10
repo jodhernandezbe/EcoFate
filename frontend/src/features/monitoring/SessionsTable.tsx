@@ -15,6 +15,7 @@ const SHOWN_FROM: Record<Tier, string> = {
 const COLUMNS: readonly { name: string; tier: Tier; width?: string }[] = [
   { name: "Started", tier: "always", width: "w-48" },
   { name: "Question", tier: "always" },
+  { name: "Account", tier: "medium", width: "w-40" },
   { name: "Model", tier: "medium", width: "w-26" },
   { name: "Turns", tier: "medium", width: "w-18" },
   { name: "Model calls", tier: "wide", width: "w-24" },
@@ -80,6 +81,9 @@ export function SessionsTable({ sessions, selectedId, onSelect }: SessionsTableP
                   </th>
                   <td className={cell("always")} title={session.question ?? undefined}>
                     {session.question ?? NOT_REPORTED}
+                  </td>
+                  <td className={cell("medium")} title={session.account ?? undefined}>
+                    {session.account ?? NOT_REPORTED}
                   </td>
                   <td className={cell("medium")}>{session.model ?? NOT_REPORTED}</td>
                   <td className={cell("medium")}>{formatCount(session.turns)}</td>

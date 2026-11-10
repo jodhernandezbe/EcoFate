@@ -6,10 +6,10 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from api.dependencies import get_runtime, get_service_keys
-from api.main import create_app
 from api.services.agent_runner import AgentRuntime
 from app.key_vault import default_service_keys
 from config.ui import UiSettings
+from tests.api.auth_support import build_app
 from tests.api.conftest import ORIGIN
 from tests.fakes import FakeCredentialStore, InMemoryThreadStore
 
@@ -34,7 +34,7 @@ def test_health_answers_ok_without_keys_or_model(
 
 def test_health_answers_when_the_keychain_is_unavailable(settings: UiSettings) -> None:
     failing = FakeCredentialStore(fail=True)
-    api = create_app(settings, threads=InMemoryThreadStore())
+    api = build_app(settings, threads=InMemoryThreadStore())
     keys = default_service_keys(failing)
     api.dependency_overrides[get_service_keys] = lambda: keys
     with TestClient(api, base_url=ORIGIN) as client:
@@ -55,7 +55,7 @@ async def _down() -> bool:
 
 
 def test_health_is_503_unavailable_when_the_database_does_not_answer(settings: UiSettings) -> None:
-    api = create_app(settings, threads=InMemoryThreadStore(), health_check=_down)
+    api = build_app(settings, threads=InMemoryThreadStore(), health_check=_down)
     with TestClient(api, base_url=ORIGIN) as client:
         response = client.get("/api/health")
     assert (response.status_code, response.json()) == (503, {"status": "unavailable"})

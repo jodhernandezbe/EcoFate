@@ -19,6 +19,7 @@ const SESSION: SessionSummary = {
   cost_status: "estimate",
   duration_ms: 12000,
   outcome: "ok",
+  account: "ana@example.com",
 };
 
 const header = (name: string) => screen.getByRole("columnheader", { name });
@@ -40,7 +41,7 @@ describe("SessionsTable", () => {
   });
 
   it("adds model and turns on a medium pane, and the counts, tokens and duration on a wide one", () => {
-    for (const name of ["Model", "Turns"]) expect(header(name)).toHaveClass("hidden", "@3xl:table-cell");
+    for (const name of ["Account", "Model", "Turns"]) expect(header(name)).toHaveClass("hidden", "@3xl:table-cell");
     for (const name of ["Model calls", "Tool calls", "Tokens", "Duration"]) {
       expect(header(name)).toHaveClass("hidden", "@7xl:table-cell");
     }

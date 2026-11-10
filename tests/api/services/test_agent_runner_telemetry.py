@@ -18,6 +18,7 @@ from api.services.threads import ThreadStore
 from app.key_vault import default_service_keys
 from app.telemetry import flush_telemetry
 from config.telemetry import TelemetrySettings
+from tests.api.keys import OTHER_OWNER, OWNER, owned
 from tests.api.streams import begun_turn
 from tests.app.test_usage_meter import PRICING
 from tests.fakes import (
@@ -165,3 +166,27 @@ async def test_closing_the_stream_early_still_ends_the_span_cleanly(
     (span,) = _turn_spans(exporter, monitoring)
     assert (span.attributes or {})[monitoring.attributes.outcome] == "error"
     assert not [r for r in caplog.records if r.name.startswith("opentelemetry")]
+
+
+async def test_a_web_turn_span_carries_the_users_opaque_id_and_no_email(
+    monitoring: TelemetrySettings,
+    exporter: TestExporter,
+) -> None:
+    runtime = _runtime(ScriptedChatModel([reply("hello", 10, 2)]), monitoring)
+    await _run("Assess ana@example.com's plant", InMemoryThreadStore(), runtime)
+    (span,) = _turn_spans(exporter, monitoring)
+    attributes = span.attributes or {}
+    assert attributes[monitoring.attributes.user_id] == str(OWNER)
+    assert attributes[monitoring.attributes.session_id] == "t1"  # still the plain thread id
+    assert "@" not in str(attributes[monitoring.attributes.user_id])
+
+
+async def test_the_checkpoint_of_a_turn_is_scoped_to_its_owner(
+    monitoring: TelemetrySettings,
+) -> None:
+    threads = InMemoryThreadStore()
+    runtime = _runtime(ScriptedChatModel([reply("one", 1, 1), reply("two", 1, 1)]), monitoring)
+    await _run("first user", threads, runtime)
+    mine = await threads.messages(owned("t1"))
+    theirs = await threads.messages(owned("t1", OTHER_OWNER))
+    assert [m.content for m in mine][0] == "first user" and theirs == []

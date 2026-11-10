@@ -1,10 +1,10 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { App } from "./App";
 import { EMPTY_WORKSPACE } from "./hooks/useWorkspaceStore";
 import { FakeMap } from "./test/fakeMaplibre";
 import { extremum, facility, workspace } from "./test/fixtures";
+import { meResponse, renderApp } from "./test/session";
 
 const ASSESSED = workspace({
   framing_version: 3,
@@ -32,6 +32,7 @@ interface Stub {
 
 const frame = (event: object) => new TextEncoder().encode(`data: ${JSON.stringify(event)}\n\n`);
 
+
 function stub(options: { never?: boolean } = {}): Stub {
   const state: Stub = {
     calls: [],
@@ -47,6 +48,7 @@ function stub(options: { never?: boolean } = {}): Stub {
     "fetch",
     vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
+    if (url.endsWith("/auth/me")) return Promise.resolve(meResponse());
       state.calls.push(`${init?.method ?? "GET"} ${url}`);
       if (url.endsWith("/settings/client")) return Promise.resolve(new Response(JSON.stringify(CONFIG)));
       if (url.endsWith("/settings/keys")) {
@@ -87,9 +89,9 @@ afterEach(() => {
 });
 
 describe("clear workspace", () => {
-  it("is disabled while the workspace is empty", () => {
+  it("is disabled while the workspace is empty", async () => {
     stub();
-    render(<App />);
+    await renderApp();
     const clear = rail().getByRole("button", { name: "Clear workspace" });
     expect(clear).toBeDisabled();
     expect(clear).toHaveAttribute("title", "Clear workspace: the workspace is already empty");
@@ -98,7 +100,7 @@ describe("clear workspace", () => {
   it("asks first and Escape changes nothing", async () => {
     const api = stub();
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await runOnce(user);
     const clear = rail().getByRole("button", { name: "Clear workspace" });
     // Opened from the keyboard: without layout, jsdom puts every element at (0, 0) and the
@@ -116,7 +118,7 @@ describe("clear workspace", () => {
   it("discards the thread, empties everything and reframes the map on the United States", async () => {
     const api = stub();
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await runOnce(user);
     // The ribbon's status joins the legend's always-present "Above concern" label.
     const shown = (await screen.findAllByText("Above concern")).length;
@@ -140,7 +142,7 @@ describe("clear workspace", () => {
     const api = stub();
     api.reset = () => new Response(JSON.stringify({ error: "A turn is already running for this thread.", correlation_id: "c" }), { status: 409 });
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await runOnce(user);
     await user.click(rail().getByRole("button", { name: "Clear workspace" }));
     await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Clear" }));
@@ -151,7 +153,7 @@ describe("clear workspace", () => {
   it("is disabled while a reply streams", async () => {
     stub({ never: true });
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await user.click(await chat().findByRole("button", { name: "Assess benzene" }));
     await screen.findByText("Hi");
     const clear = rail().getByRole("button", { name: "Clear workspace" });
@@ -163,7 +165,7 @@ describe("clear workspace", () => {
   it("opens the same confirmation from the chat's clear button", async () => {
     stub();
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await runOnce(user);
     await user.click(chat().getByRole("button", { name: "Clear chat" }));
     expect(screen.getByRole("alertdialog", { name: "Clear this workspace?" })).toBeInTheDocument();
@@ -171,9 +173,9 @@ describe("clear workspace", () => {
 });
 
 describe("generate report", () => {
-  it("is disabled until there are findings", () => {
+  it("is disabled until there are findings", async () => {
     stub();
-    render(<App />);
+    await renderApp();
     const report = rail().getByRole("button", { name: "Generate report" });
     expect(report).toBeDisabled();
     expect(report).toHaveAttribute("title", "Generate report: there are no findings yet");
@@ -187,7 +189,7 @@ describe("generate report", () => {
       saved.push(this.download);
     });
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await runOnce(user);
     await user.click(rail().getByRole("button", { name: "Generate report" }));
     await waitFor(() => expect(saved).toEqual(["exposure-screening-chemical-2026-01-02.docx"]));
@@ -199,7 +201,7 @@ describe("generate report", () => {
     const api = stub();
     api.report = () => new Response(JSON.stringify({ error: "That run is no longer available.", correlation_id: "c" }), { status: 404 });
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await runOnce(user);
     await user.click(rail().getByRole("button", { name: "Generate report" }));
     expect(await rail().findByRole("alert")).toHaveTextContent(
@@ -212,7 +214,7 @@ describe("workspace entry", () => {
   it("closes the Settings drawer", async () => {
     stub();
     const user = userEvent.setup();
-    render(<App />);
+    await renderApp();
     await user.click(rail().getByRole("button", { name: "Settings" }));
     expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument();
     await user.click(rail().getByRole("button", { name: "Workspace" }));

@@ -19,9 +19,10 @@ The intended tool flow for an assessment is: chemical properties -> emissions in
 The quickest way to see the app: no Python or Node needed, only Docker (Docker Desktop on macOS or Windows).
 
     cp .env.example .env          # then put your OpenAI key in OPENAI_API_KEY (Census and CompTox keys too, for complete assessments)
-                                  # and a long random POSTGRES_PASSWORD (letters and digits)
-    docker compose up --build     # first build takes several minutes
-    # open http://127.0.0.1:8000
+                                  # a long random POSTGRES_PASSWORD (letters and digits)
+                                  # and ECOFATE_SESSION_SECRET (see "Accounts" below)
+    docker compose --profile dev up --build   # first build takes several minutes
+    # open http://127.0.0.1:8000, sign up, and open the verification link in the inbox at http://127.0.0.1:8025
 
 The image is about 2 GB (CPU-only PyTorch and RDKit), and the container needs about 4 GB of RAM once the read-across encoder is loaded: give Docker Desktop at least that much memory and enough disk for the image. The port is published on the host's loopback only (`127.0.0.1:8000`).
 
@@ -46,6 +47,8 @@ The `Makefile` is the index of everyday commands (`make help` lists them):
 | `make db` | start only PostgreSQL, published on `127.0.0.1:5432` (native runs and `make test-db`) |
 | `make test-db` | run the PostgreSQL tests (`pytest -m postgres`) against the `db` service |
 | `make psql` | open a `psql` shell in the `db` service |
+
+The `dev` profile adds `mailpit`, a mail catcher: the verification and password-reset emails land in its inbox (http://127.0.0.1:8025) instead of being sent anywhere. Without the profile (`docker compose up`) no mail server runs, so point the `SMTP_*` variables in `.env` at a real SMTP server first.
 
 The stack has three services: `db` (PostgreSQL 16, data in the `pgdata` volume, not published to the host), `migrate` (applies the schema, then exits) and `api`, which starts only after `migrate` succeeded. `.env` sets `POSTGRES_USER`, `POSTGRES_PASSWORD` and `POSTGRES_DB`; compose builds the services' `DATABASE_URL` from them. `docker compose down -v` deletes the database volume (every conversation).
 
@@ -79,6 +82,41 @@ The chat model is configured in one place, `[agent]` in `config/settings.toml` (
 uv run python -m app "Assess CAS 71-43-2"
 ```
 
+### Accounts
+
+The web interface needs an account. People sign up with an email and password (at least 12 characters), verify the address with a single-use link, and sign in; "Forgot password" sends a single-use reset link. Passwords are stored as Argon2id hashes. A session is a random token in an `HttpOnly`, `SameSite=Lax` cookie (`Secure` over HTTPS), kept on the server only as a keyed hash, with an idle and an absolute expiry; signing out, changing or resetting the password ends sessions. Wrong passwords and recovery requests are throttled per account and per client address (`[auth.throttle]`), and answers never reveal whether an email has an account. Each user sees only their own threads, reports and usage; another user's thread id answers 404, exactly like an id that does not exist. Account menu: change password, sign out everywhere, delete the account (deletes its threads too). Close sign-up with `[auth].signup_open = false`. The command line program (`python -m app`) needs no account.
+
+Set `ECOFATE_SESSION_SECRET` in `.env` (a random string of at least 32 characters; the web program refuses to start without it). The first administrator is created, or an existing account promoted, from a terminal:
+
+    uv run python -m api create-admin --email you@example.com      # asks for the password, hidden
+    docker compose exec api python -m api create-admin --email you@example.com
+
+The password is only ever typed at the prompt (or piped with `--password-stdin` for scripted deploys), never an argument. Only administrators see **Monitoring**; everyone else gets the 404 of an unknown page. Emails go to the SMTP server set in `.env` (see [Email: development and production](#email-development-and-production)). Upgrading from a version without accounts deletes the old local threads, which had no owner. <!-- pragma: allowlist secret -->
+
+#### Email: development and production
+
+The SMTP server is configured only in `.env`, with six variables (the web program refuses to start without the first four, and names the one that is missing or wrong): `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURITY`, `SMTP_FROM`, `SMTP_USERNAME` and `SMTP_PASSWORD`. `SMTP_SECURITY` is `starttls` (port 587), `tls` (implicit TLS, port 465) or `none`. <!-- pragma: allowlist secret -->
+
+| | Development (your machine) | Production (a deployed server) |
+|---|---|---|
+| Where mail goes | Mailpit, a mail catcher: nothing reaches a real inbox; read it at http://127.0.0.1:8025 | Your provider, to the real recipient |
+| Start | `docker compose --profile dev up` (the `dev` profile adds Mailpit) | `docker compose up` (no Mailpit) |
+| `SMTP_HOST` / `SMTP_PORT` | `127.0.0.1` / `1025` (in Docker a loopback host means the `mailpit` service, so the same `.env` works natively) | The provider's, e.g. `smtp.mx.cloudflare.net` / `465` |
+| `SMTP_SECURITY` | `none` | `tls` or `starttls`, never `none` (a login over an unencrypted connection is refused) |
+| `SMTP_USERNAME` / `SMTP_PASSWORD` | empty | The provider's login and secret, e.g. `api_token` / a Cloudflare API token with *Email Sending: Edit* |
+| `SMTP_FROM` | any address, e.g. `EcoFate <no-reply@ecofate.local>` | An address on a domain the provider verified, e.g. `EcoFate <no-reply@yourdomain.com>` |
+
+`.env.example` ships the development values and shows the production ones for Cloudflare Email Service and for any provider on port 587 (Amazon SES, Resend, Gmail with an app password). For Cloudflare: put the domain on Cloudflare DNS, onboard it under Email → Email Service → Email Sending (Cloudflare adds the SPF and DKIM records), create an API token with *Email Sending: Edit*, and fill in the values above; while sending is in beta, check whether your plan lets you send to any address or only to verified ones.
+
+A production deployment also changes these settings in `config/settings.toml`, which the program checks at start-up:
+
+- `[telemetry].environment = "production"`: turns on the production checks below.
+- `[auth].cookie_secure = true`: the session cookie is sent over HTTPS only (refused as `false` in production).
+- `[mail].app_base_url = "https://your.domain"`: the address the emailed links open (must be `https` in production).
+- `[auth].signup_open`: `true` lets anyone create an account; set `false` to close sign-up.
+
+In both, `ECOFATE_SESSION_SECRET` must be set in `.env`. Use a different secret in production from the one on your machine.
+
 ### Web interface
 
 A local split-screen app: the assessment overview and facility map on the left, the copilot chat on the right. `frontend/` (React) talks only to `api/` (FastAPI), which runs the same agent.
@@ -93,7 +131,7 @@ The web program needs PostgreSQL: it reads the connection URL from `DATABASE_URL
 
 For frontend work with hot reload, run `uv run python -m api` in one terminal and `npm --prefix frontend run dev` in another, then open http://localhost:5173.
 
-The left rail has four entries:
+The left rail has these entries (Monitoring only for administrators), with **Account** and **Settings** at the bottom:
 
 - **Workspace**: the analysis view.
 - **Resume**: when a turn stops for a reason you can fix (your OpenAI account ran out of credits, the key was rejected, OpenAI rate-limited or failed, the run reached its step limit, or the server stopped mid-turn), the chat keeps the partial answer and tool steps and says why, with a **Resume** button (and **Open Settings** for a rejected key). Resume continues from the last finished step: your message is not sent again and finished tool calls do not run again, and the usage of both parts counts as one turn. A turn can be resumed up to `[agent].max_resumes_per_turn` times (3 by default); sending a new message instead abandons the stopped turn. Unexpected errors are not resumable.
@@ -103,7 +141,7 @@ The left rail has four entries:
 
 #### API keys
 
-Open the page, click the gear (top right) and save your keys: the OpenAI key (required, it runs the assistant), and the Census and CompTox keys (the tools need them to count the people around a facility and to look up chemical properties). Each goes to the OS keychain (macOS Keychain, Linux Secret Service, Windows Credential Locker) and nowhere else: never to a file or the browser. It reaches the model and tools only for the turn that uses it. The command line program uses the same stored keys.
+The keys are the server's, shared by every account's turns, so only an administrator can save or clear them (anyone signed in can see whether each one is set). Open the page as an administrator, click the gear (top right) and save the keys: the OpenAI key (required, it runs the assistant), and the Census and CompTox keys (the tools need them to count the people around a facility and to look up chemical properties). Each goes to the OS keychain (macOS Keychain, Linux Secret Service, Windows Credential Locker) and nowhere else: never to a file or the browser. It reaches the model and tools only for the turn that uses it. The command line program uses the same stored keys.
 
 For any key not stored, the environment variable is the fallback (`OPENAI_API_KEY`, `CENSUS_API_KEY`, `COMPTOX_API_KEY`, also read from `.env`). The server listens on loopback only (`[ui]` in `config/settings.toml`).
 
@@ -125,7 +163,7 @@ Set up once, by whoever installs the app, in `.env` (never entered in the interf
     LOGFIRE_TOKEN=...        # lets runs send their traces; without it nothing leaves the machine
     LOGFIRE_READ_TOKEN=...   # lets the Monitoring view read them back
 
-To check a trace, run `uv run python -m app "What is the molecular weight of benzene, CAS 71-43-2?"`, then open the project in Logfire (Live view), or open **Monitoring** in the web interface. It lists the recorded sessions with their model calls, tool calls, tokens, estimated cost and duration; a session opens into its calls in order, with a link to the trace in Logfire. If Logfire cannot be reached, or no read token is set, the view says so and shows nothing else.
+To check a trace, run `uv run python -m app "What is the molecular weight of benzene, CAS 71-43-2?"`, then open the project in Logfire (Live view), or open **Monitoring** in the web interface (administrators only). Spans carry the signed-in user's opaque id (never the email); the view shows the account's email, looked up in the application database. It lists the recorded sessions with their model calls, tool calls, tokens, estimated cost and duration; a session opens into its calls in order, with a link to the trace in Logfire. If Logfire cannot be reached, or no read token is set, the view says so and shows nothing else.
 
 When a write token is set, questions, tool arguments and results (chemical identifiers, facility data) are sent to Logfire. API keys and tokens are scrubbed from every span. Turn monitoring off with `enabled = false` in `[telemetry]` (`config/settings.toml`). The tests never send anything.
 
@@ -185,7 +223,7 @@ The code is split into packages with one-way dependencies: `agent` -> `tools` ->
 
 The web program keeps every conversation in PostgreSQL, so a thread survives a restart and any process connected to the same database can serve its next turn:
 
-- **What is stored:** the message history (LangGraph checkpoints, in tables the checkpoint library manages), the session's token usage, the tool calls and results the dashboard is rebuilt from, the latest workspace, an open confirmation request, and the values the user supplied or declined. Every row has a `user_id` column, empty until accounts exist.
+- **What is stored:** the message history (LangGraph checkpoints, in tables the checkpoint library manages), the session's token usage, the tool calls and results the dashboard is rebuilt from, the latest workspace, an open confirmation request, and the values the user supplied or declined. Every thread belongs to the user who started it: its rows carry the owner's id, the thread is identified by owner and thread id together (two users may pick the same id), and every query filters by the signed-in user.
 - **One turn at a time:** a turn claims its thread with a lease (`[database].turn_lease_seconds`); a second turn on the same thread is answered 409, and a crashed process's lease expires.
 - **Turn status:** every turn has a row in `turns` (`running`, `interrupted`, `completed` or `failed`, with its reason, resume count and times); at most one turn per thread is open (a partial unique index). At start-up, turns a stopped server left running become `interrupted` (`worker_lost`) so they can be resumed.
 - **Retention:** threads idle for `[database].thread_retention_days` are deleted with their history by a purge that runs every `[database].purge_interval_minutes`; a running thread is never purged.

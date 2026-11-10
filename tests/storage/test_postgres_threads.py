@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import timedelta
+from uuid import UUID
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
@@ -20,6 +21,7 @@ from api.schemas.workspace import WorkspaceState
 from app.checkpointer import open_checkpointer
 from app.usage_meter import CallUsage
 from storage.engine import create_engine
+from storage.keys import ThreadKey
 from storage.revisions import current_revision, head_revision
 from storage.tables import TABLES
 from storage.threads import PostgresThreadStore
@@ -27,7 +29,9 @@ from storage.turns import TurnRepository
 from tests.postgres import SETTINGS, Database, database, migrated_schema, run_alembic, test_url
 
 pytestmark = [pytest.mark.postgres, pytest.mark.anyio]
-THREAD = "pg-thread"
+THREAD_ID = "pg-thread"
+OWNER = UUID(int=1)
+KEY = ThreadKey(OWNER, THREAD_ID)
 _SCHEMA_SNAPSHOT = text(
     """
     SELECT 'column', table_name || '.' || column_name || ' ' || data_type || ' ' || is_nullable
@@ -77,7 +81,7 @@ async def _turn(store: PostgresThreadStore[WorkspaceState], words: str) -> None:
     agent = graph.compile(checkpointer=store.checkpointer)
     await agent.ainvoke(
         {"messages": [HumanMessage(words)]},
-        {"configurable": {"thread_id": THREAD}},
+        {"configurable": {"thread_id": KEY.checkpoint_id}},
     )
 
 
@@ -104,7 +108,7 @@ async def test_migrations_round_trip_to_the_same_schema() -> None:
 
 
 async def test_concurrent_claims_from_two_processes_let_exactly_one_win() -> None:
-    async with database() as db:
+    async with database([OWNER]) as db:
         other = create_engine(db.url, SETTINGS, search_path=db.schema)
         try:
             second = PostgresThreadStore(
@@ -114,7 +118,7 @@ async def test_concurrent_claims_from_two_processes_let_exactly_one_win() -> Non
                 WorkspaceState,
             )
             for trial in range(10):
-                thread = f"race-{trial}"
+                thread = ThreadKey(OWNER, f"race-{trial}")
                 results = await asyncio.gather(db.store.claim(thread), second.claim(thread))
                 assert sorted(results) == [False, True], thread
         finally:
@@ -122,25 +126,25 @@ async def test_concurrent_claims_from_two_processes_let_exactly_one_win() -> Non
 
 
 async def test_an_expired_lease_can_be_claimed() -> None:
-    async with database() as db:
-        assert await db.store.claim(THREAD)
-        assert not await db.store.claim(THREAD)
+    async with database([OWNER]) as db:
+        assert await db.store.claim(KEY)
+        assert not await db.store.claim(KEY)
         await _sql(
             db,
             "UPDATE threads SET busy_until = now() - interval '1 second' WHERE id = :id",
-            id=THREAD,
+            id=THREAD_ID,
         )
-        assert not await db.store.running(THREAD)
-        assert await db.store.claim(THREAD)
+        assert not await db.store.running(KEY)
+        assert await db.store.claim(KEY)
 
 
 async def test_concurrent_turns_from_two_processes_open_exactly_one() -> None:
-    async with database() as db:
+    async with database([OWNER]) as db:
         other = create_engine(db.url, SETTINGS, search_path=db.schema)
         try:
             second = TurnRepository(async_sessionmaker(other))
             for trial in range(10):
-                thread = f"turn-race-{trial}"
+                thread = ThreadKey(OWNER, f"turn-race-{trial}")
                 results = await asyncio.gather(db.store.turns.begin(thread), second.begin(thread))
                 assert sorted(result is None for result in results) == [False, True], thread
         finally:
@@ -148,13 +152,15 @@ async def test_concurrent_turns_from_two_processes_open_exactly_one() -> None:
 
 
 async def test_the_database_refuses_a_second_open_turn_written_directly() -> None:
-    async with database() as db:
-        assert await db.store.turns.begin(THREAD) is not None
+    async with database([OWNER]) as db:
+        assert await db.store.turns.begin(KEY) is not None
         with pytest.raises(IntegrityError):
             await _sql(
                 db,
-                "INSERT INTO turns (id, thread_id, status) VALUES ('direct', :id, 'queued')",
-                id=THREAD,
+                "INSERT INTO turns (id, user_id, thread_id, status) "
+                "VALUES ('direct', :owner, :id, 'queued')",
+                owner=OWNER,
+                id=THREAD_ID,
             )
 
 
@@ -162,24 +168,27 @@ async def test_the_database_refuses_a_second_open_turn_written_directly() -> Non
 
 
 async def test_purge_deletes_old_idle_threads_with_their_checkpoints_and_keeps_busy_ones() -> None:
-    async with database() as db:
+    async with database([OWNER]) as db:
         await _turn(db.store, "one")
-        await db.store.add_usage(THREAD, [CallUsage("m", 1, 0, 1)])
-        await db.store.record_answers(THREAD, {"a": 1.0}, ["b"])
-        await db.store.claim("busy")
-        await db.store.touch("recent")
+        await db.store.add_usage(KEY, [CallUsage("m", 1, 0, 1)])
+        await db.store.record_answers(KEY, {"a": 1.0}, ["b"])
+        await db.store.claim(ThreadKey(OWNER, "busy"))
+        await db.store.touch(ThreadKey(OWNER, "recent"))
         await _sql(
             db,
             "UPDATE threads SET last_used_at = now() - interval '40 days' WHERE id <> 'recent'",
         )
         purged = await db.store.purge_idle(timedelta(days=30))
-        assert purged == [THREAD]
-        assert not await db.store.holds(THREAD)
-        assert await db.checkpointer.aget_tuple({"configurable": {"thread_id": THREAD}}) is None
-        assert await db.store.session_calls(THREAD) == []
-        assert await db.store.answers(THREAD) == ({}, frozenset())
-        assert await db.store.holds("busy")
-        assert await db.store.holds("recent")
+        assert purged == [KEY]
+        assert not await db.store.holds(KEY)
+        assert (
+            await db.checkpointer.aget_tuple({"configurable": {"thread_id": KEY.checkpoint_id}})
+            is None
+        )
+        assert await db.store.session_calls(KEY) == []
+        assert await db.store.answers(KEY) == ({}, frozenset())
+        assert await db.store.holds(ThreadKey(OWNER, "busy"))
+        assert await db.store.holds(ThreadKey(OWNER, "recent"))
 
 
 # --- untrusted rows -------------------------------------------------------------------------
@@ -188,37 +197,42 @@ async def test_purge_deletes_old_idle_threads_with_their_checkpoints_and_keeps_b
 async def test_a_malformed_workspace_reads_as_absent_with_a_warning(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    async with database() as db:
-        await db.store.touch(THREAD)
+    async with database([OWNER]) as db:
+        await db.store.touch(KEY)
         await _sql(
             db,
-            "INSERT INTO thread_workspaces (thread_id, state) VALUES (:id, CAST(:state AS jsonb))",
-            id=THREAD,
+            "INSERT INTO thread_workspaces (owner_id, thread_id, state) "
+            "VALUES (:owner, :id, CAST(:state AS jsonb))",
+            owner=OWNER,
+            id=THREAD_ID,
             state='{"framing_version": "not a number"}',
         )
         with caplog.at_level(logging.WARNING, logger="storage.codec"):
-            assert await db.store.workspace(THREAD) is None
-        assert THREAD in caplog.text
+            assert await db.store.workspace(KEY) is None
+        assert THREAD_ID in caplog.text
 
 
 async def test_a_nan_supplied_value_is_not_returned() -> None:
-    async with database() as db:
-        await db.store.record_answers(THREAD, {"good": 2.0}, [])
+    async with database([OWNER]) as db:
+        await db.store.record_answers(KEY, {"good": 2.0}, [])
         await _sql(
             db,
-            "INSERT INTO thread_answers (thread_id, key, value, declined) "
-            "VALUES (:id, 'bad', 'NaN', false)",
-            id=THREAD,
+            "INSERT INTO thread_answers (owner_id, thread_id, key, value, declined) "
+            "VALUES (:owner, :id, 'bad', 'NaN', false)",
+            owner=OWNER,
+            id=THREAD_ID,
         )
-        assert await db.store.answers(THREAD) == ({"good": 2.0}, frozenset())
+        assert await db.store.answers(KEY) == ({"good": 2.0}, frozenset())
 
 
 async def test_a_failing_statement_does_not_show_its_values() -> None:
-    async with database() as db:
+    async with database([OWNER]) as db:
         with pytest.raises(IntegrityError) as failed:
             await _sql(
                 db,
-                "INSERT INTO thread_answers (thread_id, key, value) VALUES (:id, 'k', :value)",
+                "INSERT INTO thread_answers (owner_id, thread_id, key, value) "
+                "VALUES (:owner, :id, 'k', :value)",
+                owner=OWNER,
                 id="no-such-thread",
                 value=987654.321,
             )
@@ -230,11 +244,11 @@ async def test_a_failing_statement_does_not_show_its_values() -> None:
 
 
 async def test_a_new_engine_and_checkpointer_see_the_thread_written_by_the_first() -> None:
-    async with database() as db:
+    async with database([OWNER]) as db:
         await _turn(db.store, "one")
         await _turn(db.store, "two")
-        await db.store.set_workspace(THREAD, WorkspaceState(framing_version=4))
-        await db.store.add_usage(THREAD, [CallUsage("m", 3, 1, 2)])
+        await db.store.set_workspace(KEY, WorkspaceState(framing_version=4))
+        await db.store.add_usage(KEY, [CallUsage("m", 3, 1, 2)])
         restarted = create_engine(db.url, SETTINGS, search_path=db.schema)
         try:
             async with open_checkpointer(db.url, SETTINGS, search_path=db.schema) as saver:
@@ -244,15 +258,15 @@ async def test_a_new_engine_and_checkpointer_see_the_thread_written_by_the_first
                     SETTINGS,
                     WorkspaceState,
                 )
-                assert [m.content for m in await store.messages(THREAD)] == [
+                assert [m.content for m in await store.messages(KEY)] == [
                     "one",
                     "seen 1",
                     "two",
                     "seen 3",
                 ]
-                assert await store.workspace(THREAD) == WorkspaceState(framing_version=4)
-                assert await store.session_calls(THREAD) == [CallUsage("m", 3, 1, 2)]
+                assert await store.workspace(KEY) == WorkspaceState(framing_version=4)
+                assert await store.session_calls(KEY) == [CallUsage("m", 3, 1, 2)]
                 await _turn(store, "three")
-                assert len(await store.messages(THREAD)) == 6
+                assert len(await store.messages(KEY)) == 6
         finally:
             await restarted.dispose()

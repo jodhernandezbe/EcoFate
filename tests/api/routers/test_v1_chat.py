@@ -12,7 +12,8 @@ from httpx2 import Response
 
 from api.dependencies import AgentRuntime, get_runtime
 from api.services.threads import ThreadStore
-from tests.api.conftest import ORIGIN
+from tests.api.conftest import ORIGIN, signed_in
+from tests.api.keys import owned
 from tests.api.streams import parse_sse
 from tests.fakes import (
     OPENAI_ENTRY,
@@ -35,7 +36,7 @@ def keyed(store: FakeCredentialStore) -> FakeCredentialStore:
 def chat(app: FastAPI, keyed: FakeCredentialStore) -> Iterator[TestClient]:
     model = scripted("an answer", "another answer")
     app.dependency_overrides[get_runtime] = lambda: AgentRuntime(lambda key: model, 10)
-    with TestClient(app, base_url=ORIGIN, raise_server_exceptions=False) as client:
+    with signed_in(app, raise_server_exceptions=False) as client:
         yield client
 
 
@@ -60,10 +61,10 @@ def test_stream_is_sse_with_ordered_events(chat: TestClient) -> None:
 
 def test_busy_thread_is_409_and_others_are_unaffected(chat: TestClient, app: FastAPI) -> None:
     threads: ThreadStore = app.state.threads
-    asyncio.run(threads.claim("t1"))
+    asyncio.run(threads.claim(owned("t1")))
     assert _post(chat, "t1").status_code == 409
     assert _post(chat, "t2").status_code == 200
-    asyncio.run(threads.release("t1"))
+    asyncio.run(threads.release(owned("t1")))
     assert _post(chat, "t1").status_code == 200
 
 
@@ -75,7 +76,7 @@ def test_thread_is_released_after_the_turn(chat: TestClient) -> None:
 def test_reset_clears_history_and_refuses_while_busy(chat: TestClient, app: FastAPI) -> None:
     _post(chat)
     assert chat.delete("/api/v1/chat/threads/t1", headers=OWN).status_code == 204
-    asyncio.run(app.state.threads.claim("t1"))
+    asyncio.run(app.state.threads.claim(owned("t1")))
     assert chat.delete("/api/v1/chat/threads/t1", headers=OWN).status_code == 409
 
 
@@ -92,7 +93,7 @@ def test_invalid_bodies_are_422(chat: TestClient, body: dict[str, str]) -> None:
 def test_no_key_streams_an_error_event(app: FastAPI) -> None:
     model = scripted("never used")
     app.dependency_overrides[get_runtime] = lambda: AgentRuntime(lambda key: model, 10)
-    with TestClient(app, base_url=ORIGIN) as client:
+    with signed_in(app) as client:
         events = parse_sse(_post(client).text)
     assert [e["type"] for e in events] == ["turn_started", "error", "usage", "turn_finished"]
 
@@ -115,7 +116,7 @@ def test_stream_carries_the_configured_step_labels(
     app.dependency_overrides[get_runtime] = lambda: runtime
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr("agent.graph.get_all_tools", lambda: [lookup])
-        with TestClient(app, base_url=ORIGIN) as client:
+        with signed_in(app) as client:
             events = parse_sse(_post(client).text)
     steps = [(e["phase"], e["label"]) for e in events if e["type"] == "tool_status"]
     assert steps == [("started", "Looked something up"), ("finished", "Looked something up")]

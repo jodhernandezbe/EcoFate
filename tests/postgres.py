@@ -7,11 +7,11 @@ dropped afterwards, checkpoints included.
 from __future__ import annotations
 
 import os
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 from alembic import command
@@ -57,6 +57,14 @@ def run_alembic(connection: Connection, action: str, revision: str) -> None:
     getattr(command, action)(config, revision)
 
 
+async def add_user(engine: AsyncEngine, user_id: UUID, email: str | None = None) -> UUID:
+    """Insert an account row (the owner threads must belong to); returns its id."""
+    statement = text("INSERT INTO users (id, email, password_hash) VALUES (:id, :email, 'x')")
+    async with engine.begin() as connection:
+        await connection.execute(statement, {"id": user_id, "email": email or f"{user_id}@x.test"})
+    return user_id
+
+
 @dataclass
 class Database:
     """One isolated schema: its engine, store and checkpointer."""
@@ -93,8 +101,9 @@ async def migrated_schema(url: str, schema: str | None = None) -> AsyncGenerator
 
 
 @asynccontextmanager
-async def database() -> AsyncGenerator[Database]:
-    """A migrated schema with a store and checkpointer on it."""
+async def database(users: Sequence[UUID] = ()) -> AsyncGenerator[Database]:
+    """A migrated schema with a store and checkpointer on it, and an account for each of
+    ``users`` (the owners the threads under test belong to)."""
     url = test_url()
     schema = f"test_{uuid4().hex[:16]}"
     async with (
@@ -102,4 +111,6 @@ async def database() -> AsyncGenerator[Database]:
         open_checkpointer(url, SETTINGS, search_path=schema) as saver,
     ):
         store = PostgresThreadStore(async_sessionmaker(engine), saver, SETTINGS, WorkspaceState)
+        for user_id in users:
+            await add_user(engine, user_id)
         yield Database(url, schema, engine, store, saver)

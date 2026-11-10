@@ -52,7 +52,7 @@ def _hide_keys(own: Callable[[str], bool]) -> Callable[[logfire.ScrubMatch], obj
 def scrubbing_options(settings: TelemetrySettings) -> logfire.ScrubbingOptions:
     """Logfire scrubbing that also hides everything the log redaction hides."""
     names = settings.attributes
-    exact = {names.session_id, names.question, names.model, names.outcome}
+    exact = {names.session_id, names.question, names.model, names.outcome, names.user_id}
     prefixes = (names.usage_prefix, names.session_usage_prefix)
 
     def own(key: str) -> bool:
@@ -187,6 +187,7 @@ def _span_attributes(
     question: str,
     model: str,
     segment: TurnSegment | None,
+    user_id: str | None,
 ) -> dict[str, Any]:
     # Any: logfire.span takes attributes as free keywords, which a str-valued dict would also
     # match against its typed options (tags, level, links).
@@ -198,6 +199,8 @@ def _span_attributes(
     }
     if segment is not None:
         attributes |= {names.turn_id: segment.turn_id, names.resume_index: segment.resume_index}
+    if user_id is not None:
+        attributes[names.user_id] = user_id
     return attributes
 
 
@@ -209,18 +212,19 @@ def session_span(
     question: str,
     model: str,
     segment: TurnSegment | None = None,
+    user_id: str | None = None,
 ) -> Generator[SessionSpan]:
     """Open the span of a command-line run or a web turn (one span per resume of a turn).
 
     The span carries the session id, the question and the model (and, for a web turn, its turn
-    id and resume index), and ends with the outcome: ``error`` when the run raised or the
-    caller called ``fail``, otherwise ``ok``.
+    id and resume index, and the signed-in user's opaque id), and ends with the outcome:
+    ``error`` when the run raised or the caller called ``fail``, otherwise ``ok``.
     """
     if not settings.enabled:
         yield SessionSpan(None, settings)
         return
     names = settings.attributes
-    attributes = _span_attributes(settings, session_id, question, model, segment)
+    attributes = _span_attributes(settings, session_id, question, model, segment, user_id)
     with logfire.span(name, **attributes) as span:
         handle = SessionSpan(span, settings)
         try:

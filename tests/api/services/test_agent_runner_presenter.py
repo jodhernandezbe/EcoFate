@@ -11,6 +11,7 @@ from langchain_core.tools import tool
 from api.schemas.chat import ChatRequest, ErrorEvent
 from api.services.agent_runner import AgentRuntime
 from app.key_vault import default_service_keys
+from storage.keys import ThreadKey
 from tests.api.services.projectors.factories import RULES
 from tests.api.streams import begun_turn
 from tests.fakes import OPENAI_ENTRY, FakeCredentialStore, InMemoryThreadStore, ScriptedChatModel
@@ -28,7 +29,7 @@ def lookup(cas_number: str) -> str:
 class _ToolStoreDown(InMemoryThreadStore):
     """A store whose database stops answering when the turn keeps its tool messages."""
 
-    async def add_tool_messages(self, thread_id: str, messages: Sequence[BaseMessage]) -> None:
+    async def add_tool_messages(self, key: ThreadKey, messages: Sequence[BaseMessage]) -> None:
         raise OSError("connection to the database refused")
 
 

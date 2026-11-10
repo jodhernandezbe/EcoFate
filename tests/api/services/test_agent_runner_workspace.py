@@ -11,6 +11,7 @@ from api.schemas.chat import ChatRequest, StreamEvent, WorkspaceUpdate
 from api.services.agent_runner import AgentRuntime
 from api.services.threads import ThreadStore
 from app.key_vault import default_service_keys
+from tests.api.keys import owned
 from tests.api.services.projectors.factories import RULES, record
 from tests.api.streams import begun_turn
 from tests.fakes import OPENAI_ENTRY, FakeCredentialStore, InMemoryThreadStore, ScriptedChatModel
@@ -97,11 +98,14 @@ async def test_a_workspace_update_follows_the_tool_results(monkeypatch: pytest.M
 async def test_the_workspace_is_kept_for_the_thread(monkeypatch: pytest.MonkeyPatch) -> None:
     threads = InMemoryThreadStore()
     await _turn(monkeypatch, _model("query_emissions_inventory"), threads)
-    kept = await threads.workspace("t1")
+    kept = await threads.workspace(owned("t1"))
     assert kept is not None and len(kept.facilities) == 2
-    assert len(await threads.tool_messages("t1")) == 2
-    assert await threads.reset("t1")
-    assert await threads.workspace("t1") is None and await threads.tool_messages("t1") == []
+    assert len(await threads.tool_messages(owned("t1"))) == 2
+    assert await threads.reset(owned("t1"))
+    assert (
+        await threads.workspace(owned("t1")) is None
+        and await threads.tool_messages(owned("t1")) == []
+    )
 
 
 async def test_a_failed_tool_changes_nothing_and_sends_no_update(

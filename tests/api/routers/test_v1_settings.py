@@ -6,11 +6,18 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from tests.api.conftest import ORIGIN
+from api.core.session_guard import ADMIN_ONLY
+from tests.api.conftest import ORIGIN, signed_in
 from tests.fakes import CENSUS_ENTRY, COMPTOX_ENTRY, OPENAI_ENTRY, FakeCredentialStore
 
 KEY = "sk-proj-" + "q9W8e7R6t5" * 3  # pragma: allowlist secret
 OWN = {"Origin": ORIGIN}
+
+
+@pytest.fixture
+def client(admin_client: TestClient) -> TestClient:
+    """These tests manage the server's keys, which only an administrator may change."""
+    return admin_client
 
 
 def test_status_without_key(client: TestClient) -> None:
@@ -53,7 +60,7 @@ def test_no_get_endpoint_returns_the_key(client: TestClient) -> None:
 
 def test_unavailable_keychain_is_a_safe_503(app: FastAPI, store: FakeCredentialStore) -> None:
     store.fail = True
-    with TestClient(app, base_url=ORIGIN, raise_server_exceptions=False) as client:
+    with signed_in(app, admin=True, raise_server_exceptions=False) as client:
         response = client.post("/api/v1/settings/openai-key", json={"api_key": KEY}, headers=OWN)
     assert response.status_code == 503
     assert "keychain is unavailable" in response.json()["error"]
@@ -172,7 +179,7 @@ def test_an_unavailable_keychain_is_a_safe_503_for_every_status(
     path: str,
 ) -> None:
     store.fail = True
-    with TestClient(app, base_url=ORIGIN, raise_server_exceptions=False) as client:
+    with signed_in(app, admin=True, raise_server_exceptions=False) as client:
         response = client.get(path)
     assert response.status_code == 503
     assert "keychain is unavailable" in response.json()["error"]
@@ -188,3 +195,26 @@ def test_the_map_starts_on_the_configured_view(client: TestClient) -> None:
     view = client.get("/api/v1/settings/client").json()["map"]["initial_view"]
     assert view["west"] < view["east"] and view["south"] < view["north"]
     assert -125.0 <= view["west"] and view["east"] <= -66.0  # the contiguous United States
+
+
+@pytest.mark.parametrize("method", ["post", "delete"])
+def test_an_ordinary_user_cannot_change_the_servers_keys(
+    app: FastAPI,
+    store: FakeCredentialStore,
+    method: str,
+) -> None:
+    store.entries[OPENAI_ENTRY] = KEY
+    with signed_in(app, email="ordinary@example.com", raise_server_exceptions=False) as user:
+        if method == "post":
+            other = "sk-proj-" + "z9Y8x7W6v5" * 3  # pragma: allowlist secret
+            response = user.post(
+                "/api/v1/settings/openai-key",
+                json={"api_key": other},
+                headers=OWN,
+            )
+        else:
+            response = user.delete("/api/v1/settings/openai-key", headers=OWN)
+        assert response.status_code == 403
+        assert response.json()["error"] == ADMIN_ONLY
+        assert user.get("/api/v1/settings/openai-key").json() == {"configured": True}
+    assert store.entries[OPENAI_ENTRY] == KEY  # neither replaced nor removed

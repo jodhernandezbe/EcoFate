@@ -12,17 +12,22 @@ from contextlib import AsyncExitStack, asynccontextmanager
 from dataclasses import dataclass
 from functools import partial
 
-from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from api.schemas.workspace import WorkspaceState
+from api.services.auth.stores import Accounts
 from api.services.threads import ThreadStore
 from app.checkpointer import open_checkpointer
 from config.database import DatabaseSettings
+from storage.auth_tokens import AuthTokenRepository
 from storage.engine import DatabaseSetupError, create_engine, database_url
 from storage.errors import DATABASE_ERRORS
 from storage.health import database_answers
+from storage.login_attempts import LoginAttemptRepository
 from storage.revisions import is_at_head
 from storage.threads import PostgresThreadStore
+from storage.user_sessions import SessionRepository
+from storage.users import UserRepository
 
 logger = logging.getLogger(__name__)
 UNREACHABLE = (
@@ -34,9 +39,10 @@ NOT_MIGRATED = "The database is not at the latest migration. Run `make migrate` 
 
 @dataclass(frozen=True)
 class Database:
-    """What the app keeps while it serves: the thread store and the health check."""
+    """What the app keeps while it serves: the thread store, the accounts and the health check."""
 
     threads: ThreadStore
+    accounts: Accounts
     health_check: Callable[[], Awaitable[bool]]
 
 
@@ -51,6 +57,15 @@ async def _require_latest_migration(engine: AsyncEngine, settings: DatabaseSetti
         raise DatabaseSetupError(NOT_MIGRATED)
 
 
+def _accounts(sessions: async_sessionmaker[AsyncSession]) -> Accounts:
+    return Accounts(
+        users=UserRepository(sessions),
+        sessions=SessionRepository(sessions),
+        tokens=AuthTokenRepository(sessions),
+        attempts=LoginAttemptRepository(sessions),
+    )
+
+
 @asynccontextmanager
 async def _database(url: str, settings: DatabaseSettings) -> AsyncGenerator[Database]:
     engine = create_engine(url, settings)
@@ -60,7 +75,7 @@ async def _database(url: str, settings: DatabaseSettings) -> AsyncGenerator[Data
             sessions = async_sessionmaker(engine, expire_on_commit=False)
             store = PostgresThreadStore(sessions, saver, settings, WorkspaceState)
             check = partial(database_answers, engine, settings.health_timeout_seconds)
-            yield Database(threads=store, health_check=check)
+            yield Database(store, _accounts(sessions), check)
     finally:
         await engine.dispose()
 

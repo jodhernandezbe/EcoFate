@@ -3,6 +3,7 @@ import { useState } from "react";
 import { LeftNavRail } from "./components/layout/LeftNavRail";
 import { SplitWorkspace } from "./components/layout/SplitWorkspace";
 import { ConfirmDialog } from "./components/ui/ConfirmDialog";
+import { AccountDrawer, AccountScreens } from "./features/auth";
 import { ChatDock } from "./features/chat/ChatDock";
 import { ExposureChainTab, useFocusedFacility } from "./features/exposure-chain";
 import { MapPanel } from "./features/map/MapPanel";
@@ -13,8 +14,9 @@ import { useAgentStream } from "./hooks/useAgentStream";
 import { useClientConfig } from "./hooks/useClientConfig";
 import { useKeyStatus } from "./hooks/useKeyStatus";
 import { useReportDownload } from "./hooks/useReportDownload";
+import { useSession } from "./hooks/useSession";
 import { useWorkspaceStore } from "./hooks/useWorkspaceStore";
-import type { WorkspaceState } from "./types/workspace";
+import type { UserInfo, WorkspaceState } from "./types/workspace";
 
 // Until the server sends its display settings the ribbon shows these many digits.
 const DEFAULT_DIGITS = 2;
@@ -27,7 +29,15 @@ const NO_FINDINGS = "there are no findings yet";
 const hasFindings = (state: WorkspaceState): boolean =>
   state.chemical.cas_number !== null || state.facilities.length > 0;
 
-export function App() {
+interface WorkspaceProps {
+  user: UserInfo;
+  onSignOut: () => void;
+  /** The session ended on the server (signed out everywhere, or the account was deleted). */
+  onGone: () => void;
+}
+
+/** The signed-in page. It is mounted only while someone is signed in, and per user. */
+function Workspace({ user, onSignOut, onGone }: WorkspaceProps) {
   const store = useWorkspaceStore();
   const chat = useAgentStream({
     onWorkspace: store.apply,
@@ -38,6 +48,7 @@ export function App() {
   const config = useClientConfig();
   const focus = useFocusedFacility(store.workspace, store.epoch);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [accountOpen, setAccountOpen] = useState(false);
   const [confirmingClear, setConfirmingClear] = useState(false);
   const [view, setView] = useState<"workspace" | "monitoring">("workspace");
   const digits = config?.significant_digits ?? DEFAULT_DIGITS;
@@ -65,12 +76,14 @@ export function App() {
             onWorkspace={() => {
               setView("workspace");
               setSettingsOpen(false);
+              setAccountOpen(false);
               setConfirmingClear(false);
               exitFullscreen();
             }}
             onMonitoring={() => {
               setView("monitoring");
               setSettingsOpen(false);
+              setAccountOpen(false);
               setConfirmingClear(false);
               exitFullscreen();
             }}
@@ -81,9 +94,12 @@ export function App() {
             reporting={report.busy}
             reportError={report.error}
             onOpenSettings={() => setSettingsOpen(true)}
+            email={user.email}
+            admin={user.role === "admin"}
+            onAccount={() => setAccountOpen(true)}
           />
         )}
-        covering={view === "monitoring" ? <MonitoringView /> : undefined}
+        covering={view === "monitoring" && user.role === "admin" ? <MonitoringView /> : undefined}
         overview={
           <OverviewPanel
             workspace={store.workspace}
@@ -115,6 +131,13 @@ export function App() {
           />
         )}
       />
+      <AccountDrawer
+        open={accountOpen}
+        user={user}
+        onClose={() => setAccountOpen(false)}
+        onSignOut={onSignOut}
+        onGone={onGone}
+      />
       <SettingsDrawer
         open={settingsOpen}
         statuses={key.statuses}
@@ -143,5 +166,33 @@ export function App() {
         <p>Generate a report first to keep the findings.</p>
       </ConfirmDialog>
     </>
+  );
+}
+
+/**
+ * Who is using the page decides what it shows: the account screens while nobody is signed in
+ * (the workspace is not mounted, so nothing of a previous user can remain on screen), the
+ * workspace once someone is, keyed by user.
+ */
+export function App() {
+  const session = useSession();
+  const { state } = session;
+  if (state.status === "signed-in") {
+    return <Workspace key={state.user.id} user={state.user} onSignOut={() => void session.signOut()} onGone={session.signedOut} />;
+  }
+  if (state.status === "signed-out") return <AccountScreens onSignedIn={session.signedIn} />;
+  return (
+    <main className="grid min-h-dvh place-items-center bg-bg p-4">
+      {state.status === "loading" ? (
+        <p role="status" className="text-sm text-fg2">Loading…</p>
+      ) : (
+        <div className="flex flex-col items-start gap-2">
+          <p role="alert" className="text-sm text-bad">{state.message}</p>
+          <button type="button" onClick={() => void session.retry()} className="spring rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-accent-fg">
+            Retry
+          </button>
+        </div>
+      )}
+    </main>
   );
 }

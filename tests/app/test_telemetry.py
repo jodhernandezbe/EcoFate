@@ -117,6 +117,18 @@ def test_session_span_carries_id_question_model_and_outcome(exporter: TestExport
     assert ATTRS.turn_id not in attributes and ATTRS.resume_index not in attributes
 
 
+def test_a_span_carries_the_user_id_only_when_one_is_given(exporter: TestExporter) -> None:
+    with session_span(SETTINGS, SETTINGS.spans.cli_session, "s1", "q", "m"):
+        pass
+    cli = _named(_spans(exporter), SETTINGS.spans.cli_session).attributes or {}
+    assert ATTRS.user_id not in cli  # the command line has no account
+    user = "0b8d2f3c-6a41-4d52-9c5e-7a1f2e3d4c5b"
+    with session_span(SETTINGS, SETTINGS.spans.web_turn, "t", "q", "m", user_id=user):
+        pass
+    web = _named(_spans(exporter), SETTINGS.spans.web_turn).attributes or {}
+    assert web[ATTRS.user_id] == user
+
+
 def test_a_web_turn_span_carries_its_turn_id_and_resume_index(exporter: TestExporter) -> None:
     segment = TurnSegment(turn_id="turn-9", resume_index=2)
     with session_span(SETTINGS, SETTINGS.spans.web_turn, "thread-7", "q", "m", segment):

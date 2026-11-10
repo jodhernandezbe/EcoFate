@@ -9,9 +9,9 @@ import pytest
 from fastapi import FastAPI
 
 import api.__main__ as entry
-from api.main import create_app
 from config.telemetry import TelemetrySettings
 from config.ui import UiSettings, get_ui_settings
+from tests.api.auth_support import build_app
 from tests.fakes import InMemoryThreadStore
 
 
@@ -133,7 +133,7 @@ def test_origin_guard_uses_the_configured_origin_in_both_modes(
 
     def build(ui: UiSettings, *, keys_from_environment: bool = False) -> FastAPI:
         built.append((ui.origin, keys_from_environment))
-        return create_app(
+        return build_app(
             ui,
             keys_from_environment=keys_from_environment,
             threads=InMemoryThreadStore(),

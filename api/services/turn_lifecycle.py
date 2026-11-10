@@ -14,6 +14,7 @@ from api.schemas.chat import InterruptionReason, TurnInterruption
 from api.services.provider_errors import interruption_message, message_for
 from api.services.threads import ThreadStore
 from app.turns import FailureReason, KeysUnavailableError, resumable
+from storage.keys import ThreadKey
 from storage.turn_model import Turn, TurnStatus
 
 BUSY = "A turn is already running for this thread."
@@ -63,7 +64,7 @@ def interruption(turn: Turn | None, max_resumes: int) -> TurnInterruption | None
     )
 
 
-async def start_turn(threads: ThreadStore, thread_id: str) -> Turn:
+async def start_turn(threads: ThreadStore, key: ThreadKey) -> Turn:
     """Record a new message's turn; an interrupted latest turn is abandoned first.
 
     Its unanswered tool calls are closed by the runner before the new message runs.
@@ -71,11 +72,16 @@ async def start_turn(threads: ThreadStore, thread_id: str) -> Turn:
     Raises:
         TurnRefused: Another turn of the thread is open (409).
     """
-    await threads.turns.interrupt_open(FailureReason.WORKER_LOST, thread_id)
-    latest = await threads.turns.latest(thread_id)
+    await threads.turns.interrupt_open(key, FailureReason.WORKER_LOST)
+    latest = await threads.turns.latest(key)
     if latest is not None and latest.status is TurnStatus.INTERRUPTED:
-        await threads.turns.move(latest.id, TurnStatus.FAILED, FailureReason.SUPERSEDED)
-    turn = await threads.turns.begin(thread_id)
+        await threads.turns.move(
+            key.owner_id,
+            latest.id,
+            TurnStatus.FAILED,
+            FailureReason.SUPERSEDED,
+        )
+    turn = await threads.turns.begin(key)
     if turn is None:
         raise TurnRefused(BUSY)
     return turn
@@ -83,7 +89,7 @@ async def start_turn(threads: ThreadStore, thread_id: str) -> Turn:
 
 async def resume_turn_record(
     threads: ThreadStore,
-    thread_id: str,
+    key: ThreadKey,
     max_resumes: int,
     pending_steps: Callable[[], Awaitable[tuple[str, ...]]],
 ) -> Turn:
@@ -95,14 +101,14 @@ async def resume_turn_record(
     Raises:
         TurnRefused: Nothing to resume, the cap is reached, no key, or the thread is busy.
     """
-    await threads.turns.interrupt_open(FailureReason.WORKER_LOST, thread_id)
-    latest = await threads.turns.latest(thread_id)
+    await threads.turns.interrupt_open(key, FailureReason.WORKER_LOST)
+    latest = await threads.turns.latest(key)
     if latest is None or resumable_reason(latest) is None:
         raise TurnRefused(NOTHING_TO_RESUME)
     if latest.resume_count >= max_resumes:
         raise TurnRefused(RESUME_CAP)
     await _require_next_step(threads, latest, pending_steps)
-    resumed = await threads.turns.resume(latest.id, max_resumes)
+    resumed = await threads.turns.resume(key.owner_id, latest.id, max_resumes)
     if resumed is None:
         raise TurnRefused(BUSY)
     return resumed
@@ -118,5 +124,5 @@ async def _require_next_step(
     except KeysUnavailableError as error:
         raise TurnRefused(message_for(error.reason)) from None
     if not steps:
-        await threads.turns.move(turn.id, TurnStatus.COMPLETED)
+        await threads.turns.move(turn.owner_id, turn.id, TurnStatus.COMPLETED)
         raise TurnRefused(NOTHING_TO_RESUME)

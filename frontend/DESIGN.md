@@ -161,3 +161,6 @@ Icons are Lucide, sized `size-4` inline and `size-7` as icon buttons; icon-only 
 - `Metric`, `CardFrame` and `ScreeningDefault` live in `features/overview/Metric.tsx` although
   they are domain-agnostic; compose from them for ribbon cards and move them to `components/ui/`
   when a second feature needs them.
+- `AuthCard`, `AuthForm`, `LinkButton` and `TextField` (labelled input) live in `features/auth/` although
+  they are domain-agnostic; compose from them for the account screens and move them to
+  `components/ui/` when a second feature needs a form field.

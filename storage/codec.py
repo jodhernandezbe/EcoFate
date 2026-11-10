@@ -12,11 +12,14 @@ import math
 from collections.abc import Mapping
 from datetime import datetime
 from typing import cast
+from uuid import UUID
 
 from langchain_core.messages import BaseMessage, message_to_dict, messages_from_dict
 from pydantic import BaseModel, ValidationError
+from sqlalchemy import RowMapping
 
 from app.usage_meter import CallUsage
+from storage.account_model import Role, User
 from storage.turn_model import REASONED_STATUSES, Turn, TurnStatus
 from tools.schemas import ConfirmationRequest, MissingEntry
 
@@ -177,12 +180,23 @@ def turn_from_row(row: Mapping[str, object]) -> Turn | None:
     """A stored turn, or None (with a warning) when its status, reason or count do not fit."""
     thread_id = str(row.get("thread_id"))
     fields = _turn_fields(row)
-    if fields is None:
+    owner = row.get("user_id")
+    if fields is None or not isinstance(owner, UUID):
         _warn(thread_id, "turn")
         return None
+    return _turn(row, owner, thread_id, fields)
+
+
+def _turn(
+    row: Mapping[str, object],
+    owner: UUID,
+    thread_id: str,
+    fields: tuple[TurnStatus, str | None, int],
+) -> Turn:
     status, reason, resume_count = fields
     return Turn(
         id=str(row["id"]),
+        owner_id=owner,
         thread_id=thread_id,
         status=status,
         reason=reason,
@@ -191,4 +205,27 @@ def turn_from_row(row: Mapping[str, object]) -> Turn | None:
         started_at=cast(datetime | None, row["started_at"]),
         updated_at=cast(datetime, row["updated_at"]),
         finished_at=cast(datetime | None, row["finished_at"]),
+    )
+
+
+def user_from_row(stored: RowMapping | None) -> User | None:
+    """A stored account, or None when there is no row or its role is not a known one.
+
+    The account is named by id in the warning, never by email.
+    """
+    if stored is None:
+        return None
+    row: dict[str, object] = {str(k): v for k, v in stored.items()}
+    try:
+        role = Role(row["role"])
+    except ValueError:
+        logger.warning("Ignoring account %s: unknown role", row["id"])
+        return None
+    return User(
+        id=cast(UUID, row["id"]),
+        email=cast(str, row["email"]),
+        password_hash=cast(str, row["password_hash"]),
+        role=role,
+        verified_at=cast(datetime | None, row["verified_at"]),
+        created_at=cast(datetime, row["created_at"]),
     )

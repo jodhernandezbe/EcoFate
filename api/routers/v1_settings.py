@@ -7,6 +7,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
+from api.core.session_guard import current_user, require_admin_action
 from api.dependencies import get_service_keys, get_settings
 from api.schemas.settings import (
     ClientConfig,
@@ -24,7 +25,13 @@ from config.agent import get_agent_settings
 from config.occupational import get_occupational_settings
 from config.ui import KeyName, UiSettings
 
-router = APIRouter(prefix="/api/v1/settings", tags=["settings"])
+router = APIRouter(
+    prefix="/api/v1/settings",
+    tags=["settings"],
+    dependencies=[Depends(current_user)],
+)
+# Display settings every visitor needs, the sign-in screen included: no session required.
+public_router = APIRouter(prefix="/api/v1/settings", tags=["settings"])
 Keys = Annotated[ServiceKeys, Depends(get_service_keys)]
 Settings = Annotated[UiSettings, Depends(get_settings)]
 # One entry per key: its name and the path segment of its routes.
@@ -64,10 +71,13 @@ def _clear_endpoint(name: KeyName) -> Callable[[Keys], KeyStatusResponse]:
 
 
 def _add_key_routes(name: KeyName, path: str) -> None:
-    for method, endpoint in (
-        ("GET", _status_endpoint(name)),
-        ("POST", _save_endpoint(name)),
-        ("DELETE", _clear_endpoint(name)),
+    """Status for every signed-in user; save and clear only for administrators, because the
+    keys are the server's and every user's turns run with them."""
+    admin = [Depends(require_admin_action)]
+    for method, endpoint, guard in (
+        ("GET", _status_endpoint(name), []),
+        ("POST", _save_endpoint(name), admin),
+        ("DELETE", _clear_endpoint(name), admin),
     ):
         router.add_api_route(
             f"/{path}",
@@ -75,6 +85,7 @@ def _add_key_routes(name: KeyName, path: str) -> None:
             methods=[method],
             response_model=KeyStatusResponse,
             name=f"{method.lower()}_{name}_key",
+            dependencies=guard,
         )
 
 
@@ -127,7 +138,7 @@ def _worker_thresholds() -> WorkerThresholds:
     )
 
 
-@router.get("/client")
+@public_router.get("/client")
 def client_config(settings: Settings) -> ClientConfig:
     """Display settings the frontend needs."""
     limits, display = settings.thresholds, settings.display

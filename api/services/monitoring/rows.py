@@ -15,6 +15,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import cast
+from uuid import UUID
 
 from api.schemas.monitoring import Outcome
 
@@ -101,6 +102,18 @@ def token_usage(row: Row, key: str) -> tuple[int | None, int | None]:
     return count(table, "input_tokens"), count(table, "output_tokens")
 
 
+def user_id(row: Row, key: str) -> str | None:
+    """The opaque user id a span recorded, when it is a well-formed UUID (else absent)."""
+    value = text(row, key)
+    if value is None:
+        return None
+    try:
+        return str(UUID(value))
+    except ValueError:
+        _bad(key)
+        return None
+
+
 @dataclass(frozen=True)
 class RecordedUsage:
     """The usage and cost a turn's span recorded; a field it did not record is None."""
@@ -141,6 +154,7 @@ class TurnRecord:
     usage: RecordedUsage
     model_calls: int | None
     tool_calls: int | None
+    user_id: str | None = None
 
 
 def parse_turn(row: Row) -> TurnRecord | None:
@@ -161,4 +175,5 @@ def parse_turn(row: Row) -> TurnRecord | None:
         usage=parse_usage(row),
         model_calls=count(row, "model_calls"),
         tool_calls=count(row, "tool_calls"),
+        user_id=user_id(row, "user_id"),
     )

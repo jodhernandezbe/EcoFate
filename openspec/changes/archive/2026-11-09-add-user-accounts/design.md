@@ -145,6 +145,17 @@ accounts):
 
 ## Resolved Questions
 
+- SMTP configuration (decided 2026-11-09, during implementation): the SMTP server (host, port,
+  STARTTLS, login, password, sender) is configured only in `.env`, one place for Docker and native
+  runs; `[mail]` names the variables (as `[database]` does for `DATABASE_URL`) and keeps the link
+  origin and time limit. A missing or invalid value stops start-up naming the variable. Inside a
+  container a loopback host means the `mailpit` service, so one `.env` serves both run modes.
+
+- Server-wide API keys (resolved during implementation, after the security audit): the key routes
+  of `/api/v1/settings` save to the server's keychain, which every user's turns use. Saving and
+  clearing a key is therefore admin-only (403 with a fixed message); the status routes stay
+  available to every signed-in user. Per-user keys replace this in step 5 (BYOK).
+
 - Sign-up is open for the capstone deployment (decided 2026-11-07), so peer reviewers can
   create an account without asking. `[auth].signup_open = true` is shipped and the operator can
   close it; email verification, login throttling and the daily quota (step 6) cap abuse, and
