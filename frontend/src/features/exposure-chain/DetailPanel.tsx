@@ -34,8 +34,7 @@ export function DetailPanel({ node, laneLabel, digits, id, onClose }: Props) {
           <div key={q.key}>
             <dt className="text-fg2">{q.label}</dt>
             <dd className={`m-0 tabular-nums ${q.value === null ? "text-fg2" : "text-fg"}`}>
-              {formatQuantity(q, digits)}
-              {q.value === null && q.reason ? ` (${q.reason})` : null}
+              {q.value === null && q.reason ? q.reason : formatQuantity(q, digits)}
               {q.source ? <span className="block text-fg2">Source: {q.source}</span> : null}
             </dd>
           </div>
@@ -43,7 +42,7 @@ export function DetailPanel({ node, laneLabel, digits, id, onClose }: Props) {
         {node.facts.map((f) => (
           <div key={f.key}>
             <dt className="text-fg2">{f.label}</dt>
-            <dd className={`m-0 ${f.text === null ? "text-fg2" : "text-fg"}`}>{f.text ?? `not reported${f.reason ? ` (${f.reason})` : ""}`}</dd>
+            <dd className={`m-0 ${f.text === null ? "text-fg2" : "text-fg"}`}>{f.text ?? f.reason ?? "not reported"}</dd>
           </div>
         ))}
       </dl>

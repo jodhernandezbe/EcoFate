@@ -51,6 +51,7 @@ reads in both schemes; the words carry the meaning, the colour confirms it.
 | Sub-label, column head | `text-xs font-semibold text-fg2` (`text-[11px]` inside dense popovers and chain nodes) | | Sentence case; table column heads and section sub-titles are not panel titles |
 | Body, value | `text-sm` (`font-medium tabular-nums` for values) | rows `px-3 py-2`, `gap-2` | Metric values (`<dd>`), list rows, pills |
 | Chat body | `text-[15px]` | `px-5` | Assistant and user messages only |
+| Drawer section heading | `text-sm font-semibold` | `gap-2` below it | A section inside a drawer (Settings, Account), under the drawer's `text-lg` title |
 | Section title | `text-lg` or `text-xl font-semibold tracking-tight` | `gap-3` | Card and drawer titles; never larger |
 | Card interior | | `p-4`, children `gap-3` | Ribbon cards, inspector sections |
 
@@ -101,7 +102,7 @@ they do not restyle them. Adding a primitive means adding a row here.
 | `SegmentedBar` | Horizontal stacked bar summing to 100 with legend | Shares of a whole (age bands) | Comparing independent quantities |
 | `Banner` | Inline success or error line; errors interrupt assistive technology | Result of a user action (key saved, report failed) | Persistent status |
 | `AccordionSection` | Heading button that shows or hides content, `aria-expanded` | Secondary detail inside a card or drawer | Primary navigation |
-| `BottomDrawer` | Modal card docked to the bottom over a scrim, resizable, Escape closes; `fitContent` opens it at its content's height until the user resizes it | Settings and long detail views | Short confirmations |
+| `BottomDrawer` | Modal card docked to the bottom over a scrim, resizable, Escape closes; `fitContent` opens it at its content's height until the user resizes it. Its window controls are named after its title ("Close Account panel"); it opens with focus on the first control of its content (Close when there is none) | Settings, account and long detail views; a form inside it keeps a readable width (`max-w-md`) | Short confirmations |
 | `ConfirmDialog` | In-page confirmation over a scrim, focus trapped, returns focus | Any destructive action (clear workspace) | Information only |
 | `InfoTooltip` | Info icon explaining a field on hover or focus | A field whose meaning is not obvious | Hiding required information |
 | `ScenarioView` | One worst-case scenario: value and level, factors by group, receptors | Every scenario, whatever the pathway | Ad-hoc layouts per pathway |
@@ -133,6 +134,9 @@ Icons are Lucide, sized `size-4` inline and `size-7` as icon buttons; icon-only 
   `CardFrame`).
 - Absent values are "not reported"; an unknown status is "Not computed" on every pill (community and worker); a default is labelled
   "screening default". Never `0`, `-`, `N/A` or an empty cell.
+- When the API gives the reason a value is absent, the reason takes the place of "not reported";
+  never both ("not reported (not reported by the tool)").
+- Counted nouns agree with their number ("1 step", "4 steps").
 - Status words are exactly "Below concern", "Near concern", "Above concern". Never write
   "unreasonable risk" or any regulatory determination.
 - Every number carries its unit; the UI shows only values the API sent and never computes,
@@ -164,3 +168,6 @@ Icons are Lucide, sized `size-4` inline and `size-7` as icon buttons; icon-only 
 - `AuthCard`, `AuthForm`, `LinkButton` and `TextField` (labelled input) live in `features/auth/` although
   they are domain-agnostic; compose from them for the account screens and move them to
   `components/ui/` when a second feature needs a form field.
+- `text-[15px]` outside the chat body: form inputs (`features/auth/TextField`, the key field in
+  `features/settings/SettingsDrawer`), the header title (`TopHeaderBar`) and `Accordion` headings.
+  Give each a documented step (or a row in the type table) when that component is next changed.

@@ -47,7 +47,7 @@ function ChangePassword() {
       }}
       className="flex flex-col gap-3"
     >
-      <h4 className="text-[15px] font-medium">Change password</h4>
+      <h4 className="text-sm font-semibold">Change password</h4>
       <TextField label="Current password" type="password" autoComplete="current-password" required value={current} onChange={(e) => setCurrent(e.target.value)} />
       <TextField label="New password" type="password" autoComplete="new-password" required value={next} onChange={(e) => setNext(e.target.value)} />
       {error ? <Banner kind="error">{error}</Banner> : null}
@@ -97,7 +97,7 @@ export function AccountDrawer({ open, user, onClose, onSignOut, onGone }: Accoun
   return (
     <>
       <BottomDrawer open={open && !deleting} title="Account" onClose={onClose} fitContent>
-        <div className="flex w-full flex-col gap-6">
+        <div className="flex w-full max-w-md flex-col gap-6">
           <section aria-label="Signed in as" className="flex flex-wrap items-center justify-between gap-3">
             <p className="min-w-0 truncate text-sm">
               <span className="text-fg2">Signed in as </span>
@@ -109,7 +109,7 @@ export function AccountDrawer({ open, user, onClose, onSignOut, onGone }: Accoun
           </section>
           <ChangePassword />
           <section aria-label="Sessions" className="flex flex-col gap-2">
-            <h4 className="text-[15px] font-medium">Other devices</h4>
+            <h4 className="text-sm font-semibold">Other devices</h4>
             <p className="text-xs text-fg2">Sign out of every browser where you are signed in, this one included.</p>
             {everywhere.error ? <Banner kind="error">{everywhere.error}</Banner> : null}
             <button
@@ -122,7 +122,7 @@ export function AccountDrawer({ open, user, onClose, onSignOut, onGone }: Accoun
             </button>
           </section>
           <section aria-label="Delete account" className="flex flex-col gap-2">
-            <h4 className="text-[15px] font-medium">Delete account</h4>
+            <h4 className="text-sm font-semibold">Delete account</h4>
             <p className="text-xs text-fg2">Removes your account and everything stored for it.</p>
             <button type="button" onClick={() => setDeleting(true)} className={`${BUTTON} w-fit border border-bad font-medium text-bad`}>
               Delete account…

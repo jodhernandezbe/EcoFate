@@ -166,7 +166,8 @@ describe("overview views", () => {
     render0([]);
     expect(screen.getByRole("group", { name: "Overview view" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Risk by group" }));
-    expect(screen.getByText(/0 facilities in this run, 0 with a worst-case result/)).toBeInTheDocument();
+    expect(screen.getByText("No facilities assessed yet.")).toBeInTheDocument();
+    expect(screen.queryByText(/0 facilities/)).toBeNull(); // no count before there is something to count
     expect(screen.getAllByRole("region", { name: /Risk by/ })).toHaveLength(3);
     expect(screen.getAllByText(/Nothing to show yet/)).toHaveLength(3);
   });

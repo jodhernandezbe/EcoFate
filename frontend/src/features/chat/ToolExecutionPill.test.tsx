@@ -53,4 +53,9 @@ describe("ToolExecutionPills", () => {
     render(<ToolExecutionPills steps={steps.map((s) => ({ ...s, state: "done" as const }))} />);
     expect(screen.getByRole("button", { name: "4 steps" })).toBeInTheDocument();
   });
+
+  it("says one step in the singular", () => {
+    render(<ToolExecutionPills steps={[{ callId: "1", label: "Queried EPA TRI releases", state: "done" }]} />);
+    expect(screen.getByRole("button", { name: "1 step" })).toBeInTheDocument();
+  });
 });

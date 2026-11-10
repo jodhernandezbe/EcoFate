@@ -81,7 +81,7 @@ describe("BottomDrawer", () => {
       </BottomDrawer>,
     );
     await user.keyboard("{Escape}");
-    await user.click(screen.getByRole("button", { name: "Close settings" }));
+    await user.click(screen.getByRole("button", { name: "Close Settings panel" }));
     expect(onClose).toHaveBeenCalledTimes(2);
   });
 
@@ -123,9 +123,9 @@ describe("BottomDrawer", () => {
       </BottomDrawer>,
     );
     const before = screen.getByRole("dialog").style.height;
-    await user.click(screen.getByRole("button", { name: "Maximize settings" }));
+    await user.click(screen.getByRole("button", { name: "Maximize Settings panel" }));
     expect(screen.getByRole("dialog").style.height).not.toBe(before);
-    await user.click(screen.getByRole("button", { name: "Restore settings size" }));
+    await user.click(screen.getByRole("button", { name: "Restore Settings panel size" }));
     expect(screen.getByRole("dialog").style.height).toBe(before);
   });
 
@@ -136,12 +136,47 @@ describe("BottomDrawer", () => {
         body
       </BottomDrawer>,
     );
-    const handle = screen.getByRole("separator", { name: "Resize settings" });
+    const handle = screen.getByRole("separator", { name: "Resize Settings panel" });
     const start = Number(handle.getAttribute("aria-valuenow"));
     handle.focus();
     await user.keyboard("{ArrowUp}");
     expect(Number(handle.getAttribute("aria-valuenow"))).toBeGreaterThan(start);
     for (let i = 0; i < 100; i += 1) await user.keyboard("{ArrowDown}");
     expect(Number(handle.getAttribute("aria-valuenow"))).toBe(240);
+  });
+});
+
+describe("BottomDrawer names and first focus", () => {
+  it("names its window controls after its own title, so each drawer is announced as itself", () => {
+    render(
+      <BottomDrawer open title="Account" onClose={() => undefined}>
+        body
+      </BottomDrawer>,
+    );
+    expect(screen.getByRole("button", { name: "Close Account panel" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Maximize Account panel" })).toBeInTheDocument();
+    expect(screen.getByRole("separator", { name: "Resize Account panel" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /settings/i })).toBeNull();
+  });
+
+  it("opens with focus on the first control of its content, not on the window controls", () => {
+    render(
+      <BottomDrawer open title="Account" onClose={() => undefined}>
+        <label>
+          Current password
+          <input />
+        </label>
+      </BottomDrawer>,
+    );
+    expect(screen.getByLabelText("Current password")).toHaveFocus();
+  });
+
+  it("opens with focus on Close when its content has nothing to focus", () => {
+    render(
+      <BottomDrawer open title="Notes" onClose={() => undefined}>
+        <p>Read-only text.</p>
+      </BottomDrawer>,
+    );
+    expect(screen.getByRole("button", { name: "Close Notes panel" })).toHaveFocus();
   });
 });

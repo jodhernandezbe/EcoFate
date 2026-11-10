@@ -104,8 +104,14 @@ export function OverviewPanel({ workspace, digits, thresholds, workerThresholds,
         <>
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <p className="m-0 text-xs text-fg2">
-              {workspace.facilities.length} {workspace.facilities.length === 1 ? "facility" : "facilities"} in this run,{" "}
-              {assessed} with a worst-case result.
+              {workspace.facilities.length === 0 ? (
+                "No facilities assessed yet."
+              ) : (
+                <>
+                  {workspace.facilities.length} {workspace.facilities.length === 1 ? "facility" : "facilities"} in this
+                  run, {assessed} with a worst-case result.
+                </>
+              )}
             </p>
             <PathwayPicker pathway={pathway} onPathway={choosePathway} />
           </div>

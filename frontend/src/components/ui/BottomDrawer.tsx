@@ -43,9 +43,12 @@ export function BottomDrawer({
 }: BottomDrawerProps) {
   const titleId = useId();
   const panel = useRef<HTMLElement>(null);
+  const content = useRef<HTMLDivElement>(null);
+  const closeButton = useRef<HTMLButtonElement>(null);
   const [height, setHeight] = useState<number | null>(null);
   const [maximized, setMaximized] = useState(false);
-  useFocusTrap(open, panel, onClose);
+  // Open on the content's first control (else Close), never on the window controls.
+  useFocusTrap(open, panel, onClose, [content, closeButton]);
   if (!open) return null;
 
   const ceiling = () => window.innerHeight - 2 * INSET_PX;
@@ -69,6 +72,7 @@ export function BottomDrawer({
   // While auto-sized there is no height to read in render (the ref is only read in handlers).
   const shown = maximized ? window.innerHeight : fitting ? null : clamp(current(), minPx, ceiling());
   const width = `min(100%, max(${MIN_WIDTH_PX}px, ${WIDTH_SHARE * 100}%))`;
+  const surface = `${title} panel`; // in every control's name, so a screen reader knows which drawer
   const frame = shown === null ? { width } : { height: shown, width: maximized ? "100%" : width };
 
   return (
@@ -94,7 +98,7 @@ export function BottomDrawer({
           </h2>
           <button
             type="button"
-            aria-label={maximized ? "Restore settings size" : "Maximize settings"}
+            aria-label={maximized ? `Restore ${surface} size` : `Maximize ${surface}`}
             onClick={() => setMaximized((value) => !value)}
             className="spring grid size-8 place-items-center rounded-full text-fg2 transition hover:bg-hairline hover:text-fg"
           >
@@ -102,19 +106,20 @@ export function BottomDrawer({
           </button>
           <button
             type="button"
-            aria-label="Close settings"
+            ref={closeButton}
+            aria-label={`Close ${surface}`}
             onClick={onClose}
             className="spring grid size-8 place-items-center rounded-full text-fg2 transition hover:bg-hairline hover:text-fg"
           >
             <X size={16} aria-hidden="true" />
           </button>
         </header>
-        {/* After the header in the DOM so the first focus lands on a button, not on this handle. */}
+        {/* After the header in the DOM so Tab order runs title controls, handle, then content. */}
         {maximized ? null : (
           <div
             role="separator"
             aria-orientation="horizontal"
-            aria-label="Resize settings"
+            aria-label={`Resize ${surface}`}
             aria-valuenow={shown ?? undefined}
             aria-valuemin={minPx}
             aria-valuemax={ceiling()}
@@ -127,7 +132,9 @@ export function BottomDrawer({
             <span className="mt-[3px] block h-[3px] w-full rounded-full bg-transparent transition-colors group-hover:bg-accent group-focus-visible:bg-accent" />
           </div>
         )}
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">{children}</div>
+        <div ref={content} className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
+          {children}
+        </div>
       </section>
     </div>
   );

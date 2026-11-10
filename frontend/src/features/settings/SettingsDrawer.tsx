@@ -77,7 +77,7 @@ function KeyForm({ field, configured, draft, busy, outcome, onDraft, onSave, onC
     <section aria-label={`${field.label} API key`} className="border-t border-hairline pt-4 first:border-t-0 first:pt-0">
       <form onSubmit={submit} className="flex w-full flex-col gap-3">
         <div className="flex items-center gap-1">
-          <h4 className="text-[15px] font-medium">{field.label} API key</h4>
+          <h4 className="text-sm font-semibold">{field.label} API key</h4>
           <InfoTooltip label={`About the ${field.label} key`} text={field.purpose} />
         </div>
         <p

@@ -56,7 +56,8 @@ describe("ExposureChainTab", () => {
     await userEvent.click(await step(/Endpoint: Ratio to the occupational limit/));
     const panel = screen.getByRole("region", { name: "Ratio to the occupational limit details" });
     expect(within(panel).getByText("Source: synthetic limit")).toBeInTheDocument();
-    expect(within(panel).getAllByText(/not reported \(not reported by the tool\)/).length).toBeGreaterThan(0);
+    expect(within(panel).getAllByText("not reported by the tool").length).toBeGreaterThan(0); // the API's reason
+    expect(within(panel).queryByText(/not reported \(/)).toBeNull(); // never the phrase and the reason both
     expect(within(panel).getByText("Ratio to the limit (baseline ventilation)")).toBeInTheDocument();
     await userEvent.keyboard("{Escape}");
     expect(screen.queryByRole("region", { name: /details/ })).toBeNull();

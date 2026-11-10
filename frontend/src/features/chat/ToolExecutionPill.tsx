@@ -30,7 +30,7 @@ export function ToolExecutionPills({ steps }: { steps: ToolStep[] }) {
   const listId = useId();
   if (steps.length === 0) return null;
   const running = steps.filter((step) => step.state === "running").length;
-  const summary = running > 0 ? `Working… ${running} running` : `${steps.length} steps`;
+  const summary = running > 0 ? `Working… ${running} running` : `${steps.length} ${steps.length === 1 ? "step" : "steps"}`;
 
   return (
     <div className="mb-2">
