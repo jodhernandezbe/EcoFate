@@ -42,7 +42,7 @@ from one updates this file in the same commit.
 | `api` | built from `Dockerfile` (target `api`) | FastAPI + built React UI, SSE to the browser | 1 |
 | `db` | `postgres:16-alpine` | threads, checkpoints, users, sessions, keys, quotas | 2 |
 | `mailpit` | `axllent/mailpit` | catches sign-up and recovery mail in local runs (dev profile only) | 4 |
-| `redis` | `redis:7-alpine` | Celery broker and result backend, progress pub/sub | 7 |
+| `redis` | `redis:7.4-alpine` | Celery broker and per-turn event streams (Redis Streams; no result backend) | 7 |
 | `worker` | same image (target `worker`) | Celery worker that runs agent turns | 7 |
 | `caddy` | `caddy:2-alpine` | TLS reverse proxy in production only (`compose.prod.yaml`) | 9 |
 
@@ -50,7 +50,7 @@ from one updates this file in the same commit.
 the server, which is one EC2 instance (`t3.medium`, Lightsail lacks instance roles) deployed
 through SSM Run Command, so port 22 stays closed. A one-off `migrate` container applies
 Alembic migrations before `api` and `worker` start. `GET /api/health` reports liveness, and
-readiness checks Postgres (and Redis once change 7 lands); compose healthchecks and the
+readiness checks Postgres (Redis has its own compose healthcheck, which `api` and `worker` wait for); compose healthchecks and the
 deploy's automatic rollback use it. Data and model caches (`.cache/`, Hugging Face model) live in named volumes.
 
 ### PostgreSQL: a compose service everywhere
@@ -144,7 +144,8 @@ USD 15-30 a month for no functional gain at this scale.
 - Run in the core, present at the edge (change 2b): `app.turns.execute_turn` runs a turn and
   yields transport-neutral `TurnEvent`s with failure reason codes; the web layer turns them
   into wire events, step labels, workspace updates and fixed messages. The worker runs
-  `execute_turn` and publishes its events; the API relays them through the same presenter.
+  `execute_turn` (through `app.turns.job`), records the turn's state and publishes its events;
+  the API relays them and only presents them, so any number of readers see the same events.
   "Nothing imports `api`" holds without exception, enforced by `tests/test_layering.py`.
   Log redaction lives in `app/redaction.py` so both processes share it.
 

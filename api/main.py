@@ -6,7 +6,7 @@ import asyncio
 import contextlib
 import logging
 import os
-from collections.abc import AsyncGenerator, Awaitable, Callable
+from collections.abc import AsyncGenerator, Awaitable, Callable, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import replace
 from datetime import timedelta
@@ -14,6 +14,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from redis.asyncio import Redis
 
 from api.core.config import ui_settings
 from api.core.exceptions import install_exception_handlers
@@ -29,6 +30,7 @@ from api.routers import (
     v1_settings,
     v1_usage,
 )
+from api.services.agent_runner import RelayTiming
 from api.services.auth.mailer import Mailer, SmtpMailer
 from api.services.auth.runtime import build_auth_runtime
 from api.services.auth.smtp import MailSetupError, smtp_server
@@ -43,15 +45,28 @@ from api.services.key_setup import (
 )
 from api.services.quota import QuotaService, QuotaStore, UncountedQuota
 from api.services.threads import ThreadStore
+from api.services.turn_queue import QueueSetup
+from app.process_secrets import process_secret_values
 from app.redaction import install_redaction
+from app.task_queue import (
+    BrokerSetupError,
+    CeleryEnqueuer,
+    TurnEnqueuer,
+    build_celery,
+    redis_url,
+)
 from app.telemetry import flush_telemetry
 from app.turns import FailureReason
+from app.turns.bus import MemoryBus, RedisStreamBus, TurnEventBus
+from app.turns.recording import BackgroundSettings
+from config.agent import get_agent_settings
 from config.auth import get_auth_settings
 from config.database import DatabaseSettings, get_database_settings
 from config.limits import get_limit_settings
 from config.mail import MailSettings, get_mail_settings
 from config.telemetry import get_telemetry_settings
 from config.ui import UiSettings
+from config.worker import WorkerSettings, get_worker_settings
 from storage.purge import UsagePurgeable, UsageRetention, purge_periodically
 
 logger = logging.getLogger(__name__)
@@ -86,11 +101,71 @@ def _usage_retention(store: UsagePurgeable) -> UsageRetention:
     return UsageRetention(store, timedelta(days=get_limit_settings().retention_days))
 
 
-async def _recover_turns(threads: ThreadStore) -> None:
-    """Turns a stopped server left queued or running become resumable (``worker_lost``)."""
-    recovered = await threads.turns.interrupt_all_open(FailureReason.WORKER_LOST)
+async def _recover_turns(threads: ThreadStore, setup: QueueSetup) -> None:
+    """Turns whose process stopped become resumable (``worker_lost``): with turns run in this
+    process, every open one; with a worker, only running turns whose heartbeat is stale (a
+    restart of the API never touches turns the worker is running)."""
+    turns = threads.turns
+    if setup.enqueuer is None:
+        recovered = await turns.interrupt_all_open(FailureReason.WORKER_LOST)
+    else:
+        recovered = await turns.interrupt_stale(setup.timing.stale_after, FailureReason.WORKER_LOST)
+    for key in recovered:
+        await threads.release(key)
     if recovered:
-        logger.info("Interrupted %d turn(s) left running by a stopped server", len(recovered))
+        logger.info("Interrupted %d turn(s) whose process stopped", len(recovered))
+
+
+def _relay_timing(settings: WorkerSettings) -> RelayTiming:
+    return RelayTiming(
+        block_seconds=settings.relay_block_seconds,
+        grace_seconds=settings.broker_timeout_seconds,
+        stale_after=timedelta(seconds=settings.stale_after_seconds),
+    )
+
+
+def queue_setup(bus: TurnEventBus, enqueuer: TurnEnqueuer | None) -> QueueSetup:
+    """The queue over ``bus`` and ``enqueuer`` (None: turns run in this process), timed as
+    ``[worker]`` and ``[agent]`` say."""
+    settings = get_worker_settings()
+    background = BackgroundSettings.from_config(
+        settings,
+        get_agent_settings().max_resumes_per_turn,
+    )
+    return QueueSetup(bus, enqueuer, _relay_timing(settings), background)
+
+
+def _redis_client(url: str, settings: WorkerSettings) -> Redis:
+    """This process's Redis client; a blocking read may wait the relay block plus the timeout."""
+    return Redis.from_url(
+        url,
+        decode_responses=True,
+        socket_connect_timeout=settings.broker_timeout_seconds,
+        socket_timeout=settings.relay_block_seconds + settings.broker_timeout_seconds,
+    )
+
+
+@asynccontextmanager
+async def _worker_queue(environ: Mapping[str, str]) -> AsyncGenerator[QueueSetup]:
+    """Redis streams and the Celery queue of the worker; in-process when ``[worker].eager``.
+
+    Raises:
+        SystemExit: With a message naming the variable when the Redis URL is not set.
+    """
+    settings = get_worker_settings()
+    if settings.eager:
+        yield queue_setup(MemoryBus(), None)
+        return
+    try:
+        url = redis_url(environ, settings)
+    except BrokerSetupError as error:
+        raise SystemExit(str(error)) from None
+    client = _redis_client(url, settings)
+    enqueuer = CeleryEnqueuer(build_celery(settings, url), settings, process_secret_values(environ))
+    try:
+        yield queue_setup(RedisStreamBus(client, settings.event_stream_max_length), enqueuer)
+    finally:
+        await client.aclose()
 
 
 def _smtp_mailer(app: FastAPI, mail: MailSettings) -> SmtpMailer:
@@ -127,21 +202,21 @@ async def _thread_state(app: FastAPI) -> AsyncGenerator[None]:
     """Open the database, its thread store and accounts, unless they were injected (tests), and
     recover the turns a stopped server left running."""
     if app.state.threads is not None:  # injected (tests): the account services exist already
-        await _recover_turns(app.state.threads)
+        await _recover_turns(app.state.threads, app.state.turn_queue)
         yield
         return
     keks, operator = load_key_config(os.environ)  # before the database: names a bad variable
     settings = get_database_settings()
     async with (
         open_database(os.environ, settings) as database,
+        _worker_queue(os.environ) as queue,
         _purging(database.threads, settings, _usage_retention(database.quota)),
     ):
-        app.state.threads = database.threads
-        app.state.health_check = database.health_check
-        app.state.quota = _quota_service(database.quota)
+        _set_state(app, turn_queue=queue, threads=database.threads)
+        _set_state(app, health_check=database.health_check, quota=_quota_service(database.quota))
         app.state.keys = build_key_services(keks, operator, database.credentials)
         _install_auth(app, database.threads, database.accounts)
-        await _recover_turns(database.threads)
+        await _recover_turns(database.threads, queue)
         yield
 
 
@@ -151,7 +226,17 @@ async def _lifespan(app: FastAPI) -> AsyncGenerator[None]:
     protect_process_secrets(os.environ, app.state.keys)  # also when the stores are injected
     async with _thread_state(app):
         yield
+        await _stop_running(app.state.turn_queue)
     await asyncio.to_thread(flush_telemetry, get_telemetry_settings())  # queued spans go out
+
+
+async def _stop_running(setup: QueueSetup | None) -> None:
+    """Cancel turns still running in this process; they are recovered as ``worker_lost``."""
+    if setup is None:
+        return
+    for task in list(setup.running):
+        task.cancel()
+    await asyncio.gather(*setup.running, return_exceptions=True)
 
 
 def _mount_frontend(app: FastAPI, dist: Path) -> None:
@@ -212,6 +297,7 @@ def create_app(
     accounts: Accounts | None = None,
     mailer: Mailer | None = None,
     session_secret: bytes | None = None,
+    turn_queue: QueueSetup | None = None,
 ) -> FastAPI:
     """Build the API for ``settings`` (the shipped ``[ui]`` settings by default).
 
@@ -233,6 +319,9 @@ def create_app(
         mailer: Sends the account emails; None sends them over the configured SMTP server.
         session_secret: The secret that keys the stored session and token hashes (tests); None
             reads the variable named in ``[auth]``, and the app refuses to start without it.
+        turn_queue: The turn streams and queue to use with an injected ``threads`` (tests);
+            None then runs turns in this process over in-memory streams. With none injected,
+            Redis and the worker's queue (or this process, when ``[worker].eager``).
     """
     _require_injected_together(threads, accounts, keys)
     ui = settings if settings is not None else ui_settings()
@@ -242,6 +331,8 @@ def create_app(
     _set_state(app, session_secret=session_secret, health_check=health_check or _always_ok)
     _set_state(app, keys_from_environment=keys_from_environment, keys=keys)
     _set_state(app, quota=_injected_quota(quota))
+    injected_queue = turn_queue or (queue_setup(MemoryBus(), None) if threads is not None else None)
+    _set_state(app, turn_queue=injected_queue)
     install_exception_handlers(app)
     _include_routers(app)
     if threads is not None and accounts is not None:

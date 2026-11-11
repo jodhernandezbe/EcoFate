@@ -3,12 +3,13 @@ import userEvent from "@testing-library/user-event";
 
 import { EMPTY_WORKSPACE } from "./hooks/useWorkspaceStore";
 import { extremum, workspace } from "./test/fixtures";
-import { meResponse, renderApp } from "./test/session";
+import { meResponse, renderApp, noCurrentThread } from "./test/session";
 
 function stubApi(keyConfigured: boolean) {
   const fetchMock = vi.fn((input: RequestInfo | URL) => {
     const url = String(input);
     if (url.endsWith("/auth/me")) return Promise.resolve(meResponse());
+    if (url.endsWith("/chat/current-thread")) return Promise.resolve(noCurrentThread());
     const status = { configured: keyConfigured };
     const body = url.endsWith("/settings/client")
       ? { model: "test-model" }
@@ -86,6 +87,7 @@ describe("onboarding and clearing the workspace", () => {
       vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
         const url = String(input);
     if (url.endsWith("/auth/me")) return Promise.resolve(meResponse());
+    if (url.endsWith("/chat/current-thread")) return Promise.resolve(noCurrentThread());
         calls.push({ url, method: init?.method ?? "GET" });
         const stored = { configured: true };
         let body: object = { openai: stored, services: { census: { available: false }, comptox: { available: false } } };

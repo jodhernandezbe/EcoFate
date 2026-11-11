@@ -5,6 +5,7 @@ The fake runs in the default suite; the PostgreSQL run is marked ``postgres`` (m
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncGenerator
 from datetime import timedelta
 from typing import cast
@@ -18,7 +19,7 @@ from api.schemas.workspace import WorkspaceState
 from api.services.threads import ThreadStore
 from app.usage_meter import CallUsage
 from storage.keys import ThreadKey
-from storage.turn_model import TurnStatus, TurnTransitionError
+from storage.turn_model import PlannedInput, Turn, TurnStatus, TurnTransitionError
 from tests.fakes import InMemoryThreadStore
 from tests.postgres import database
 from tools.schemas import ConfirmationRequest
@@ -200,11 +201,23 @@ async def _interrupted(store: ThreadStore, reason: str = "out_of_credits") -> st
     return turn.id
 
 
-async def test_a_turn_runs_then_completes_with_its_times(store: ThreadStore) -> None:
-    turn = await store.turns.begin(KEY)
-    assert turn is not None
-    assert (turn.status, turn.reason, turn.resume_count) == (TurnStatus.RUNNING, None, 0)
+async def _running(store: ThreadStore, key: ThreadKey = KEY) -> Turn:
+    queued = await store.turns.begin(key)
+    assert queued is not None
+    started = await store.turns.start(key.owner_id, queued.id)
+    assert started is not None
+    return started
+
+
+async def test_a_turn_is_queued_runs_then_completes_with_its_times(store: ThreadStore) -> None:
+    queued = await store.turns.begin(KEY)
+    assert queued is not None
+    assert (queued.status, queued.reason, queued.resume_count) == (TurnStatus.QUEUED, None, 0)
+    assert queued.started_at is None and queued.heartbeat_at is None
+    turn = await store.turns.start(OWNER, queued.id)
+    assert turn is not None and turn.status is TurnStatus.RUNNING
     assert turn.started_at is not None and turn.finished_at is None
+    assert turn.heartbeat_at is not None
     done = await store.turns.move(OWNER, turn.id, TurnStatus.COMPLETED)
     assert done.status is TurnStatus.COMPLETED and done.finished_at is not None
     assert await store.turns.latest(KEY) == done
@@ -219,8 +232,7 @@ async def test_a_second_open_turn_on_the_thread_is_refused(store: ThreadStore) -
 
 
 async def test_completed_cannot_run_again_and_is_left_unchanged(store: ThreadStore) -> None:
-    turn = await store.turns.begin(KEY)
-    assert turn is not None
+    turn = await _running(store)
     done = await store.turns.move(OWNER, turn.id, TurnStatus.COMPLETED)
     with pytest.raises(TurnTransitionError):
         await store.turns.move(OWNER, turn.id, TurnStatus.RUNNING)
@@ -259,7 +271,7 @@ async def test_resume_counts_each_time_up_to_the_cap(store: ThreadStore) -> None
         resumed = await store.turns.resume(OWNER, turn_id, 2)
         assert resumed is not None
         assert (resumed.status, resumed.reason, resumed.resume_count) == (
-            TurnStatus.RUNNING,
+            TurnStatus.QUEUED,
             None,
             expected,
         )
@@ -329,6 +341,117 @@ async def test_usage_is_kept_per_turn(store: ThreadStore) -> None:
     expected = [CallUsage("m", 1, 0, 1), CallUsage("m", 3, 0, 3)]
     assert await store.turn_calls(KEY, turn.id) == expected
     assert len(await store.session_calls(KEY)) == 3
+
+
+async def test_a_new_turn_keeps_its_planned_input(store: ThreadStore) -> None:
+    planned = PlannedInput("question", "message", "note", counted=True)
+    turn = await store.turns.begin(KEY, planned)
+    assert turn is not None and turn.planned == planned
+    assert await store.turns.get(OWNER, turn.id) == turn
+    assert await store.turns.get(OTHER_OWNER, turn.id) is None
+    assert await store.turns.get(OWNER, "no-such-turn") is None
+
+
+async def test_a_queued_turn_starts_once(store: ThreadStore) -> None:
+    turn = await _running(store)
+    assert await store.turns.start(OWNER, turn.id) is None  # a second delivery does nothing
+    await store.turns.move(OWNER, turn.id, TurnStatus.COMPLETED)
+    assert await store.turns.start(OWNER, turn.id) is None
+
+
+async def test_another_user_cannot_start_a_queued_turn(store: ThreadStore) -> None:
+    queued = await store.turns.begin(KEY)
+    assert queued is not None
+    assert await store.turns.start(OTHER_OWNER, queued.id) is None
+    assert await store.turns.latest(KEY) == queued
+
+
+async def test_a_resumed_turn_waits_queued_with_a_fresh_cancel_flag(store: ThreadStore) -> None:
+    turn = await _running(store)
+    assert await store.turns.request_cancel(OWNER, turn.id)
+    await store.turns.move(OWNER, turn.id, TurnStatus.INTERRUPTED, "cancelled")
+    resumed = await store.turns.resume(OWNER, turn.id, 3)
+    assert resumed is not None and resumed.status is TurnStatus.QUEUED
+    assert not resumed.cancel_requested and resumed.heartbeat_at is None
+
+
+async def test_a_queued_turn_that_could_not_be_enqueued_fails(store: ThreadStore) -> None:
+    queued = await store.turns.begin(KEY)
+    assert queued is not None
+    failed = await store.turns.move(OWNER, queued.id, TurnStatus.FAILED, "unexpected")
+    assert failed.status is TurnStatus.FAILED and failed.finished_at is not None
+
+
+async def test_heartbeat_only_for_a_running_turn(store: ThreadStore) -> None:
+    queued = await store.turns.begin(KEY)
+    assert queued is not None
+    assert not await store.turns.heartbeat(OWNER, queued.id)
+    await store.turns.start(OWNER, queued.id)
+    assert await store.turns.heartbeat(OWNER, queued.id)
+    assert not await store.turns.heartbeat(OTHER_OWNER, queued.id)
+    await store.turns.move(OWNER, queued.id, TurnStatus.COMPLETED)
+    assert not await store.turns.heartbeat(OWNER, queued.id)
+
+
+async def test_cancel_is_asked_only_of_an_open_turn_of_the_owner(store: ThreadStore) -> None:
+    turn = await _running(store)
+    assert not await store.turns.request_cancel(OTHER_OWNER, turn.id)
+    assert not await store.turns.cancel_requested(OWNER, turn.id)
+    assert await store.turns.request_cancel(OWNER, turn.id)
+    assert await store.turns.request_cancel(OWNER, turn.id)  # safe to repeat
+    assert await store.turns.cancel_requested(OWNER, turn.id)
+    assert not await store.turns.cancel_requested(OTHER_OWNER, turn.id)
+    await store.turns.move(OWNER, turn.id, TurnStatus.INTERRUPTED, "cancelled")
+    assert not await store.turns.request_cancel(OWNER, turn.id)
+
+
+async def test_only_a_stale_running_turn_is_interrupted(store: ThreadStore) -> None:
+    running = await _running(store)
+    queued = await store.turns.begin(OTHER_THREAD)
+    assert queued is not None
+    assert await store.turns.interrupt_stale(timedelta(hours=1), "worker_lost") == []
+    assert await store.turns.interrupt_stale(timedelta(0), "worker_lost", FOREIGN) == []
+    assert await store.turns.interrupt_stale(timedelta(0), "worker_lost") == [KEY]
+    stale = await store.turns.get(OWNER, running.id)
+    assert stale is not None
+    assert (stale.status, stale.reason) == (TurnStatus.INTERRUPTED, "worker_lost")
+    assert await store.turns.get(OWNER, queued.id) == queued  # waiting is not stale
+
+
+async def test_queue_position_counts_earlier_queued_turns(store: ThreadStore) -> None:
+    first = await store.turns.begin(KEY)
+    second = await store.turns.begin(FOREIGN)
+    third = await store.turns.begin(OTHER_THREAD)
+    assert first is not None and second is not None and third is not None
+    assert await store.turns.queue_position(first.id) == 0
+    assert await store.turns.queue_position(third.id) == 2
+    await store.turns.start(OWNER, first.id)
+    assert await store.turns.queue_position(third.id) == 1
+
+
+async def test_extend_renews_a_held_lease_only(store: ThreadStore) -> None:
+    await store.extend(KEY)
+    assert not await store.running(KEY)  # an idle thread stays idle
+    assert await store.claim(KEY)
+    await store.extend(KEY)
+    assert await store.running(KEY)
+    await store.release(KEY)
+    await store.extend(KEY)
+    assert not await store.running(KEY)
+
+
+async def test_the_latest_thread_is_the_owners_most_recently_used(store: ThreadStore) -> None:
+    assert await store.latest_thread(OWNER) is None
+    await store.touch(KEY)
+    await asyncio.sleep(0.002)  # distinct use times
+    await store.touch(OTHER_THREAD)
+    assert await store.latest_thread(OWNER) == OTHER_THREAD.thread_id
+    await asyncio.sleep(0.002)
+    await store.touch(KEY)
+    assert await store.latest_thread(OWNER) == KEY.thread_id
+    assert await store.latest_thread(OTHER_OWNER) is None  # never another user's
+    await store.touch(FOREIGN)
+    assert await store.latest_thread(OWNER) == KEY.thread_id
 
 
 async def test_reset_deletes_the_threads_turns(store: ThreadStore) -> None:

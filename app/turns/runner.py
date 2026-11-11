@@ -48,7 +48,13 @@ from app.turns.events import (
     TurnFailed,
     TurnUsage,
 )
-from app.turns.failures import SETUP_REASONS, FailureReason, classify, new_correlation_id
+from app.turns.failures import (
+    SETUP_REASONS,
+    STOP_REASONS,
+    FailureReason,
+    classify,
+    new_correlation_id,
+)
 from app.turns.history import not_run_results
 from app.turns.keys import TurnKeys, provided
 from app.usage_meter import CallUsage, UsageRecorder
@@ -227,6 +233,8 @@ def failed(error: Exception) -> TurnFailed:
     event = TurnFailed(reason=classify(error), correlation_id=new_correlation_id())
     if event.reason == FailureReason.UNEXPECTED:
         logger.exception("turn failed (%s)", event.correlation_id)
+    elif event.reason in STOP_REASONS:
+        logger.info("turn stopped (%s): %s", event.correlation_id, event.reason)
     elif event.reason not in SETUP_REASONS:  # a known provider failure: no traceback needed
         logger.warning("turn failed (%s): %s", event.correlation_id, type(error).__name__)
     return event
@@ -265,7 +273,8 @@ async def pending_steps(
     services: TurnServices,
     settings: TurnSettings,
 ) -> tuple[str, ...]:
-    """The graph nodes the thread's last checkpoint would run next (empty when it finished).
+    """The graph nodes the thread's last checkpoint would run next, or whose finished results it
+    still has to apply (empty when the run finished).
 
     Builds the agent with the stored model key but calls no model and runs no tool.
 
@@ -275,7 +284,12 @@ async def pending_steps(
     keys = await services.load_keys()
     agent = _build(services.build_model(keys.openai), services, settings)
     snapshot = await agent.aget_state({"configurable": {"thread_id": thread_id}})
-    return tuple(snapshot.next)
+    if snapshot.next:
+        return tuple(snapshot.next)
+    # A turn stopped between a step's writes and the next checkpoint (a cancel or the time
+    # limit right after a batch of tool results) keeps those finished tasks with their results;
+    # their successors are not planned yet, but a resume applies the writes and goes on.
+    return tuple(task.name for task in snapshot.tasks if task.result is not None)
 
 
 def _build(model: BaseChatModel, services: TurnServices, settings: TurnSettings) -> Agent:

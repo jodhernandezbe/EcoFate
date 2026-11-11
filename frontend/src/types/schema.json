@@ -20,7 +20,7 @@
       "additionalProperties": false,
       "properties": {
         "seq": {
-          "description": "Position of the event in its stream, from 0.",
+          "description": "Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.",
           "minimum": 0,
           "type": "integer"
         },
@@ -430,7 +430,7 @@
           "type": "string"
         },
         "seq": {
-          "description": "Position of the event in its stream, from 0.",
+          "description": "Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.",
           "minimum": 0,
           "type": "integer"
         },
@@ -583,7 +583,7 @@
           "type": "string"
         },
         "seq": {
-          "description": "Position of the event in its stream, from 0.",
+          "description": "Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.",
           "minimum": 0,
           "type": "integer"
         },
@@ -1503,7 +1503,7 @@
       "description": "The in-character redirect sent instead of running the agent on an off-topic turn.",
       "properties": {
         "seq": {
-          "description": "Position of the event in its stream, from 0.",
+          "description": "Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.",
           "minimum": 0,
           "type": "integer"
         },
@@ -2514,6 +2514,35 @@
       "title": "RiskSummary",
       "type": "object"
     },
+    "RunningTurn": {
+      "additionalProperties": false,
+      "description": "A queued or running turn of the thread, so a reloaded page can show it and reattach.",
+      "properties": {
+        "question": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resumed": {
+          "type": "boolean"
+        },
+        "turn_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "turn_id",
+        "resumed",
+        "question"
+      ],
+      "title": "RunningTurn",
+      "type": "object"
+    },
     "Scenario": {
       "additionalProperties": false,
       "description": "Screening result for one set of weather: concentration \u00b5g/m\u00b3, HQ and cancer risk unitless.",
@@ -2827,7 +2856,7 @@
           "type": "boolean"
         },
         "seq": {
-          "description": "Position of the event in its stream, from 0.",
+          "description": "Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.",
           "minimum": 0,
           "type": "integer"
         },
@@ -3621,6 +3650,7 @@
           "turn_finished": "#/$defs/TurnFinished",
           "turn_interrupted": "#/$defs/TurnInterrupted",
           "turn_started": "#/$defs/TurnStarted",
+          "turn_status": "#/$defs/TurnStatus",
           "usage": "#/$defs/Usage",
           "workspace_update": "#/$defs/WorkspaceUpdate"
         },
@@ -3629,6 +3659,9 @@
       "oneOf": [
         {
           "$ref": "#/$defs/TurnStarted"
+        },
+        {
+          "$ref": "#/$defs/TurnStatus"
         },
         {
           "$ref": "#/$defs/ScopeDecision"
@@ -3720,6 +3753,17 @@
           },
           "type": "array"
         },
+        "running_turn": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RunningTurn"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "thread_id": {
           "type": "string"
         },
@@ -3736,7 +3780,8 @@
         "workspace",
         "usage",
         "confirmation",
-        "interrupted"
+        "interrupted",
+        "running_turn"
       ],
       "title": "ThreadSnapshot",
       "type": "object"
@@ -3771,7 +3816,7 @@
       "additionalProperties": false,
       "properties": {
         "seq": {
-          "description": "Position of the event in its stream, from 0.",
+          "description": "Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.",
           "minimum": 0,
           "type": "integer"
         },
@@ -3825,7 +3870,7 @@
           "type": "string"
         },
         "seq": {
-          "description": "Position of the event in its stream, from 0.",
+          "description": "Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.",
           "minimum": 0,
           "type": "integer"
         },
@@ -3869,7 +3914,7 @@
       "additionalProperties": false,
       "properties": {
         "seq": {
-          "description": "Position of the event in its stream, from 0.",
+          "description": "Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.",
           "minimum": 0,
           "type": "integer"
         },
@@ -3900,7 +3945,9 @@
             "bad_key",
             "provider_down",
             "step_limit",
-            "worker_lost"
+            "worker_lost",
+            "cancelled",
+            "time_limit"
           ],
           "type": "string"
         },
@@ -3908,7 +3955,7 @@
           "type": "boolean"
         },
         "seq": {
-          "description": "Position of the event in its stream, from 0.",
+          "description": "Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.",
           "minimum": 0,
           "type": "integer"
         },
@@ -3942,7 +3989,9 @@
             "bad_key",
             "provider_down",
             "step_limit",
-            "worker_lost"
+            "worker_lost",
+            "cancelled",
+            "time_limit"
           ],
           "type": "string"
         },
@@ -3966,7 +4015,7 @@
           "type": "boolean"
         },
         "seq": {
-          "description": "Position of the event in its stream, from 0.",
+          "description": "Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.",
           "minimum": 0,
           "type": "integer"
         },
@@ -3992,6 +4041,63 @@
       "title": "TurnStarted",
       "type": "object"
     },
+    "TurnStatus": {
+      "additionalProperties": false,
+      "description": "What the turn is doing now, for the chat's status line: waiting for a worker (with about\nhow many turns ahead), running, thinking, or running a step (with its label).",
+      "properties": {
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "phase": {
+          "enum": [
+            "queued",
+            "running",
+            "thinking",
+            "running_tool"
+          ],
+          "type": "string"
+        },
+        "position": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "seq": {
+          "description": "Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": {
+          "const": "turn_status",
+          "default": "turn_status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "seq",
+        "type",
+        "phase",
+        "label",
+        "position"
+      ],
+      "title": "TurnStatus",
+      "type": "object"
+    },
     "Unattributed": {
       "additionalProperties": false,
       "description": "A result that could not be tied to exactly one facility, and why.",
@@ -4014,7 +4120,7 @@
       "additionalProperties": false,
       "properties": {
         "seq": {
-          "description": "Position of the event in its stream, from 0.",
+          "description": "Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.",
           "minimum": 0,
           "type": "integer"
         },
@@ -4499,7 +4605,7 @@
       "additionalProperties": false,
       "properties": {
         "seq": {
-          "description": "Position of the event in its stream, from 0.",
+          "description": "Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.",
           "minimum": 0,
           "type": "integer"
         },

@@ -202,6 +202,30 @@ export async function* resumeChat(threadId: string, signal?: AbortSignal): Async
   yield* events(await request(path, { method: "POST", signal }));
 }
 
+/** The user's most recently used thread, so a reloaded page continues it; rejects with a 404
+ * `ApiError` when the user has none. */
+export const getCurrentThread = (): Promise<ThreadSnapshot> => json("/chat/current-thread");
+
+/**
+ * Reattach to a turn's events after the event `afterSeq` (from its first event when null);
+ * rejects with a 410 `ApiError` once the events have expired, 404 when the turn is unknown.
+ */
+export async function* turnEvents(
+  turnId: string,
+  afterSeq: number | null,
+  signal?: AbortSignal,
+): AsyncGenerator<StreamEvent> {
+  const headers: Record<string, string> = afterSeq === null ? {} : { "Last-Event-ID": String(afterSeq) };
+  const path = `/chat/turns/${encodeURIComponent(turnId)}/events`;
+  yield* events(await request(path, { headers, signal }));
+}
+
+/** Ask a running turn to stop after its current step; rejects with a 409 `ApiError` when it
+ * has already finished. Its stream then ends with the interruption. */
+export async function cancelTurn(turnId: string): Promise<void> {
+  await request(`/chat/turns/${encodeURIComponent(turnId)}/cancel`, { method: "POST" });
+}
+
 
 // --- accounts -------------------------------------------------------------------------------
 

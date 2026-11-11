@@ -11,6 +11,10 @@ export const meResponse = (user: UserInfo = ADMIN): Response =>
   new Response(JSON.stringify(user), { status: 200 });
 
 /** The answer of a signed-out server. */
+/** A user with no thread yet: the page opens on a fresh one. */
+export const noCurrentThread = (): Response =>
+  new Response(JSON.stringify({ error: "That run is no longer available." }), { status: 404 });
+
 export const signedOutResponse = (): Response =>
   new Response(JSON.stringify({ error: "Sign in to continue.", correlation_id: "c1" }), { status: 401 });
 

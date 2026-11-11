@@ -3,6 +3,7 @@ import type {
   StreamEvent,
   ThreadSnapshot,
   TurnInterruption,
+  TurnStatus,
   UsageTotals,
 } from "../types/workspace";
 
@@ -29,9 +30,20 @@ export interface UsageView {
   session: UsageTotals;
 }
 
+/** What the running turn is doing now, for the status line under the streaming message. */
+export interface LiveStatus {
+  phase: TurnStatus["phase"];
+  /** The step's label, while a step runs. */
+  label: string | null;
+  /** About how many turns wait before this one, while it is queued. */
+  position: number | null;
+}
+
 export interface ChatState {
   messages: ChatMessage[];
   busy: boolean;
+  /** The latest status of the running turn (null when none runs or none was reported yet). */
+  status: LiveStatus | null;
   usage: UsageView | null;
   /** The open request for missing values the user must answer, if the turn stopped for one. */
   confirmation: ConfirmationPrompt | null;
@@ -46,11 +58,13 @@ export type ChatAction =
   | { type: "rejected"; prompt: ConfirmationPrompt | null }
   | { type: "refused" }
   | { type: "restore"; snapshot: ThreadSnapshot; ids: string[] }
+  | { type: "reattach"; userId: string; assistantId: string; question: string | null; resumed: boolean }
   | { type: "reset" };
 
 export const initialChatState: ChatState = {
   messages: [],
   busy: false,
+  status: null,
   usage: null,
   confirmation: null,
 };
@@ -86,6 +100,11 @@ function withToolStatus(message: ChatMessage, event: ToolEvent): ChatMessage {
 
 function onEvent(state: ChatState, event: StreamEvent): ChatState {
   switch (event.type) {
+    case "turn_status":
+      return {
+        ...state,
+        status: { phase: event.phase, label: event.label ?? null, position: event.position ?? null },
+      };
     case "token":
       return updateLastAssistant(state, (m) => ({ ...m, text: m.text + event.text }));
     case "assistant_message":
@@ -108,12 +127,19 @@ function onEvent(state: ChatState, event: StreamEvent): ChatState {
       return event.resumed ? updateLastAssistant(state, (m) => ({ ...m, interrupted: null })) : state;
     case "turn_interrupted": {
       const interrupted = { reason: event.reason, resumable: event.resumable, message: event.message };
-      return updateLastAssistant(state, (m) => ({ ...m, interrupted, streaming: false }));
+      return {
+        ...updateLastAssistant(state, (m) => ({ ...m, interrupted, streaming: false })),
+        status: null,
+      };
     }
     case "error":
       return updateLastAssistant(state, (m) => ({ ...m, error: event.message }));
     case "turn_finished":
-      return { ...updateLastAssistant(state, (m) => ({ ...m, streaming: false })), busy: false };
+      return {
+        ...updateLastAssistant(state, (m) => ({ ...m, streaming: false })),
+        busy: false,
+        status: null,
+      };
     default:
       return state;
   }
@@ -148,8 +174,28 @@ function restored(snapshot: ThreadSnapshot, ids: string[]): ChatState {
   return {
     messages: withInterruption(messages, snapshot.interrupted ?? null),
     busy: false,
+    status: null,
     usage,
     confirmation: snapshot.confirmation ?? null,
+  };
+}
+
+/**
+ * Show a turn that is still running after a reload: its question and the answer its events will
+ * fill in. A resumed turn continues the last answer instead (its question is already shown).
+ */
+function reattached(state: ChatState, action: Extract<ChatAction, { type: "reattach" }>): ChatState {
+  const lastIsAnswer = state.messages[state.messages.length - 1]?.role === "assistant";
+  if (action.resumed && lastIsAnswer) {
+    return { ...updateLastAssistant(state, (m) => ({ ...m, streaming: true })), busy: true };
+  }
+  const question = action.question
+    ? [{ ...assistant(action.userId, action.question, false), role: "user" as const }]
+    : [];
+  return {
+    ...state,
+    busy: true,
+    messages: [...state.messages, ...question, assistant(action.assistantId, "", true)],
   };
 }
 
@@ -160,6 +206,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return {
         ...state,
         busy: true,
+        status: null,
         confirmation: null,
         messages: [
           ...state.messages.map((m) => (m.interrupted ? { ...m, interrupted: null } : m)),
@@ -172,6 +219,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return {
         ...updateLastAssistant(state, (m) => ({ ...m, error: null, streaming: true })),
         busy: true,
+        status: null,
       };
     case "event":
       return onEvent(state, action.event);
@@ -179,9 +227,14 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return {
         ...updateLastAssistant(state, (m) => ({ ...m, error: action.message, streaming: false })),
         busy: false,
+        status: null,
       };
     case "closed":
-      return { ...updateLastAssistant(state, (m) => ({ ...m, streaming: false })), busy: false };
+      return {
+        ...updateLastAssistant(state, (m) => ({ ...m, streaming: false })),
+        busy: false,
+        status: null,
+      };
     case "rejected":
       // The server refused the reply and recorded nothing: take back the optimistic turn and
       // show the same request again so the user can correct the answer.
@@ -189,13 +242,16 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ...state,
         messages: state.messages.slice(0, -2),
         busy: false,
+        status: null,
         confirmation: action.prompt,
       };
     case "refused":
       // Over the daily quota: nothing ran or was recorded, so take back the optimistic turn.
-      return { ...state, messages: state.messages.slice(0, -2), busy: false };
+      return { ...state, messages: state.messages.slice(0, -2), busy: false, status: null };
     case "restore":
       return restored(action.snapshot, action.ids);
+    case "reattach":
+      return reattached(state, action);
     case "reset":
       return initialChatState;
   }

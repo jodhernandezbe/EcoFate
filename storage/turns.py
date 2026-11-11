@@ -3,8 +3,9 @@
 At most one turn per thread of a user is ``queued`` or ``running`` (the partial unique index
 ``uq_turns_open_thread``), so a second turn is refused even when it reaches another process.
 Every method takes the owner (a ``ThreadKey``, or the owner id with a turn id) and puts it in its
-``WHERE``: a turn of another user is never found. The one exception is ``interrupt_all_open``,
-the server's own start-up recovery.
+``WHERE``: a turn of another user is never found. The exceptions work across users without
+returning anyone's data: ``interrupt_all_open`` and ``interrupt_stale`` (recovery) and
+``queue_position`` (a count).
 Each call is one transaction; a status change is checked against the allowed moves of
 ``storage.turn_model`` with the row locked, so an illegal move raises and changes nothing.
 """
@@ -12,6 +13,7 @@ Each call is one transaction; a status change is checked against the allowed mov
 from __future__ import annotations
 
 import uuid
+from datetime import timedelta
 from uuid import UUID
 
 from sqlalchemy import ColumnElement, RowMapping, Update, func, select, update
@@ -26,6 +28,7 @@ from storage.tables import threads, turns
 from storage.turn_model import (
     OPEN_STATUSES,
     REASONED_STATUSES,
+    PlannedInput,
     Turn,
     TurnStatus,
     TurnTransitionError,
@@ -34,6 +37,8 @@ from storage.turn_model import (
 
 Sessions = async_sessionmaker[AsyncSession]
 _OPEN = turns.c.status.in_([status.value for status in OPEN_STATUSES])
+_RUNNING = turns.c.status == TurnStatus.RUNNING.value
+_QUEUED = turns.c.status == TurnStatus.QUEUED.value
 
 
 def _decoded(row: RowMapping | None) -> Turn | None:
@@ -53,6 +58,9 @@ def _changes(target: TurnStatus, reason: str | None) -> dict[str, object]:
     values: dict[str, object] = {"status": target.value, "reason": reason, "updated_at": func.now()}
     if target is TurnStatus.RUNNING:
         values |= {"started_at": func.coalesce(turns.c.started_at, func.now()), "finished_at": None}
+        values["heartbeat_at"] = func.now()
+    if target is TurnStatus.QUEUED:
+        values |= {"finished_at": None, "heartbeat_at": None, "cancel_requested": False}
     if target in (TurnStatus.COMPLETED, TurnStatus.FAILED):
         values["finished_at"] = func.now()
     return values
@@ -63,16 +71,16 @@ def _check_reason(target: TurnStatus, reason: str | None) -> None:
         raise ValueError(f"a {target} turn {'needs' if reason is None else 'takes no'} reason")
 
 
-def _begin(key: ThreadKey) -> Executable:
-    """Insert a running turn, unless the thread already has an open one."""
+def _begin(key: ThreadKey, planned: PlannedInput | None) -> Executable:
+    """Insert a queued turn with its input, unless the thread already has an open one."""
     return (
         pg_insert(turns)
         .values(
             id=uuid.uuid4().hex,
             user_id=key.owner_id,
             thread_id=key.thread_id,
-            status=TurnStatus.RUNNING.value,
-            started_at=func.now(),
+            status=TurnStatus.QUEUED.value,
+            planned_input=None if planned is None else codec.planned_to_json(planned),
         )
         .on_conflict_do_nothing(
             index_elements=[turns.c.user_id, turns.c.thread_id],
@@ -92,8 +100,9 @@ class TurnRepository:
     def __init__(self, sessions: Sessions) -> None:
         self._sessions = sessions
 
-    async def begin(self, key: ThreadKey) -> Turn | None:
-        """Record a new running turn of the thread; None while the thread has an open turn."""
+    async def begin(self, key: ThreadKey, planned: PlannedInput | None = None) -> Turn | None:
+        """Record a new queued turn of the thread with its input; None while the thread has an
+        open turn."""
         new_thread = (
             pg_insert(threads)
             .values(owner_id=key.owner_id, id=key.thread_id)
@@ -101,10 +110,10 @@ class TurnRepository:
         )
         async with self._sessions.begin() as session:
             await session.execute(new_thread)
-            return _decoded((await session.execute(_begin(key))).mappings().first())
+            return _decoded((await session.execute(_begin(key, planned))).mappings().first())
 
     async def resume(self, owner_id: UUID, turn_id: str, max_resumes: int) -> Turn | None:
-        """Move an interrupted turn of the owner back to running and count the resume.
+        """Queue an interrupted turn of the owner again (for a worker) and count the resume.
 
         Returns None, changing nothing, when the owner has no such turn, it is not interrupted,
         has been resumed ``max_resumes`` times, or its thread already has an open turn.
@@ -116,7 +125,7 @@ class TurnRepository:
                 turns.c.status == TurnStatus.INTERRUPTED.value,
                 turns.c.resume_count < max_resumes,
             )
-            .values(resume_count=turns.c.resume_count + 1, **_changes(TurnStatus.RUNNING, None))
+            .values(resume_count=turns.c.resume_count + 1, **_changes(TurnStatus.QUEUED, None))
             .returning(*turns.c)
         )
         try:
@@ -205,3 +214,69 @@ class TurnRepository:
         )
         async with self._sessions() as session:
             return _decoded((await session.execute(query)).mappings().first())
+
+    async def get(self, owner_id: UUID, turn_id: str) -> Turn | None:
+        """The owner's turn; None when the owner has no such turn (or it does not decode)."""
+        query = select(turns).where(_mine(owner_id, turn_id))
+        async with self._sessions() as session:
+            return _decoded((await session.execute(query)).mappings().first())
+
+    async def start(self, owner_id: UUID, turn_id: str) -> Turn | None:
+        """Move the owner's queued turn to running with a first heartbeat; None (nothing changed)
+        when it is not queued (cancelled, recovered or already started by another delivery)."""
+        statement = (
+            update(turns)
+            .where(_mine(owner_id, turn_id), _QUEUED)
+            .values(**_changes(TurnStatus.RUNNING, None))
+            .returning(*turns.c)
+        )
+        async with self._sessions.begin() as session:
+            return _decoded((await session.execute(statement)).mappings().first())
+
+    async def heartbeat(self, owner_id: UUID, turn_id: str) -> bool:
+        """Record that the owner's running turn is alive; whether it is still running."""
+        statement = (
+            update(turns)
+            .where(_mine(owner_id, turn_id), _RUNNING)
+            .values(heartbeat_at=func.now())
+            .returning(turns.c.id)
+        )
+        async with self._sessions.begin() as session:
+            return (await session.execute(statement)).first() is not None
+
+    async def request_cancel(self, owner_id: UUID, turn_id: str) -> bool:
+        """Ask the owner's open turn to stop; whether it was open (safe to repeat)."""
+        statement = (
+            update(turns)
+            .where(_mine(owner_id, turn_id), _OPEN)
+            .values(cancel_requested=True)
+            .returning(turns.c.id)
+        )
+        async with self._sessions.begin() as session:
+            return (await session.execute(statement)).first() is not None
+
+    async def cancel_requested(self, owner_id: UUID, turn_id: str) -> bool:
+        """Whether the user asked the owner's turn to stop."""
+        query = select(turns.c.cancel_requested).where(_mine(owner_id, turn_id))
+        async with self._sessions() as session:
+            return (await session.execute(query)).scalar_one_or_none() is True
+
+    async def interrupt_stale(
+        self,
+        older_than: timedelta,
+        reason: str,
+        key: ThreadKey | None = None,
+    ) -> list[ThreadKey]:
+        """Interrupt running turns whose heartbeat is older than ``older_than`` (their worker
+        was lost): of one thread when ``key`` is given, else of every user (recovery)."""
+        stale = _RUNNING & (
+            func.coalesce(turns.c.heartbeat_at, turns.c.updated_at) < func.now() - older_than
+        )
+        return await self._interrupt(stale if key is None else stale & _of(key), reason)
+
+    async def queue_position(self, turn_id: str) -> int:
+        """How many queued turns (of any user) were recorded before this one; a count only."""
+        created = select(turns.c.created_at).where(turns.c.id == turn_id).scalar_subquery()
+        query = select(func.count()).select_from(turns).where(_QUEUED, turns.c.created_at < created)
+        async with self._sessions() as session:
+            return int((await session.execute(query)).scalar_one())

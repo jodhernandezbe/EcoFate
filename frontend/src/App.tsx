@@ -130,6 +130,9 @@ function Workspace({ user, onSignOut, onGone }: WorkspaceProps) {
               if (chat.confirmation) void chat.answer(answers, summary, chat.confirmation);
             }}
             onResume={() => void chat.resume()}
+            status={chat.status}
+            stopping={chat.stopping}
+            onStop={() => void chat.stop()}
             onOpenSettings={() => setSettingsOpen(true)}
             onCollapse={collapse}
           />

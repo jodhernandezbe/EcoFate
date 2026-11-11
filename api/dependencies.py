@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import os
-from typing import cast
+from dataclasses import replace
+from functools import partial
+from typing import Annotated, cast
 
-from fastapi import Request
+from fastapi import Depends, Request
 
-from agent.completion import CompletionGuard
-from agent.graph import DEFAULT_SYSTEM_PROMPT
-from agent.guardrails import ScopeGuard
 from api.core.config import ui_settings
 from api.core.session_guard import auth_runtime
 from api.services.agent_runner import AgentRuntime
@@ -19,12 +18,17 @@ from api.services.monitoring.service import MonitoringService
 from api.services.projectors.rules import WorkspaceRules
 from api.services.quota import QuotaService
 from api.services.threads import ThreadStore
+from api.services.turn_queue import QueueSetup, TurnQueue
 from app.chat_model import build_chat_model
+from app.task_queue import InProcessEnqueuer
+from app.turns.job import run_background_turn
+from app.turns.keys import load_turn_keys
+from app.turns.recording import BackgroundServices
+from app.web_turn import web_turn_settings
 from config.agent import get_agent_settings
 from config.population import get_population_settings
 from config.telemetry import get_telemetry_settings
 from config.ui import UiSettings
-from prompts.registry import load_prompt
 
 
 def get_settings() -> UiSettings:
@@ -35,26 +39,6 @@ def get_settings() -> UiSettings:
 def get_key_services(request: Request) -> KeyServices:
     """The user key vault and the operator's keys (built at start-up, never per request)."""
     return cast(KeyServices, request.app.state.keys)
-
-
-def _scope_guard(ui: UiSettings) -> ScopeGuard:
-    names = ui.prompts
-    return ScopeGuard(
-        classifier_prompt=load_prompt(names.classifier),
-        fallback_reply=load_prompt(names.fallback),
-        history_window=names.history_window,
-    )
-
-
-def _completion_guard(ui: UiSettings) -> CompletionGuard | None:
-    names = ui.prompts
-    if names.max_nudges == 0:
-        return None
-    return CompletionGuard(
-        classifier_prompt=load_prompt(names.completion),
-        nudge=load_prompt(names.nudge),
-        max_nudges=names.max_nudges,
-    )
 
 
 def _workspace_rules(ui: UiSettings) -> WorkspaceRules:
@@ -69,20 +53,22 @@ def _workspace_rules(ui: UiSettings) -> WorkspaceRules:
 
 
 def get_runtime() -> AgentRuntime:
-    """The configured chat model factory, step limit, labels, prices, guard, prompt and rules."""
+    """The configured chat model factory, step limit, labels, prices, guard, prompt and rules
+    (the turn settings are the worker's own, from ``app.web_turn``)."""
     settings = get_agent_settings()
     ui = ui_settings()
+    turn = web_turn_settings(settings, ui)
     return AgentRuntime(
         build_model=lambda key: build_chat_model(settings, api_key=key),
-        recursion_limit=settings.recursion_limit,
+        recursion_limit=turn.recursion_limit,
         step_labels=ui.step_labels,
-        model_name=settings.model,
-        pricing=ui.pricing,
-        scope_guard=_scope_guard(ui),
-        completion_guard=_completion_guard(ui),
-        system_prompt=f"{load_prompt(DEFAULT_SYSTEM_PROMPT)}\n\n{load_prompt(ui.prompts.addendum)}",
+        model_name=turn.model_name,
+        pricing=turn.pricing,
+        scope_guard=turn.scope_guard,
+        completion_guard=turn.completion_guard,
+        system_prompt=turn.system_prompt,
         workspace_rules=_workspace_rules(ui),
-        telemetry=get_telemetry_settings(),
+        telemetry=turn.telemetry,
         max_resumes_per_turn=settings.max_resumes_per_turn,
     )
 
@@ -108,6 +94,39 @@ def get_monitoring(request: Request) -> MonitoringService:
     emails = auth_runtime(request).accounts.users.emails
     settings = get_telemetry_settings()
     return MonitoringService(settings, ui_settings().step_labels, os.environ, emails=emails)
+
+
+def _in_process(
+    setup: QueueSetup,
+    runtime: AgentRuntime,
+    threads: ThreadStore,
+    keys: KeyServices,
+    quota: QuotaService,
+) -> InProcessEnqueuer:
+    """Runs each turn in this process through the worker's own job (``[worker].eager``, tests)."""
+    services = BackgroundServices(
+        threads=threads,
+        bus=setup.bus,
+        load_keys=lambda user_id: load_turn_keys(keys.vault, keys.operator, user_id),
+        build_model=runtime.build_model,
+        refund=quota.refund,
+        turn_settings=runtime.turn_settings(),
+        settings=replace(setup.background, max_resumes=runtime.max_resumes_per_turn),
+    )
+    return InProcessEnqueuer(partial(run_background_turn, services=services), setup.running)
+
+
+def get_turn_queue(
+    request: Request,
+    runtime: Annotated[AgentRuntime, Depends(get_runtime)],
+    threads: Annotated[ThreadStore, Depends(get_threads)],
+    keys: Annotated[KeyServices, Depends(get_key_services)],
+    quota: Annotated[QuotaService, Depends(get_quota)],
+) -> TurnQueue:
+    """The turn streams and the queue: the worker's, or this process when none is configured."""
+    setup = cast(QueueSetup, request.app.state.turn_queue)
+    enqueuer = setup.enqueuer or _in_process(setup, runtime, threads, keys, quota)
+    return TurnQueue(setup.bus, enqueuer, setup.timing, setup.background)
 
 
 def get_client_address(request: Request) -> str:

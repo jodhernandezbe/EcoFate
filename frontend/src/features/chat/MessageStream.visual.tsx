@@ -131,3 +131,79 @@ describe("interrupted turn notice, in a real browser", () => {
     await expect.element(frame()).toMatchScreenshot(shot("stop-final"));
   });
 });
+
+const question: ChatMessage = {
+  id: "u",
+  role: "user",
+  text: "Assess testane",
+  error: null,
+  streaming: false,
+  tools: [],
+  interrupted: null,
+};
+const answering: ChatMessage = {
+  id: "a",
+  role: "assistant",
+  text: "I found the facilities and I am reading the toxicity values.",
+  error: null,
+  streaming: true,
+  tools: [
+    { callId: "c0", label: "Found facilities", state: "done" },
+    { callId: "c1", label: "Read toxicity", state: "running" },
+  ],
+  interrupted: null,
+};
+const running: ChatMessage[] = [question, answering];
+
+describe("live turn status, in a real browser", () => {
+  it("says how many turns are ahead while it waits for a worker", async () => {
+    render(
+      <Frame>
+        <MessageStream
+          messages={[question, { ...answering, text: "", tools: [] }]}
+          busy
+          status={{ phase: "queued", label: null, position: 2 }}
+          onStop={noop}
+        />
+      </Frame>,
+    );
+    await expect.element(frame()).toMatchScreenshot(shot("live-queued"));
+  });
+
+  it("names the running step and offers Stop", async () => {
+    render(
+      <Frame>
+        <MessageStream
+          messages={running}
+          busy
+          status={{
+            phase: "running_tool",
+            label: "Read toxicity",
+            position: null,
+          }}
+          onStop={noop}
+        />
+      </Frame>,
+    );
+    await expect.element(frame()).toMatchScreenshot(shot("live-running"));
+  });
+
+  it("dims Stop once a stop was asked for", async () => {
+    render(
+      <Frame>
+        <MessageStream
+          messages={running}
+          busy
+          stopping
+          status={{
+            phase: "running_tool",
+            label: "Read toxicity",
+            position: null,
+          }}
+          onStop={noop}
+        />
+      </Frame>,
+    );
+    await expect.element(frame()).toMatchScreenshot(shot("live-stopping"));
+  });
+});

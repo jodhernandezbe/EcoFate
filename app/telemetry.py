@@ -106,6 +106,38 @@ def configure_telemetry(settings: TelemetrySettings, protected: Iterable[str] = 
     )
 
 
+@contextmanager
+def enqueue_span(
+    settings: TelemetrySettings | None,
+    session_id: str,
+    turn: TurnSegment,
+    user_id: str,
+) -> Generator[None]:
+    """The span of handing a web turn to the worker: the trace context the task carries in its
+    headers is this span's, so the worker's turn span is its child. Records nothing without
+    monitoring."""
+    if settings is None or not settings.enabled:
+        yield
+        return
+    names = settings.attributes
+    attributes: dict[str, Any] = {
+        names.session_id: session_id,
+        names.turn_id: turn.turn_id,
+        names.resume_index: turn.resume_index,
+        names.user_id: user_id,
+    }
+    with logfire.span(settings.spans.web_enqueue, **attributes):
+        yield
+
+
+def instrument_task_queue(settings: TelemetrySettings) -> None:
+    """Propagate the trace through the task queue: the web program's turn span travels in each
+    task's headers (never its arguments) and the worker's spans join that trace. Call after
+    ``configure_telemetry`` in both processes; does nothing when monitoring is disabled."""
+    if settings.enabled:
+        logfire.instrument_celery()
+
+
 @lru_cache(maxsize=1)
 def _otel_client() -> Client:
     """The LangSmith client in OpenTelemetry mode: it writes to Logfire's tracer provider and
@@ -200,10 +232,12 @@ def usage_fields(
 
 @dataclass(frozen=True)
 class TurnSegment:
-    """Which web turn a span records, and which of its runs (0 first, then each resume)."""
+    """Which web turn a span records, which of its runs (0 first, then each resume) and, when a
+    background worker ran it, how many seconds it waited in the queue."""
 
     turn_id: str
     resume_index: int
+    queue_wait_seconds: float | None = None
 
 
 def _span_attributes(
@@ -224,6 +258,8 @@ def _span_attributes(
     }
     if segment is not None:
         attributes |= {names.turn_id: segment.turn_id, names.resume_index: segment.resume_index}
+        if segment.queue_wait_seconds is not None:
+            attributes[names.queue_wait_seconds] = segment.queue_wait_seconds
     if user_id is not None:
         attributes[names.user_id] = user_id
     return attributes

@@ -1,14 +1,14 @@
 # EcoFate entry points. Each target only wraps commands documented in the README.
 # `make help` lists them.
 
-SOURCES := agent app api commons config evals models prompts storage tools
+SOURCES := agent app api commons config evals models prompts storage tools worker
 PYTHON_FILES = $(shell git ls-files $(foreach dir,$(SOURCES),'$(dir)/*.py'))
 WARM := from huggingface_hub import snapshot_download; \
 	from config.read_across import get_read_across_settings as settings; \
 	model = settings().model; snapshot_download(model.name, revision=model.revision)
 
 .DEFAULT_GOAL := help
-.PHONY: help up down build logs shell warm test lint check eval catalogue migrate db test-db psql
+.PHONY: help up down build logs worker-logs shell warm test lint check eval catalogue migrate db test-db redis test-redis psql
 
 help: ## List the targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -24,6 +24,9 @@ build: ## Build the images
 
 logs: ## Follow the stack's logs
 	docker compose logs --follow
+
+worker-logs: ## Follow the background worker's logs (the turns it runs)
+	docker compose logs --follow worker
 
 shell: ## Open a shell in the running api container
 	docker compose exec api bash
@@ -61,6 +64,12 @@ test-db: db ## Run the PostgreSQL tests (pytest -m postgres) against the db serv
 	@set -a && . ./.env && set +a && \
 	ECOFATE_TEST_DATABASE_URL="$${ECOFATE_TEST_DATABASE_URL:-postgresql://$$POSTGRES_USER:$$POSTGRES_PASSWORD@127.0.0.1:5432/$$POSTGRES_DB}" \
 	uv run pytest -m postgres
+
+redis: ## Start only Redis, on 127.0.0.1:6379 (native runs and make test-redis)
+	docker compose --profile dev up --detach --wait redis redis-port
+
+test-redis: redis ## Run the Redis tests (pytest -m redis) against the redis service
+	ECOFATE_TEST_REDIS_URL="$${ECOFATE_TEST_REDIS_URL:-redis://127.0.0.1:6379/15}" uv run pytest -m redis
 
 psql: ## Open a psql shell in the db service
 	docker compose exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'

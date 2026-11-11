@@ -1,15 +1,25 @@
 # EcoFate local stack: `docker compose up --build`, then open http://127.0.0.1:8000.
 # Keys come from `.env` (copy `.env.example`); the OS keychain does not exist in the container.
 # PostgreSQL (`db`) keeps the conversations; `migrate` applies the schema before `api` starts.
+# `redis` carries the turn queue and each turn's live events; `worker` runs the turns `api` queues
+# (same image code, `worker` target). Neither Redis nor the worker is published on the host.
 name: ecofate
 
 x-database-url: &database-url
   # Built from the POSTGRES_* values in .env; points at the `db` service on the compose network.
   DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:?set POSTGRES_USER in .env}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:?set POSTGRES_DB in .env}
 
+x-redis-url: &redis-url
+  # The `redis` service on the compose network (not published on the host).
+  REDIS_URL: redis://redis:6379/0
+
 x-api-build: &api-build
   context: .
   target: api
+
+x-worker-build: &worker-build
+  context: .
+  target: worker
 
 services:
   db:
@@ -39,6 +49,34 @@ services:
       - "127.0.0.1:5432:5432"  # host loopback only
     depends_on:
       db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis:
+    # The turn queue (Celery broker) and the per-turn event streams. Not published: reachable only
+    # on the compose network. `make redis` (profile dev) adds `redis-port` for native runs.
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      start_period: 5s
+      retries: 10
+
+  redis-port:
+    # Development only (`--profile dev`): forwards the host's loopback port 6379 to `redis`, for
+    # native runs (`uv run python -m api` with a native worker) and `make test-redis`.
+    profiles: [dev]
+    image: alpine/socat:1.8.0.3
+    command: ["tcp-listen:6379,fork,reuseaddr", "tcp-connect:redis:6379"]
+    ports:
+      - "127.0.0.1:6379:6379"  # host loopback only
+    depends_on:
+      redis:
         condition: service_healthy
     restart: unless-stopped
 
@@ -73,7 +111,7 @@ services:
     image: ecofate-api:local
     env_file: .env
     environment:
-      <<: *database-url
+      <<: [*database-url, *redis-url]
     ports:
       - "127.0.0.1:8000:8000"  # host loopback only; never on all interfaces
     volumes:
@@ -81,6 +119,8 @@ services:
       - hf-cache:/home/ecofate/.cache/huggingface
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
@@ -96,7 +136,32 @@ services:
       start_period: 40s
       retries: 3
 
+  worker:
+    # Runs every chat turn (Celery, prefork). Gets the same .env as `api`: it decrypts each turn
+    # owner's OpenAI key itself and reads the operator's service keys from its environment.
+    # Shares the run-time caches (SCC index, PubChem answers, the Hugging Face model) with `api`.
+    build: *worker-build
+    image: ecofate-worker:local
+    env_file: .env
+    environment:
+      <<: [*database-url, *redis-url]
+    volumes:
+      - ecofate-cache:/app/.cache
+      - hf-cache:/home/ecofate/.cache/huggingface
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    # A warm shutdown lets running turns finish; one still running after this is killed and
+    # becomes interrupted/worker_lost (resumable).
+    stop_grace_period: 60s
+
 volumes:
   ecofate-cache:
   hf-cache:
   pgdata:
+  redisdata:

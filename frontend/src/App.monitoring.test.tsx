@@ -1,13 +1,14 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { meResponse, renderApp } from "./test/session";
+import { meResponse, renderApp, noCurrentThread } from "./test/session";
 
 
 function stubApi() {
   const fetchMock = vi.fn((input: RequestInfo | URL) => {
     const url = String(input);
     if (url.endsWith("/auth/me")) return Promise.resolve(meResponse());
+    if (url.endsWith("/chat/current-thread")) return Promise.resolve(noCurrentThread());
     let body: object = { openai: { configured: true }, services: { census: { available: false }, comptox: { available: false } } };
     if (url.endsWith("/settings/client")) body = { model: "test-model" };
     if (url.endsWith("/monitoring/sessions")) body = { state: "ok", message: null, sessions: [] };

@@ -170,6 +170,7 @@ describe("restore", () => {
     usage: totals,
     confirmation: null,
     interrupted: null,
+    running_turn: null,
   };
 
   it("replaces the conversation with the held messages, idle, without tool steps", () => {
@@ -263,6 +264,7 @@ describe("interrupted turns", () => {
     usage: totals,
     confirmation: null,
     interrupted: stop,
+    running_turn: null,
   });
 
   it("restores the stop onto the last assistant message of a held thread", () => {
@@ -341,5 +343,110 @@ describe("confirmation requests", () => {
     expect(chatReducer(initialChatState, { type: "restore", snapshot, ids: [] }).confirmation).toEqual(
       prompt,
     );
+  });
+});
+
+describe("live turn status", () => {
+  const status = (phase: "queued" | "running" | "thinking" | "running_tool", extra = {}): StreamEvent => ({
+    type: "turn_status",
+    seq: 5,
+    phase,
+    label: null,
+    position: null,
+    ...extra,
+  });
+
+  it("keeps the latest status while the turn runs", () => {
+    let state = chatReducer(sent, { type: "event", event: status("queued", { position: 2 }) });
+    expect(state.status).toEqual({ phase: "queued", label: null, position: 2 });
+    state = chatReducer(state, { type: "event", event: status("running_tool", { label: "Read toxicity" }) });
+    expect(state.status).toEqual({ phase: "running_tool", label: "Read toxicity", position: null });
+  });
+
+  it("clears the status when the turn ends, stops or the stream closes", () => {
+    const running = chatReducer(sent, { type: "event", event: status("thinking") });
+    const finished: StreamEvent = { type: "turn_finished", seq: 9 };
+    const stopped: StreamEvent = {
+      type: "turn_interrupted",
+      seq: 8,
+      reason: "cancelled",
+      resumable: true,
+      message: "You stopped this turn.",
+    };
+    expect(chatReducer(running, { type: "event", event: finished }).status).toBeNull();
+    expect(chatReducer(running, { type: "event", event: stopped }).status).toBeNull();
+    expect(chatReducer(running, { type: "closed" }).status).toBeNull();
+    expect(chatReducer(running, { type: "failed", message: "x" }).status).toBeNull();
+  });
+});
+
+describe("reattaching after a reload", () => {
+  const restoredState = chatReducer(initialChatState, {
+    type: "restore",
+    ids: ["u0", "a0"],
+    snapshot: {
+      thread_id: "t",
+      messages: [
+        { role: "user", text: "first" },
+        { role: "assistant", text: "First answer." },
+      ],
+      workspace: {} as never,
+      usage: {
+        calls: 0,
+        input_tokens: 0,
+        cached_input_tokens: 0,
+        output_tokens: 0,
+        complete: true,
+        cost_usd: null,
+        cost_status: "unpriced",
+        priced_on: null,
+      },
+      confirmation: null,
+      interrupted: null,
+      running_turn: null,
+    },
+  });
+
+  it("shows the running turn's question and a streaming answer for its events", () => {
+    const state = chatReducer(restoredState, {
+      type: "reattach",
+      userId: "u1",
+      assistantId: "a1",
+      question: "second",
+      resumed: false,
+    });
+    expect(state.busy).toBe(true);
+    expect(state.messages.map((m) => [m.id, m.role, m.text, m.streaming])).toEqual([
+      ["u0", "user", "first", false],
+      ["a0", "assistant", "First answer.", false],
+      ["u1", "user", "second", false],
+      ["a1", "assistant", "", true],
+    ]);
+  });
+
+  it("continues the last answer for a resumed turn", () => {
+    const state = chatReducer(restoredState, {
+      type: "reattach",
+      userId: "u1",
+      assistantId: "a1",
+      question: "first",
+      resumed: true,
+    });
+    expect(state.messages.map((m) => [m.id, m.streaming])).toEqual([
+      ["u0", false],
+      ["a0", true],
+    ]);
+    expect(state.busy).toBe(true);
+  });
+
+  it("shows no question when none was recorded", () => {
+    const state = chatReducer(restoredState, {
+      type: "reattach",
+      userId: "u1",
+      assistantId: "a1",
+      question: null,
+      resumed: false,
+    });
+    expect(state.messages.map((m) => m.id)).toEqual(["u0", "a0", "a1"]);
   });
 });

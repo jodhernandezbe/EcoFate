@@ -37,6 +37,7 @@ The `Makefile` is the index of everyday commands (`make help` lists them):
 | `make down` | stop the stack (volumes are kept) |
 | `make build` | build the images |
 | `make logs` | follow the logs |
+| `make worker-logs` | follow the background worker's logs (each turn it runs, start to end) |
 | `make shell` | open a shell in the running `api` container |
 | `make warm` | download the pinned read-across encoder into its volume |
 | `make test` | run the unit tests on the host (uv) |
@@ -47,11 +48,13 @@ The `Makefile` is the index of everyday commands (`make help` lists them):
 | `make migrate` | apply the database migrations (`python -m storage upgrade` in the one-shot `migrate` service) |
 | `make db` | start only PostgreSQL, published on `127.0.0.1:5432` (native runs and `make test-db`) |
 | `make test-db` | run the PostgreSQL tests (`pytest -m postgres`) against the `db` service |
+| `make redis` | start only Redis, published on `127.0.0.1:6379` (native runs and `make test-redis`) |
+| `make test-redis` | run the Redis tests (`pytest -m redis`) against the `redis` service |
 | `make psql` | open a `psql` shell in the `db` service |
 
 The `dev` profile adds `mailpit`, a mail catcher: the verification and password-reset emails land in its inbox (http://127.0.0.1:8025) instead of being sent anywhere. Without the profile (`docker compose up`) no mail server runs, so point the `SMTP_*` variables in `.env` at a real SMTP server first.
 
-The stack has three services: `db` (PostgreSQL 16, data in the `pgdata` volume, not published to the host), `migrate` (applies the schema, then exits) and `api`, which starts only after `migrate` succeeded. `.env` sets `POSTGRES_USER`, `POSTGRES_PASSWORD` and `POSTGRES_DB`; compose builds the services' `DATABASE_URL` from them. `docker compose down -v` deletes the database volume (every conversation).
+The stack has five services: `db` (PostgreSQL 16, data in the `pgdata` volume, not published to the host), `redis` (the turn queue and each turn's live events, not published), `migrate` (applies the schema, then exits), `api` (the web program; it queues each chat turn and never runs the agent) and `worker` (the background worker that runs the turns, same code as `api`, image target `worker`). `api` and `worker` start only after `migrate` succeeded and `db` and `redis` are healthy. `.env` sets `POSTGRES_USER`, `POSTGRES_PASSWORD` and `POSTGRES_DB`; compose builds the services' `DATABASE_URL` from them. `docker compose down -v` deletes the database volume (every conversation).
 
 `GET /api/health` answers `{"status": "ok"}` only while the server is up and PostgreSQL answers, and 503 `{"status": "unavailable"}` otherwise; the container health check uses it.
 
@@ -124,9 +127,12 @@ A local split-screen app: the assessment overview and facility map on the left, 
 
 ```bash
 npm --prefix frontend ci && npm --prefix frontend run build   # once, and after frontend changes
-make db && make migrate                                        # PostgreSQL on 127.0.0.1:5432 (Docker)
+make db && make migrate && make redis                          # PostgreSQL :5432 and Redis :6379 (Docker)
 uv run python -m api                                           # http://127.0.0.1:8000
+uv run celery -A worker.celery_app worker --loglevel=INFO      # another terminal: runs the turns
 ```
+
+Every chat turn runs in the background worker, not in the API process: the API records the turn, queues it on Redis and streams its events back as the worker writes them. To run turns inside the API instead (no Redis, no worker; single-user development only), set `[worker].eager = true` in `config/settings.toml`.
 
 The web program needs PostgreSQL: it reads the connection URL from `DATABASE_URL` (in `.env`, see `.env.example`) and refuses to start when it is missing, unreachable or not migrated, naming `make migrate`. The command line (`python -m app`) does not need a database.
 
@@ -135,7 +141,8 @@ For frontend work with hot reload, run `uv run python -m api` in one terminal an
 The left rail has these entries (Monitoring only for administrators), with **Account** and **Settings** at the bottom:
 
 - **Workspace**: the analysis view.
-- **Resume**: when a turn stops for a reason you can fix (your OpenAI account ran out of credits, the key was rejected, OpenAI rate-limited or failed, the run reached its step limit, or the server stopped mid-turn), the chat keeps the partial answer and tool steps and says why, with a **Resume** button (and **Open Settings** for a rejected key). Resume continues from the last finished step: your message is not sent again and finished tool calls do not run again, and the usage of both parts counts as one turn. A turn can be resumed up to `[agent].max_resumes_per_turn` times (3 by default); sending a new message instead abandons the stopped turn. Unexpected errors are not resumable.
+- **While a turn runs**: a line under the answer says what is happening ("Waiting for a worker (about 2 ahead)", "Thinking", "Running: Fetching chemical properties"), next to a **Stop** button; the header says "Queued" while the turn waits. **Stop** ends the turn after its current step (that step's results are kept) and offers **Resume**. Reloading the page, or a dropped connection, picks up the same turn where the page left it: nothing is shown twice. The turn keeps running in the worker even when the page is closed.
+- **Resume**: when a turn stops for a reason you can fix (your OpenAI account ran out of credits, the key was rejected, OpenAI rate-limited or failed, the run reached its step limit, the worker stopped mid-turn, you pressed Stop, or the turn ran past the worker's time limit), the chat keeps the partial answer and tool steps and says why, with a **Resume** button (and **Open Settings** for a rejected key). Resume continues from the last finished step: your message is not sent again and finished tool calls do not run again, and the usage of both parts counts as one turn. A turn can be resumed up to `[agent].max_resumes_per_turn` times (3 by default); sending a new message instead abandons the stopped turn. Unexpected errors are not resumable.
 - **Clear workspace**: asks first, then discards the conversation, overview, charts and map (on the server too).
 - **Generate report**: downloads a Word document laid out like an EPA screening-level assessment (summary, chemical properties, data sources, releases, exposure, risk, uncertainties, and the assistant's last answer labelled as model-generated). Every value in it comes from the dashboard.
 - **Monitoring**: lists recorded agent sessions (see [Monitoring](#monitoring)).
@@ -221,8 +228,12 @@ The code is split into packages with one-way dependencies: `agent` -> `tools` ->
                              redaction.py (log redaction), telemetry.py, usage_meter.py
       turns/                 the one turn runner: execute_turn(...) yields transport-neutral TurnEvents
                              (keys, agent build, span, usage, failure reasons); every front end uses it
-    api/                     web backend (FastAPI, SSE); services/agent_runner.py presents TurnEvents as
-                             wire events and never runs the graph itself
+      turns/job.py           run_background_turn: runs a queued turn, records it, publishes its events
+      turns/bus.py           per-turn event stream (Redis Streams; in memory for tests)
+      task_queue.py          the Celery queue both sides share (ids-only task messages)
+    api/                     web backend (FastAPI, SSE); queues each turn and relays its events
+                             (services/agent_runner.py presents them); never runs the agent
+    worker/                  the Celery worker that runs the queued turns (imports app, never api)
     commons/                 generic pure utilities shared across layers (units.py: Pint)
     models/                  pure NumPy physics, no LLM/LangChain imports, grouped by what they model
       transport/             dispersion.py (sigmas, Gaussian plume), plume_rise.py, wind_profile.py,
@@ -252,9 +263,24 @@ The web program keeps every conversation in PostgreSQL, so a thread survives a r
 
 - **What is stored:** the message history (LangGraph checkpoints, in tables the checkpoint library manages), the session's token usage, the tool calls and results the dashboard is rebuilt from, the latest workspace, an open confirmation request, and the values the user supplied or declined. Every thread belongs to the user who started it: its rows carry the owner's id, the thread is identified by owner and thread id together (two users may pick the same id), and every query filters by the signed-in user.
 - **One turn at a time:** a turn claims its thread with a lease (`[database].turn_lease_seconds`); a second turn on the same thread is answered 409, and a crashed process's lease expires.
-- **Turn status:** every turn has a row in `turns` (`running`, `interrupted`, `completed` or `failed`, with its reason, resume count and times); at most one turn per thread is open (a partial unique index). At start-up, turns a stopped server left running become `interrupted` (`worker_lost`) so they can be resumed.
+- **Turn status:** every turn has a row in `turns` (`queued`, `running`, `interrupted`, `completed` or `failed`, with its reason, resume count, times, the worker's heartbeat, a cancel request and, for a new turn, its input); at most one turn per thread is open (a partial unique index). A running turn whose worker's heartbeat stops for `[worker].stale_after_seconds` becomes `interrupted` (`worker_lost`) so it can be resumed; nothing is re-run without the user.
 - **Retention:** threads idle for `[database].thread_retention_days` are deleted with their history by a purge that runs every `[database].purge_interval_minutes`; a running thread is never purged.
 - **Where it runs:** the `db` compose service, locally and on the server. The schema changes only through Alembic migrations (`make migrate`); the web program never migrates by itself. Settings live in `[database]` in `config/settings.toml`; the URL, which carries the password, only in the environment.
+
+### Background worker (Redis and Celery)
+
+Agent turns run for minutes, so they run in a separate, bounded pool instead of the request that started them:
+
+    browser --POST /chat/stream--> api --(turn id)--> redis queue --> worker (Celery, prefork)
+       ^                            |                                   |  runs execute_turn, records
+       |                            | relays + presents                 |  status, tool results, usage
+       +----SSE (seq ids) <---------+<---- redis stream turn:{id}:{n} <-+  publishes each event
+
+- **What a task carries:** the turn id and its owner's id, nothing else (checked before sending). The worker reads the turn's input from PostgreSQL, decrypts the owner's OpenAI key itself, reads the operator's keys from its environment, and drops them when the turn ends.
+- **Live events:** each turn segment has a Redis Stream, capped (`[worker].event_stream_max_length`) and kept `[worker].event_ttl_seconds` after it ends. Every event carries its position as the SSE id, so a reloaded page or a dropped connection reattaches with `Last-Event-ID` (`GET /api/v1/chat/turns/{id}/events`) and misses nothing.
+- **Stop and limits:** `POST /api/v1/chat/turns/{id}/cancel` stops a turn after its current step. A turn past `[worker].soft_time_limit_seconds` stops the same way (`time_limit`); the hard limit kills the child as a backstop. Tasks are acknowledged late, prefetched one at a time and never re-run automatically.
+- **Watching it:** `make worker-logs` (or `docker compose logs -f worker`) shows each turn the worker runs, by turn id only. With monitoring on, one Logfire trace spans the API's enqueue span and the worker's turn span, which records how long the turn waited in the queue.
+- **Settings:** `[worker]` in `config/settings.toml` (queue, concurrency, time limits, heartbeat, stream sizes); the Redis URL only in the environment (`REDIS_URL`).
 
 ### Tools
 

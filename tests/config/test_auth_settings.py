@@ -25,6 +25,7 @@ trace_url_template = "https://x.test/{trace_id}"
 [telemetry.spans]
 cli_session = "cli run"
 web_turn = "web turn"
+web_enqueue = "web enqueue"
 
 [telemetry.attributes]
 session_id = "session.id"
@@ -36,6 +37,7 @@ session_usage_prefix = "s."
 turn_id = "t"
 resume_index = "r"
 user_id = "enduser.id"
+queue_wait_seconds = "w"
 
 [telemetry.bridge]
 operation = "op"

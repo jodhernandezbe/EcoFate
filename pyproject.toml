@@ -10,6 +10,7 @@ requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.20.1",
     "argon2-cffi>=25.1.0",
+    "celery[redis]>=5.7.0",
     "chromadb>=1.5.9",
     "cryptography>=46.0.0",
     "email-validator>=2.3.0",
@@ -22,7 +23,7 @@ dependencies = [
     "langchain-openai>=1.7.0",
     "langgraph>=0.2.0",
     "langgraph-checkpoint-postgres>=3.2.0",
-    "logfire>=5.4.0",
+    "logfire[celery]>=5.4.0",
     "minsearch>=0.0.5",
     "numpy>=2.0.0",
     "openai>=1.50.0",
@@ -32,6 +33,7 @@ dependencies = [
     "python-docx>=1.1.2",
     "python-dotenv>=1.0.0",
     "rdkit>=2026.9.1",
+    "redis>=8.1.0",
     "sqlalchemy[asyncio]>=2.1.8",
     "torch>=2.14.1",
     "transformers>=5.20.2",
@@ -75,7 +77,7 @@ quote-style = "double"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
-addopts = '-m "not smoke and not eval and not postgres"'
+addopts = '-m "not smoke and not eval and not postgres and not redis"'
 markers = [
     "smoke: live-network checks against real services (run with: pytest -m smoke)",
     "comptox: smoke test that needs the CompTox API key (skipped when it is not set)",
@@ -83,12 +85,13 @@ markers = [
     "logfire: smoke test that needs the Logfire read token (skipped when it is not set)",
     "postgres: tests against a real PostgreSQL (run with: make test-db; needs ECOFATE_TEST_DATABASE_URL)",
     "eval: agent evaluation with a real chat model (run with: pytest -m eval)",
+    "redis: tests against a real Redis (run with: pytest -m redis; needs ECOFATE_TEST_REDIS_URL)",
 ]
 
 [tool.pyright]
 pythonVersion = "3.13"
 typeCheckingMode = "strict"
-include = ["agent", "app", "api", "commons", "config", "evals", "models", "prompts", "scripts", "storage", "tools", "tests"]
+include = ["agent", "app", "api", "commons", "config", "evals", "models", "prompts", "scripts", "storage", "tools", "tests", "worker"]
 venvPath = "."
 venv = ".venv"
 # langgraph ships partial typing; keep strict for our code, tolerate its gaps.

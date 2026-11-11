@@ -100,7 +100,8 @@ async def test_turn_streams_tokens_then_the_final_message() -> None:
     events = await _run("hi", _bench(), _factory(scripted("hello there world")))
     assert [e.type for e in events][0] == "turn_started"
     assert [e.type for e in events][-1] == "turn_finished"
-    assert [e.seq for e in events] == list(range(len(events)))
+    seqs = [e.seq for e in events]
+    assert seqs == sorted(set(seqs))  # strictly increasing
     tokens = "".join(e.text for e in events if isinstance(e, Token))
     assert tokens == "hello there world"
     final = [e for e in events if isinstance(e, AssistantMessage)]
@@ -299,7 +300,8 @@ async def test_each_tool_call_is_a_started_and_a_finished_status(
     assert (
         kinds.index("tool_status") < kinds.index("assistant_message") < kinds.index("turn_finished")
     )
-    assert [e.seq for e in events] == list(range(len(events)))
+    seqs = [e.seq for e in events]
+    assert seqs == sorted(set(seqs))  # strictly increasing
 
 
 async def test_an_unlabelled_tool_is_shown_by_its_name(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -551,7 +553,7 @@ async def test_an_in_scope_turn_reports_the_scope_then_runs_the_agent() -> None:
         [reply("an answer", 50, 5)],
         classifier=[verdict(True, usage=(20, 4))],
     )
-    events = await _guarded_turn(model)
+    events = [e for e in await _guarded_turn(model) if e.type != "turn_status"]
     kinds = [e.type for e in events]
     assert kinds[:2] == ["turn_started", "scope"]
     scope = events[1]
@@ -563,7 +565,9 @@ async def test_an_in_scope_turn_reports_the_scope_then_runs_the_agent() -> None:
 
 async def test_an_off_topic_turn_streams_the_pivot_and_runs_no_agent_or_tool() -> None:
     model = ScriptedChatModel([reply("never", 1, 1)], classifier=[verdict(False, PIVOT)])
-    events = await _guarded_turn(model, "write a snake game")
+    events = [
+        e for e in await _guarded_turn(model, "write a snake game") if e.type != "turn_status"
+    ]
     assert [e.type for e in events] == [
         "turn_started",
         "scope",

@@ -33,6 +33,7 @@ from storage.keys import ThreadKey
 from storage.turn_model import (
     OPEN_STATUSES,
     REASONED_STATUSES,
+    PlannedInput,
     Turn,
     TurnStatus,
     TurnTransitionError,
@@ -258,27 +259,31 @@ class InMemoryTurnStore:
         changes: dict[str, Any] = {"status": status, "reason": reason, "updated_at": now}
         if status is TurnStatus.RUNNING:
             changes |= {"started_at": turn.started_at or now, "finished_at": None}
+            changes["heartbeat_at"] = now
+        if status is TurnStatus.QUEUED:
+            changes |= {"finished_at": None, "heartbeat_at": None, "cancel_requested": False}
         if status in (TurnStatus.COMPLETED, TurnStatus.FAILED):
             changes["finished_at"] = now
         self._turns[turn.id] = replace(turn, **changes, **extra)
         return self._turns[turn.id]
 
-    async def begin(self, key: ThreadKey) -> Turn | None:
+    async def begin(self, key: ThreadKey, planned: PlannedInput | None = None) -> Turn | None:
         if self._open(key) is not None:
             return None
         self._count += 1
         now = self._clock()
         turn = Turn(
-            f"turn-{self._count}",
+            f"{self._count:032x}",
             key.owner_id,
             key.thread_id,
-            TurnStatus.RUNNING,
+            TurnStatus.QUEUED,
             None,
             0,
             now,
-            now,
+            None,
             now,
             None,
+            planned=planned,
         )
         self._turns[turn.id] = turn
         return turn
@@ -289,7 +294,7 @@ class InMemoryTurnStore:
             return None
         if turn.resume_count >= max_resumes or self._open(turn.key) is not None:
             return None
-        return self._set(turn, TurnStatus.RUNNING, None, resume_count=turn.resume_count + 1)
+        return self._set(turn, TurnStatus.QUEUED, None, resume_count=turn.resume_count + 1)
 
     async def move(
         self,
@@ -326,6 +331,56 @@ class InMemoryTurnStore:
 
     async def latest(self, key: ThreadKey) -> Turn | None:
         return next((t for t in reversed(self._turns.values()) if t.key == key), None)
+
+    async def get(self, owner_id: UUID, turn_id: str) -> Turn | None:
+        return self._mine(owner_id, turn_id)
+
+    async def start(self, owner_id: UUID, turn_id: str) -> Turn | None:
+        turn = self._mine(owner_id, turn_id)
+        if turn is None or turn.status is not TurnStatus.QUEUED:
+            return None
+        return self._set(turn, TurnStatus.RUNNING, None)
+
+    async def heartbeat(self, owner_id: UUID, turn_id: str) -> bool:
+        turn = self._mine(owner_id, turn_id)
+        if turn is None or turn.status is not TurnStatus.RUNNING:
+            return False
+        self._turns[turn_id] = replace(turn, heartbeat_at=self._clock())
+        return True
+
+    async def request_cancel(self, owner_id: UUID, turn_id: str) -> bool:
+        turn = self._mine(owner_id, turn_id)
+        if turn is None or turn.status not in OPEN_STATUSES:
+            return False
+        self._turns[turn_id] = replace(turn, cancel_requested=True)
+        return True
+
+    async def cancel_requested(self, owner_id: UUID, turn_id: str) -> bool:
+        turn = self._mine(owner_id, turn_id)
+        return turn is not None and turn.cancel_requested
+
+    async def interrupt_stale(
+        self,
+        older_than: timedelta,
+        reason: str,
+        key: ThreadKey | None = None,
+    ) -> list[ThreadKey]:
+        cutoff = self._clock() - older_than
+        stale = [
+            t
+            for t in self._turns.values()
+            if t.status is TurnStatus.RUNNING
+            and (t.heartbeat_at or t.updated_at) < cutoff
+            and (key is None or t.key == key)
+        ]
+        for turn in stale:
+            self._set(turn, TurnStatus.INTERRUPTED, reason)
+        return [turn.key for turn in stale]
+
+    async def queue_position(self, turn_id: str) -> int:
+        ids = list(self._turns)
+        before = ids[: ids.index(turn_id)] if turn_id in ids else []
+        return sum(1 for i in before if self._turns[i].status is TurnStatus.QUEUED)
 
     def forget(self, key: ThreadKey) -> None:
         """Delete the thread's turns (its thread was deleted)."""
@@ -379,6 +434,11 @@ class InMemoryThreadStore:
         row.last_used_at = self._clock()
         return True
 
+    async def extend(self, key: ThreadKey) -> None:
+        """Renew a held lease (the worker's heartbeat); an idle thread stays idle."""
+        if self._busy(key):
+            self._rows[key].busy_until = self._clock() + self._lease
+
     async def release(self, key: ThreadKey) -> None:
         if key in self._rows:
             self._rows[key].busy_until = None
@@ -388,6 +448,15 @@ class InMemoryThreadStore:
 
     async def holds(self, key: ThreadKey) -> bool:
         return key in self._rows
+
+    async def latest_thread(self, owner_id: UUID) -> str | None:
+        mine = sorted(
+            (key.thread_id, row.last_used_at)
+            for key, row in self._rows.items()
+            if key.owner_id == owner_id
+        )
+        # Newest first, then the smallest id (as the PostgreSQL store orders them).
+        return max(mine, key=lambda item: item[1])[0] if mine else None
 
     async def running(self, key: ThreadKey) -> bool:
         return self._busy(key)

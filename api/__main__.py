@@ -29,7 +29,7 @@ from api.core.logging_filter import uvicorn_log_config
 from api.main import create_app
 from api.rotate_keys_command import main as rotate_keys
 from api.services.key_setup import process_secret_values
-from app.telemetry import configure_telemetry
+from app.telemetry import configure_telemetry, instrument_task_queue
 from config.telemetry import get_telemetry_settings
 
 BUILD_HINT = (
@@ -80,6 +80,7 @@ def main(argv: Sequence[str] = ()) -> None:
     load_dotenv()
     # after .env, which holds the token; every secret read from it is hidden in the spans
     configure_telemetry(get_telemetry_settings(), process_secret_values(os.environ))
+    instrument_task_queue(get_telemetry_settings())  # the turn's trace continues in the worker
     settings = ui_settings()
     require_built_frontend(settings.frontend_dist)
     uvicorn.run(

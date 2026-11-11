@@ -50,12 +50,20 @@ See proposal.md for motivation. Starting point after roadmap steps 1-5:
    Alternative considered: let the worker import `api.services`, rejected because the two
    transports would depend on each other and the layering rule would carry a permanent
    exception.
-3. **Run in the worker, present in the API.** The worker runs `execute_turn` and appends each
-   `TurnEvent` to the bus, serialised (`ToolMessage`/`AIMessage` via LangChain's
-   `messages_to_dict`), with a `seq`. `relay_turn(turn_id, after_seq)` in the API reads the
-   bus and feeds the events through the same presenter as today (wire events, step labels,
-   workspace rebuild, pending confirmation, usage summary), so the browser sees exactly the
-   events it sees today. With `task_always_eager` the same code runs in-process.
+3. **Run and record in the worker, present in the API.** The worker runs `execute_turn` and
+   does every durable write of the turn: the status and reason, the tool messages kept for
+   the workspace, the pending confirmation, usage, the quota refund and releasing the
+   thread's lease. It appends each `TurnEvent` to the bus, serialised (`ToolMessage`/`AIMessage`
+   via LangChain's `messages_to_dict`), with a `seq`, followed by the turn's outcome (final
+   status, reason, whether it can be resumed). `relay_turn(turn_id, after_seq)` in the API
+   reads the bus and only presents: wire events, step labels, fixed messages, the usage
+   summary, and the workspace rebuilt from the stored tool messages after each tool batch
+   (always sent then, so every reader sees the same events). The wire `seq` of a relayed event
+   is derived from its bus `seq` (`bus_seq * 16 + index`), so `Last-Event-ID` maps back to a
+   bus position. A turn nobody watched still completes; the snapshot rebuilds a workspace
+   older than the thread's tool messages. With `task_always_eager` the same code runs
+   in-process. (Revised during apply: presenting in the API with its bookkeeping left a turn
+   with no reader unfinished and made two readers write the tool messages twice.)
 4. **Redis Streams, not plain pub/sub.** `XADD turn:{id}:events MAXLEN ~ N` with the event
    JSON and `seq`; the relay uses `XREAD BLOCK` from `Last-Event-ID`. A stream keeps events
    for a late or reconnecting reader; pub/sub drops them. The stream expires
@@ -94,6 +102,33 @@ See proposal.md for motivation. Starting point after roadmap steps 1-5:
 11. **Queue position.** The API computes it from the count of `queued` turns created before
     this one and sends it in `turn_status(queued)`; the worker sends `running` when it
     starts. An approximation, labelled "about N ahead".
+
+12. **Placement under the import rules (revised during apply).** `api` may not import `worker`,
+    yet it reads the event stream and, in eager mode, runs the job itself. So everything both
+    sides share lives in `app`: `app/turns/bus.py` (`TurnEventBus`, `RedisStreamBus`,
+    `MemoryBus`; the tasks named `worker/events.py`), `app/turns/codec.py` (event records),
+    `app/turns/recording.py` and `app/turns/job.py` (`run_background_turn`: run, record,
+    publish), `app/task_queue.py` (`build_celery`, `TurnJob`, `CeleryEnqueuer`,
+    `InProcessEnqueuer`; the API enqueues by task name) and `app/web_turn.py` (the one builder
+    of web turn settings). `worker/` is a thin Celery shell: `celery_app.py` (app, signals),
+    `tasks.py`, `resources.py` (per-child loop and services), `recovery.py`. Eager mode uses
+    `InProcessEnqueuer` (the same async job on the API's loop) rather than Celery's
+    `task_always_eager`, which would run the task synchronously inside the request.
+13. **Time limits and process model (revised during apply).** Celery's soft limit raises at an
+    arbitrary await inside the event loop and can leave a turn half recorded, so the job
+    enforces the soft limit itself: a supervisor sets the stop at the soft limit (checked after
+    each graph step, like a cancel) and abandons a step that has not returned halfway to the
+    hard limit; Celery keeps only the hard limit (`task_time_limit`), whose kill is recovered as
+    `time_limit` through `task_failure`. Each prefork child keeps one event loop for its
+    resources and runs every task with `loop.run_until_complete` (async engines and pools are
+    bound to their loop, so `asyncio.run` per task would break them). No result backend: a task
+    returns nothing. The stream's end is published after the final status is stored and the
+    lease released, so a browser that sees `turn_finished` can send its next message at once.
+
+14. **Reload finds its thread on the server (added during apply).** The page kept no thread id
+    across a reload (browser storage holds panel sizes only), so it could not reattach.
+    `GET /api/v1/chat/current-thread` answers the snapshot of the user's most recently used
+    thread; the page restores it on load and reattaches when it reports a running turn.
 
 ## Risks / Trade-offs
 

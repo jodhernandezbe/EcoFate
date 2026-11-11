@@ -27,6 +27,8 @@ class FailureReason(StrEnum):
     PROVIDER_DOWN = "provider_down"  # the provider failed on its side or could not be reached
     STEP_LIMIT = "step_limit"
     WORKER_LOST = "worker_lost"  # the process running the turn stopped (never classified)
+    CANCELLED = "cancelled"  # the user stopped the turn between two graph steps
+    TIME_LIMIT = "time_limit"  # the turn ran past the worker's soft time limit
     SUPERSEDED = "superseded"  # a new message abandoned the interrupted turn (never classified)
     UNEXPECTED = "unexpected"
 
@@ -43,8 +45,12 @@ RESUMABLE_REASONS = frozenset(
         FailureReason.PROVIDER_DOWN,
         FailureReason.STEP_LIMIT,
         FailureReason.WORKER_LOST,
+        FailureReason.CANCELLED,
+        FailureReason.TIME_LIMIT,
     },
 )
+# Reasons a turn stops for on purpose (the user or a limit): logged without a warning.
+STOP_REASONS = frozenset({FailureReason.CANCELLED, FailureReason.TIME_LIMIT})
 
 
 def resumable(reason: FailureReason) -> bool:
@@ -60,8 +66,18 @@ class KeysUnavailableError(Exception):
         self.reason = reason
 
 
+class StopRequestedError(Exception):
+    """Thrown into a running turn to stop it after the current graph step; ``reason`` says why
+    (``cancelled`` or ``time_limit``)."""
+
+    def __init__(self, reason: FailureReason) -> None:
+        super().__init__(reason.value)
+        self.reason = reason
+
+
 _NO_CREDIT_CODES = frozenset({"insufficient_quota", "credit_balance_exhausted"})
 _NETWORK_FAILURES = frozenset({"APIConnectionError", "APITimeoutError", "ConnectTimeout"})
+_TIME_LIMITS = frozenset({"SoftTimeLimitExceeded"})  # the task queue's soft limit (by name)
 _HTTP_UNAUTHORIZED, _HTTP_FORBIDDEN, _HTTP_RATE_LIMITED, _HTTP_SERVER_ERROR = 401, 403, 429, 500
 
 
@@ -102,7 +118,7 @@ def _by_status(exc: BaseException, status: int) -> FailureReason | None:
 
 def classify(exc: BaseException) -> FailureReason:
     """The reason a turn failed with ``exc``; ``unexpected`` when it is no known failure."""
-    if isinstance(exc, KeysUnavailableError):
+    if isinstance(exc, KeysUnavailableError | StopRequestedError):
         return exc.reason
     if isinstance(exc, GraphRecursionError):
         return FailureReason.STEP_LIMIT
@@ -110,6 +126,9 @@ def classify(exc: BaseException) -> FailureReason:
     reason = _by_status(exc, status) if status is not None else None
     if reason is not None:
         return reason
-    if any(cls.__name__ in _NETWORK_FAILURES for cls in type(exc).__mro__):
+    names = {cls.__name__ for cls in type(exc).__mro__}
+    if names & _NETWORK_FAILURES:
         return FailureReason.PROVIDER_DOWN
+    if names & _TIME_LIMITS:
+        return FailureReason.TIME_LIMIT
     return FailureReason.UNEXPECTED

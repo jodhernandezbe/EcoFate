@@ -2,10 +2,11 @@ import type { ReactNode } from "react";
 
 import { CopilotToggle } from "./CopilotToggle";
 
-export type AssistantStatus = "idle" | "thinking" | "stopped" | "error";
+export type AssistantStatus = "idle" | "queued" | "thinking" | "stopped" | "error";
 
 const STATUS: Record<AssistantStatus, { label: string; dot: string }> = {
   idle: { label: "Ready", dot: "bg-ok" },
+  queued: { label: "Queued", dot: "bg-fg2" },
   thinking: { label: "Thinking", dot: "bg-warn animate-pulse" },
   stopped: { label: "Stopped", dot: "bg-fg2" },
   error: { label: "Needs attention", dot: "bg-bad" },

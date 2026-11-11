@@ -10,8 +10,8 @@ assessments. Python 3.13, managed with uv.
     uv run ruff format .   # format (run before every commit)
     uv run ruff check .    # lint
     uv run pyright         # strict type check
-    uv run bandit -c pyproject.toml -r agent app api commons config evals models prompts storage tools   # security lint
-    uv run python scripts/check_function_length.py --max 18 $(git ls-files 'agent/*.py' 'app/*.py' 'api/*.py' 'commons/*.py' 'config/*.py' 'evals/*.py' 'models/*.py' 'prompts/*.py' 'storage/*.py' 'tools/*.py')   # function length
+    uv run bandit -c pyproject.toml -r agent app api commons config evals models prompts storage tools worker   # security lint
+    uv run python scripts/check_function_length.py --max 18 $(git ls-files 'agent/*.py' 'app/*.py' 'api/*.py' 'commons/*.py' 'config/*.py' 'evals/*.py' 'models/*.py' 'prompts/*.py' 'storage/*.py' 'tools/*.py' 'worker/*.py')   # function length
     uv run pytest -m eval  # agent evaluations (OpenAI key, costs tokens; not in pre-commit)
     npm --prefix frontend run check   # frontend (after `npm --prefix frontend ci`); `run build` then `uv run python -m api` serves the UI
     make check / make test-db / docker compose up   # all of the above / PostgreSQL tests (`postgres` marker) / the containerised app (`make help`)
@@ -34,27 +34,27 @@ never put secrets in code or images (detect-secrets guards `.secrets.baseline`).
 - `commons/` small, generic, pure utilities used across layers (e.g. `units.py`, Pint-based
   unit conversion). No project knowledge, no I/O, no config reads: callers pass in what they need.
 - `app/`     the program: builds the `[agent]` chat model (only here), key vault, runs the agent.
-  `api/` is the local web backend (FastAPI, SSE); `frontend/` the React app (only `/api`).
+  `api/` is the local web backend (FastAPI, SSE; it queues turns, never runs them); `worker/` the
+  Celery worker that runs them (Redis queue and event streams); `frontend/` the React app (only `/api`).
 - `storage/` PostgreSQL for the web program: engine, tables, Alembic migrations, thread store.
 - `evals/`   agent evaluation (outer edge): real chat model, recorded tool outputs, Evidently.
 - `tests/`   pytest suite mirroring the package layout (`tests/tools/emissions/test_stack.py` tests `tools/emissions/stack.py`). Every test directory needs an `__init__.py`.
 
 Dependency direction: `agent` -> `tools` -> `models`; `agent` -> `prompts`;
-`agent`/`tools`/`models` -> `commons`; `agent`/`tools` -> `config`; `app` -> `agent`/`config`/`commons`/`storage` (checkpointer, user key vault)/`tools.credentials`/`tools.schemas`; `evals` -> `app`/`agent`/`tools`/`config`/`prompts`. `api` -> `app`/`agent`/`config`/`prompts`/`commons`/`storage`/`tools.schemas`/`tools.user_values`; `storage` -> `config`/`commons` (+ types from `app.usage_meter`, `tools.schemas`); `frontend` -> `api` (HTTP only).
-`commons` and `config` import nothing from the project; nothing imports `evals` or `api`.
+`agent`/`tools`/`models` -> `commons`; `agent`/`tools` -> `config`; `app` -> `agent`/`config`/`commons`/`prompts`/`storage` (checkpointer, user key vault, turn queue)/`tools.credentials`/`tools.schemas`; `worker` -> `app`/`agent`/`config`/`storage`/`tools.credentials`; `evals` -> `app`/`agent`/`tools`/`config`/`prompts`. `api` -> `app`/`agent`/`config`/`prompts`/`commons`/`storage`/`tools.schemas`/`tools.user_values`; `storage` -> `config`/`commons` (+ types from `app.usage_meter`, `tools.schemas`); `frontend` -> `api` (HTTP only).
+`commons` and `config` import nothing from the project; nothing imports `evals`, `api` or `worker`.
 
 ## Folder-specific rules
 
-Each layer keeps its own rules in a `CLAUDE.md` inside its folder. Claude Code loads these
-automatically when working in that folder, so read and follow the one that applies before
-editing there:
+Each layer keeps its own rules in a `CLAUDE.md` inside its folder (loaded automatically when
+working there); read and follow the one that applies before editing there:
 
 - `agent/CLAUDE.md`   provider-agnostic orchestration only.
 - `commons/CLAUDE.md`, `models/CLAUDE.md` generic pure utilities; pure equations with units.
 - `tools/emissions/rag/CLAUDE.md` SCC retrieval (RAG); the one place a provider is imported.
 - `prompts/CLAUDE.md` prompt files, XML structure, loading through the registry.
 - `tools/CLAUDE.md`   `@tool` conventions, registry and test requirements.
-- `app/CLAUDE.md`, `storage/CLAUDE.md` the program and the one chat model factory; PostgreSQL.
+- `app/CLAUDE.md`, `storage/CLAUDE.md`, `worker/CLAUDE.md` the program and the one chat model factory; PostgreSQL; the turn worker.
 - `evals/CLAUDE.md`   agent evaluation harness, cassettes and scenarios.
 - `api/CLAUDE.md`, `frontend/CLAUDE.md` web backend (contract, keys, redaction) and browser app.
 

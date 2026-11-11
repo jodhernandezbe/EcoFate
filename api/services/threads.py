@@ -23,7 +23,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 from api.schemas.workspace import WorkspaceState
 from app.usage_meter import CallUsage
 from storage.keys import ThreadKey
-from storage.turn_model import Turn, TurnStatus
+from storage.turn_model import PlannedInput, Turn, TurnStatus
 from tools.schemas import ConfirmationRequest
 
 
@@ -33,14 +33,49 @@ class TurnStore(Protocol):
     Honoured by ``storage.turns.TurnRepository`` and the in-memory fake in ``tests/fakes.py``.
     """
 
-    async def begin(self, key: ThreadKey) -> Turn | None:
-        """Record a new running turn of the thread; None while the thread has an open turn."""
+    async def begin(self, key: ThreadKey, planned: PlannedInput | None = None) -> Turn | None:
+        """Record a new queued turn of the thread with its input; None while the thread has an
+        open turn."""
         ...
 
     async def resume(self, owner_id: UUID, turn_id: str, max_resumes: int) -> Turn | None:
-        """Move the owner's interrupted turn back to running, counting the resume; None (nothing
-        changed) when the owner has no such turn, it is not interrupted, reached ``max_resumes``
-        or its thread is busy."""
+        """Queue the owner's interrupted turn again, counting the resume; None (nothing changed)
+        when the owner has no such turn, it is not interrupted, reached ``max_resumes`` or its
+        thread is busy."""
+        ...
+
+    async def get(self, owner_id: UUID, turn_id: str) -> Turn | None:
+        """The owner's turn; None when the owner has no such turn."""
+        ...
+
+    async def start(self, owner_id: UUID, turn_id: str) -> Turn | None:
+        """Move the owner's queued turn to running; None when it is not queued."""
+        ...
+
+    async def heartbeat(self, owner_id: UUID, turn_id: str) -> bool:
+        """Record that the owner's running turn is alive; whether it is still running."""
+        ...
+
+    async def request_cancel(self, owner_id: UUID, turn_id: str) -> bool:
+        """Ask the owner's open turn to stop; whether it was open."""
+        ...
+
+    async def cancel_requested(self, owner_id: UUID, turn_id: str) -> bool:
+        """Whether the user asked the owner's turn to stop."""
+        ...
+
+    async def interrupt_stale(
+        self,
+        older_than: timedelta,
+        reason: str,
+        key: ThreadKey | None = None,
+    ) -> list[ThreadKey]:
+        """Interrupt running turns whose heartbeat is older than ``older_than`` (of one thread
+        when ``key`` is given); the threads they belong to."""
+        ...
+
+    async def queue_position(self, turn_id: str) -> int:
+        """How many queued turns were recorded before this one."""
         ...
 
     async def move(
@@ -89,6 +124,10 @@ class ThreadStore(Protocol):
         """Mark the thread as running a turn; False if a turn is already running."""
         ...
 
+    async def extend(self, key: ThreadKey) -> None:
+        """Renew a held lease for another lease period (the worker's heartbeat)."""
+        ...
+
     async def release(self, key: ThreadKey) -> None:
         """Mark the thread idle (safe to call more than once)."""
         ...
@@ -99,6 +138,10 @@ class ThreadStore(Protocol):
 
     async def holds(self, key: ThreadKey) -> bool:
         """Whether the thread exists (it was claimed or touched and not deleted)."""
+        ...
+
+    async def latest_thread(self, owner_id: UUID) -> str | None:
+        """The id of the owner's most recently used thread; None when they have none."""
         ...
 
     async def running(self, key: ThreadKey) -> bool:

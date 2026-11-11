@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import pytest
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemMessage, ToolMessage
+from langchain_core.runnables import RunnableConfig
+from langgraph.graph import END, START, MessagesState, StateGraph
 
 from agent.completion import NUDGE_NAME
-from api.services.snapshots import last_answer, thread_messages, thread_snapshot
+from api.schemas.chat import RunningTurn
+from api.services.snapshots import SnapshotOptions, last_answer, thread_messages, thread_snapshot
+from storage.turn_model import PlannedInput, TurnStatus
 from tests.api.keys import OTHER_OWNER, owned
 from tests.fakes import InMemoryThreadStore
 
@@ -45,13 +49,15 @@ async def test_text_blocks_are_read_and_other_blocks_dropped() -> None:
 
 
 async def test_unknown_thread_has_no_snapshot() -> None:
-    assert await thread_snapshot(InMemoryThreadStore(), owned("nope"), {}, 3) is None
+    assert (
+        await thread_snapshot(InMemoryThreadStore(), owned("nope"), SnapshotOptions({}, 3)) is None
+    )
 
 
 async def test_held_thread_without_turns_has_an_empty_snapshot() -> None:
     threads = InMemoryThreadStore()
     await threads.claim(owned("a"))
-    snapshot = await thread_snapshot(threads, owned("a"), {}, 3)
+    snapshot = await thread_snapshot(threads, owned("a"), SnapshotOptions({}, 3))
     assert snapshot is not None
     assert snapshot.messages == []
     assert snapshot.workspace.facilities == []
@@ -93,4 +99,59 @@ async def test_no_answer_without_an_assistant_message() -> None:
 async def test_another_users_thread_has_no_snapshot() -> None:
     threads = InMemoryThreadStore()
     await threads.claim(owned("a"))
-    assert await thread_snapshot(threads, owned("a", OTHER_OWNER), {}, 3) is None
+    assert await thread_snapshot(threads, owned("a", OTHER_OWNER), SnapshotOptions({}, 3)) is None
+
+
+async def _history(threads: InMemoryThreadStore, messages: list[AnyMessage]) -> None:
+    config: RunnableConfig = {"configurable": {"thread_id": owned("a").checkpoint_id}}
+    graph = StateGraph(MessagesState)
+    graph.add_node("noop", lambda state: {})
+    graph.add_edge(START, "noop")
+    graph.add_edge("noop", END)
+    state: MessagesState = {"messages": messages}
+    await graph.compile(checkpointer=threads.checkpointer).ainvoke(state, config)
+
+
+async def test_a_running_turn_is_reported_and_its_part_of_the_history_left_to_its_events() -> None:
+    threads = InMemoryThreadStore()
+    await threads.claim(owned("a"))
+    await _history(
+        threads,
+        [
+            HumanMessage("first"),
+            AIMessage("First answer."),
+            HumanMessage("second"),
+            AIMessage("Half"),
+        ],
+    )
+    turn = await threads.turns.begin(owned("a"), PlannedInput("second", "second"))
+    assert turn is not None
+    snapshot = await thread_snapshot(threads, owned("a"), SnapshotOptions({}, 3))
+    assert snapshot is not None
+    assert [m.text for m in snapshot.messages] == ["first", "First answer."]
+    assert snapshot.running_turn == RunningTurn(turn_id=turn.id, resumed=False, question="second")
+
+
+async def test_a_queued_turn_whose_question_is_not_in_the_history_cuts_nothing() -> None:
+    threads = InMemoryThreadStore()
+    await threads.claim(owned("a"))
+    await _history(threads, [HumanMessage("first"), AIMessage("First answer.")])
+    await threads.turns.begin(owned("a"), PlannedInput("second", "second"))
+    snapshot = await thread_snapshot(threads, owned("a"), SnapshotOptions({}, 3))
+    assert snapshot is not None
+    assert [m.text for m in snapshot.messages] == ["first", "First answer."]
+    assert snapshot.running_turn is not None and snapshot.running_turn.question == "second"
+
+
+async def test_a_finished_turn_shows_the_whole_history_and_no_running_turn() -> None:
+    threads = InMemoryThreadStore()
+    await threads.claim(owned("a"))
+    await _history(threads, [HumanMessage("first"), AIMessage("Done.")])
+    turn = await threads.turns.begin(owned("a"), PlannedInput("first", "first"))
+    assert turn is not None
+    await threads.turns.start(turn.owner_id, turn.id)
+    await threads.turns.move(turn.owner_id, turn.id, TurnStatus.COMPLETED)
+    snapshot = await thread_snapshot(threads, owned("a"), SnapshotOptions({}, 3))
+    assert snapshot is not None
+    assert [m.text for m in snapshot.messages] == ["first", "Done."]
+    assert snapshot.running_turn is None

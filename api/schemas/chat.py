@@ -46,7 +46,13 @@ class ChatRequest(ContractModel):
 
 
 class _Event(ContractModel):
-    seq: int = Field(ge=0, description="Position of the event in its stream, from 0.")
+    seq: int = Field(
+        ge=0,
+        description=(
+            "Position of the event in its turn's stream: strictly increasing, not contiguous. "
+            "Sent as the SSE event id; send the last one received as Last-Event-ID to reattach."
+        ),
+    )
 
 
 class TurnStarted(_Event):
@@ -63,6 +69,8 @@ InterruptionReason = Literal[
     "provider_down",
     "step_limit",
     "worker_lost",
+    "cancelled",
+    "time_limit",
 ]
 
 
@@ -81,6 +89,16 @@ class TurnInterrupted(_Event):
     reason: InterruptionReason
     resumable: bool
     message: str
+
+
+class TurnStatus(_Event):
+    """What the turn is doing now, for the chat's status line: waiting for a worker (with about
+    how many turns ahead), running, thinking, or running a step (with its label)."""
+
+    type: Literal["turn_status"] = "turn_status"
+    phase: Literal["queued", "running", "thinking", "running_tool"]
+    label: str | None = None  # the step's label, with ``running_tool``
+    position: int | None = Field(default=None, ge=0)  # turns ahead, with ``queued``
 
 
 class ScopeDecision(_Event):
@@ -145,6 +163,14 @@ class ThreadMessage(ContractModel):
     text: str
 
 
+class RunningTurn(ContractModel):
+    """A queued or running turn of the thread, so a reloaded page can show it and reattach."""
+
+    turn_id: str
+    resumed: bool  # it continues an interrupted turn (its events continue the last answer)
+    question: str | None  # what the user asked; None when it was not recorded
+
+
 class ThreadSnapshot(ContractModel):
     """A held thread as of its last finished turn (``GET /api/v1/chat/threads/{id}``)."""
 
@@ -154,6 +180,9 @@ class ThreadSnapshot(ContractModel):
     usage: UsageTotals
     confirmation: ConfirmationPrompt | None = None  # the open request, if any
     interrupted: TurnInterruption | None = None  # the latest turn, when it was interrupted
+    # A queued or running turn; ``messages`` then stop before its question, and its events
+    # (read from the turn's stream) show the rest.
+    running_turn: RunningTurn | None = None
 
 
 class Usage(_Event):
@@ -203,6 +232,7 @@ class ConfirmationRequested(_Event):
 
 StreamEvent = Annotated[
     TurnStarted
+    | TurnStatus
     | ScopeDecision
     | GuardrailPivotResponse
     | ToolStatus

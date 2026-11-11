@@ -33,6 +33,11 @@ WORKER_LOST = (
     "The server stopped while this turn was running. Press Resume to continue from the last "
     "finished step."
 )
+CANCELLED = "You stopped this turn. Press Resume to continue from the last finished step."
+TIME_LIMIT = (
+    "This turn ran longer than the time one run may take. Press Resume to continue from the last "
+    "finished step."
+)
 FORBIDDEN = "OpenAI refused the request for this account or model. Check your OpenAI account."
 NOT_RESUMABLE = (
     "This turn stopped and cannot be resumed again. Send a new message to continue the assessment."
@@ -46,6 +51,8 @@ _INTERRUPTION_MESSAGES = MappingProxyType(
         FailureReason.PROVIDER_DOWN: PROVIDER_DOWN,
         FailureReason.STEP_LIMIT: STEP_LIMIT,
         FailureReason.WORKER_LOST: WORKER_LOST,
+        FailureReason.CANCELLED: CANCELLED,
+        FailureReason.TIME_LIMIT: TIME_LIMIT,
     },
 )
 _PROVIDER_MESSAGES = MappingProxyType(

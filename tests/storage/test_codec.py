@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict
 from app.usage_meter import CallUsage
 from storage import codec
 from storage.keys import ThreadKey
-from storage.turn_model import TurnStatus
+from storage.turn_model import PlannedInput, TurnStatus
 from tools.schemas import ConfirmationRequest
 
 OWNER = UUID(int=1)
@@ -245,3 +245,24 @@ def test_a_turn_row_that_does_not_fit_is_absent_with_a_warning(
     with caplog.at_level(logging.WARNING, logger="storage.codec"):
         assert codec.turn_from_row(_turn_row(**changes)) is None
     assert "turn" in caplog.text and "th" in caplog.text
+
+
+def test_planned_input_round_trips() -> None:
+    planned = PlannedInput("q", "m", "n", counted=True)
+    assert codec.planned_from_json(codec.planned_to_json(planned)) == planned
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        None,
+        "text",
+        [],
+        {"question": "q", "message": "m", "note": "n"},  # counted missing
+        {"question": "q", "message": "m", "note": "n", "counted": 1},  # a number is no boolean
+        {"question": 3, "message": "m", "note": "n", "counted": False},
+        {"question": "q", "message": None, "note": "n", "counted": False},
+    ],
+)
+def test_planned_input_that_does_not_fit_is_absent(raw: object) -> None:
+    assert codec.planned_from_json(raw) is None

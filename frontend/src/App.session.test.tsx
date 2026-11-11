@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { App } from "./App";
-import { ADMIN, MEMBER, meResponse, renderApp, signedOutResponse } from "./test/session";
+import { ADMIN, MEMBER, meResponse, renderApp, signedOutResponse, noCurrentThread } from "./test/session";
 
 const json = (body: object, status = 200) => new Response(JSON.stringify(body), { status });
 
@@ -106,6 +106,7 @@ describe("a 401 during use", () => {
       vi.fn((input: RequestInfo | URL) => {
         const path = String(input);
         if (path.endsWith("/auth/me")) return Promise.resolve(meResponse(MEMBER));
+        if (path.endsWith("/chat/current-thread")) return Promise.resolve(noCurrentThread());
         if (path.endsWith("/settings/keys")) return keys; // answers later, once the page is up
         return Promise.resolve(json({ model: "m" }));
       }),
@@ -157,6 +158,7 @@ describe("the account sheet", () => {
       vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
         const path = String(input);
         if (path.endsWith("/auth/me")) return Promise.resolve(meResponse(MEMBER));
+        if (path.endsWith("/chat/current-thread")) return Promise.resolve(noCurrentThread());
         if (path.endsWith("/account/password")) {
           body = JSON.parse(String(init?.body));
           return Promise.resolve(new Response(null, { status: 204 }));

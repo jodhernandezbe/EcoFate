@@ -78,6 +78,14 @@ def _new_thread(key: ThreadKey) -> PgInsert:
     return pg_insert(threads).values(owner_id=key.owner_id, id=key.thread_id)
 
 
+async def release_lease(sessions: Sessions, key: ThreadKey) -> None:
+    """Clear the thread's lease (safe to repeat); also used by a worker's recovery, which holds
+    no checkpointer."""
+    statement = update(threads).where(_mine(key)).values(busy_until=None)
+    async with sessions.begin() as session:
+        await session.execute(statement)
+
+
 class PostgresThreadStore[WorkspaceT: BaseModel]:
     """The web program's thread store over a SQLAlchemy session factory and a checkpointer.
 
@@ -119,11 +127,20 @@ class PostgresThreadStore[WorkspaceT: BaseModel]:
         async with self._sessions.begin() as session:
             return (await session.execute(statement)).first() is not None
 
-    async def release(self, key: ThreadKey) -> None:
-        """Clear the lease (safe to call more than once)."""
-        statement = update(threads).where(_mine(key)).values(busy_until=None)
+    async def extend(self, key: ThreadKey) -> None:
+        """Renew a held lease for another lease period (the worker's heartbeat); an idle thread
+        stays idle."""
+        statement = (
+            update(threads)
+            .where(_mine(key), threads.c.busy_until.is_not(None))
+            .values(busy_until=func.now() + self._lease)
+        )
         async with self._sessions.begin() as session:
             await session.execute(statement)
+
+    async def release(self, key: ThreadKey) -> None:
+        """Clear the lease (safe to call more than once)."""
+        await release_lease(self._sessions, key)
 
     async def touch(self, key: ThreadKey) -> None:
         """Mark the thread as most recently used, creating it when it is new."""
@@ -139,6 +156,17 @@ class PostgresThreadStore[WorkspaceT: BaseModel]:
         statement = select(threads.c.id).where(_mine(key))
         async with self._sessions() as session:
             return (await session.execute(statement)).first() is not None
+
+    async def latest_thread(self, owner_id: UUID) -> str | None:
+        """The id of the owner's most recently used thread; None when they have none."""
+        statement = (
+            select(threads.c.id)
+            .where(threads.c.owner_id == owner_id)
+            .order_by(threads.c.last_used_at.desc(), threads.c.id)
+            .limit(1)
+        )
+        async with self._sessions() as session:
+            return (await session.execute(statement)).scalar_one_or_none()
 
     async def running(self, key: ThreadKey) -> bool:
         """Whether the thread holds an unexpired lease."""

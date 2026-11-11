@@ -41,6 +41,17 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   `pending_steps` says what would run next); a new message first answers tool calls an abandoned
   turn left without a result (`history.py`). `failures.resumable` names the reasons that
   interrupt a turn instead of failing it.
+- Background turns (shared by the API and `worker/`, which never import each other):
+  `task_queue.py` (`build_celery`, `TurnJob` ids-only payload, `CeleryEnqueuer` by task name,
+  `InProcessEnqueuer` for `[worker].eager` and tests), `turns/bus.py` (per-turn event stream:
+  `RedisStreamBus`, `MemoryBus`, one `TurnEventBus` protocol), `turns/codec.py` (relayed events
+  as JSON records; `TurnFailed` never travels, `TurnStopped` does; decoded as untrusted),
+  `turns/recording.py` and `turns/job.py` (`run_background_turn`: the only writer of a running
+  turn's state: status, stored tool messages, pending request, usage, refund, lease; it checks a
+  cancel request and the soft time limit after each graph step, renews the heartbeat and lease,
+  and publishes the end only after the final status is stored and the lease released).
+  `web_turn.py` builds the web turn settings (guards, prompt, prices) for both processes;
+  `process_secrets.py` lists the secret variables both protect.
 - `redaction.py` is the one log-redaction filter (`protect_secrets` per turn, `protect_for_process`
   for the life of the process, `redact`, `install_redaction`); it holds no HTTP knowledge. Front
   ends only configure their loggers. `telemetry.scrubbing_options(settings, protected)` hides the same

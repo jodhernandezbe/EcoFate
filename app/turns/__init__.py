@@ -28,6 +28,7 @@ from app.turns.events import (
 from app.turns.failures import (
     FailureReason,
     KeysUnavailableError,
+    StopRequestedError,
     classify,
     new_correlation_id,
     resumable,
@@ -42,6 +43,7 @@ __all__ = [
     "FailureReason",
     "KeysUnavailableError",
     "ScopePassed",
+    "StopRequestedError",
     "ScopeRedirect",
     "TextDelta",
     "ToolCalls",

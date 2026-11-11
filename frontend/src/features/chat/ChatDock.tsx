@@ -1,5 +1,5 @@
 import { TopHeaderBar, type AssistantStatus } from "../../components/layout/TopHeaderBar";
-import type { ChatMessage, UsageView } from "../../hooks/chatState";
+import type { ChatMessage, LiveStatus, UsageView } from "../../hooks/chatState";
 import type { ConfirmationAnswers, ConfirmationPrompt, QuotaStatus } from "../../types/workspace";
 import { ChatComposer } from "./ChatComposer";
 import { ClearChatButton } from "./ClearChatButton";
@@ -30,12 +30,18 @@ interface ChatDockProps {
   onAnswer?: ((answers: ConfirmationAnswers, summary: string) => void) | undefined;
   /** Resume the interrupted turn where it stopped. */
   onResume?: (() => void) | undefined;
+  /** What the running turn is doing now (null when none runs). */
+  status?: LiveStatus | null | undefined;
+  /** A stop was asked for and the turn is finishing its current step. */
+  stopping?: boolean | undefined;
+  /** Stop the running turn after its current step. */
+  onStop?: (() => void) | undefined;
   onOpenSettings: () => void;
   onCollapse: () => void;
 }
 
-function statusOf(messages: ChatMessage[], busy: boolean): AssistantStatus {
-  if (busy) return "thinking";
+function statusOf(messages: ChatMessage[], busy: boolean, live: LiveStatus | null): AssistantStatus {
+  if (busy) return live?.phase === "queued" ? "queued" : "thinking";
   const last = messages[messages.length - 1];
   if (last?.error) return "error";
   return last?.interrupted ? "stopped" : "idle";
@@ -57,6 +63,9 @@ export function ChatDock({
   onClear,
   onAnswer,
   onResume,
+  status = null,
+  stopping = false,
+  onStop,
   onOpenSettings,
   onCollapse,
 }: ChatDockProps) {
@@ -65,7 +74,7 @@ export function ChatDock({
       <TopHeaderBar
         title="Assistant"
         subtitle={model}
-        status={statusOf(messages, busy)}
+        status={statusOf(messages, busy, status)}
         onCollapse={onCollapse}
       >
         <QuotaMeter quota={quota ?? null} />
@@ -79,6 +88,9 @@ export function ChatDock({
         onSend={onSend}
         busy={busy}
         onResume={onResume}
+        status={status}
+        stopping={stopping}
+        onStop={onStop}
         onOpenSettings={onOpenSettings}
       />
       {confirmation && onAnswer ? (

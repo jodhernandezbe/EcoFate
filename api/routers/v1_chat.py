@@ -7,41 +7,51 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator, Awaitable, Callable
 from datetime import datetime
-from functools import partial
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response
-from starlette.background import BackgroundTask
+from fastapi import APIRouter, Depends, Header, HTTPException, Path, Response
+from pydantic import Field
 from starlette.responses import StreamingResponse
 
 from api.core.session_guard import CurrentUser, current_user
 from api.dependencies import (
     get_key_services,
-    get_max_resumes,
     get_quota,
     get_runtime,
     get_settings,
     get_threads,
+    get_turn_queue,
 )
 from api.schemas.chat import ChatRequest, StreamEvent, ThreadId, ThreadSnapshot
 from api.schemas.quota import QuotaExhausted
-from api.services.agent_runner import AgentRuntime, resume_steps, run_resume, run_turn
-from api.services.confirmation import ConfirmationError, TurnPlan, plan_turn
+from api.services.agent_runner import AgentRuntime, relay_turn, resume_steps
+from api.services.confirmation import ConfirmationError, plan_turn
 from api.services.key_setup import KeyServices, turn_key_loader
 from api.services.quota import QuotaService
 from api.services.report.builder import MEDIA_TYPE
 from api.services.report.service import ReportUnavailable, thread_report
-from api.services.snapshots import thread_snapshot
+from api.services.snapshots import SnapshotOptions, thread_snapshot
 from api.services.sse import encode_event
 from api.services.threads import ThreadStore
 from api.services.turn_lifecycle import BUSY, TurnRefused, resume_turn_record, start_turn
-from app.turns import FailureReason
+from api.services.turn_queue import (
+    EVENTS_EXPIRED,
+    UNAVAILABLE,
+    QueueUnavailableError,
+    Refund,
+    TurnQueue,
+    submit,
+)
+from app.turns.bus import turn_stream
 from config.ui import UiSettings
 from storage.keys import ThreadKey
-from storage.turn_model import Turn
+from storage.turn_model import OPEN_STATUSES, TURN_ID_PATTERN, PlannedInput, Turn
 
 router = APIRouter(prefix="/api/v1/chat", tags=["chat"], dependencies=[Depends(current_user)])
 UNKNOWN = "That run is no longer available."
+FINISHED = "That turn has already finished."
+TurnId = Annotated[str, Path(pattern=TURN_ID_PATTERN)]
+LastEventId = Annotated[int, Field(ge=0)]
 SSE_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
 REPORT_RESPONSES: dict[int | str, dict[str, object]] = {
     200: {
@@ -51,32 +61,47 @@ REPORT_RESPONSES: dict[int | str, dict[str, object]] = {
 }
 
 
-async def _frames(
-    events: AsyncGenerator[StreamEvent],
-    threads: ThreadStore,
+async def _frames(events: AsyncGenerator[StreamEvent]) -> AsyncGenerator[str]:
+    """Encode the turn's events. The turn runs in the worker: a client that leaves stops only
+    its own reading, never the turn."""
+    async for event in events:
+        yield encode_event(event)
+
+
+def _streaming(events: AsyncGenerator[StreamEvent]) -> StreamingResponse:
+    return StreamingResponse(_frames(events), media_type="text/event-stream", headers=SSE_HEADERS)
+
+
+def _relay(
     turn: Turn,
-) -> AsyncGenerator[str]:
-    """Encode the turn's events; a turn whose stream ends without a status (the client left)
-    is interrupted so it can be resumed, and the thread's lease is released on every path."""
-    try:
-        async for event in events:
-            yield encode_event(event)
-    finally:
-        await threads.turns.abandon(turn.owner_id, turn.id, FailureReason.WORKER_LOST)
-        await threads.release(turn.key)
-
-
-def _streaming(
-    frames: AsyncGenerator[str],
+    queue: TurnQueue,
     threads: ThreadStore,
-    key: ThreadKey,
+    runtime: AgentRuntime,
+    after_seq: int | None = None,
 ) -> StreamingResponse:
-    return StreamingResponse(
-        frames,
-        media_type="text/event-stream",
-        headers=SSE_HEADERS,
-        background=BackgroundTask(threads.release, key),
+    events = relay_turn(
+        turn,
+        bus=queue.bus,
+        threads=threads,
+        runtime=runtime,
+        timing=queue.timing,
+        after_seq=after_seq,
     )
+    return _streaming(events)
+
+
+async def _submitted(
+    turn: Turn,
+    queue: TurnQueue,
+    threads: ThreadStore,
+    runtime: AgentRuntime,
+    refund: Refund | None = None,
+) -> None:
+    """Enqueue the turn; 503 with a fixed message when the queue cannot be reached."""
+    try:
+        await submit(turn, queue, threads, refund, runtime.telemetry)
+    except QueueUnavailableError:
+        raise HTTPException(status_code=503, detail=UNAVAILABLE) from None
 
 
 async def _holding_lease[T](
@@ -102,36 +127,29 @@ async def _holding_lease[T](
 async def chat_stream(
     body: ChatRequest,
     user: CurrentUser,
-    keys: Annotated[KeyServices, Depends(get_key_services)],
     threads: Annotated[ThreadStore, Depends(get_threads)],
     runtime: Annotated[AgentRuntime, Depends(get_runtime)],
     quota: Annotated[QuotaService, Depends(get_quota)],
+    queue: Annotated[TurnQueue, Depends(get_turn_queue)],
 ) -> StreamingResponse:
-    """Run one turn of ``thread_id`` and stream its events (an interrupted turn is abandoned).
+    """Queue one turn of ``thread_id`` for the worker and stream its events (an interrupted
+    turn is abandoned); 503 when the queue cannot be reached.
 
     A new message counts against the user's daily quota (429 over it) once the thread is claimed
     and before anything runs; an answer to the thread's open request continues a counted turn
     and is free.
     """
-
     key = ThreadKey(user.id, body.thread_id)
 
-    async def prepare() -> tuple[TurnPlan, Turn, bool]:
+    async def prepare() -> tuple[Turn, bool]:
         counted = body.answers is None and await quota.require(user)
         plan = await plan_turn(body, threads, key)
-        return plan, await start_turn(threads, key), counted
+        planned = PlannedInput(body.message, plan.message, plan.note, counted)
+        return await start_turn(threads, key, planned), counted
 
-    plan, turn, counted = await _holding_lease(threads, key, prepare)
-    events = run_turn(
-        body,
-        keys=turn_key_loader(keys, user.id),
-        threads=threads,
-        runtime=runtime,
-        turn=turn,
-        plan=plan,
-        refund=partial(quota.refund, user.id) if counted else None,
-    )
-    return _streaming(_frames(events, threads, turn), threads, key)
+    turn, counted = await _holding_lease(threads, key, prepare)
+    await _submitted(turn, queue, threads, runtime, quota.refund if counted else None)
+    return _relay(turn, queue, threads, runtime)
 
 
 @router.post("/threads/{thread_id}/resume")
@@ -141,8 +159,10 @@ async def resume_chat(
     keys: Annotated[KeyServices, Depends(get_key_services)],
     threads: Annotated[ThreadStore, Depends(get_threads)],
     runtime: Annotated[AgentRuntime, Depends(get_runtime)],
+    queue: Annotated[TurnQueue, Depends(get_turn_queue)],
 ) -> StreamingResponse:
-    """Continue the thread's interrupted turn from where it stopped and stream its events."""
+    """Queue the thread's interrupted turn to continue from where it stopped and stream its
+    events; 503 when the queue cannot be reached."""
     key = ThreadKey(user.id, thread_id)
     loader = turn_key_loader(keys, user.id)
     if not await threads.holds(key):
@@ -155,8 +175,78 @@ async def resume_chat(
         return await resume_turn_record(threads, key, runtime.max_resumes_per_turn, steps)
 
     turn = await _holding_lease(threads, key, prepare)
-    events = run_resume(keys=loader, threads=threads, runtime=runtime, turn=turn)
-    return _streaming(_frames(events, threads, turn), threads, key)
+    await _submitted(turn, queue, threads, runtime)
+    return _relay(turn, queue, threads, runtime)
+
+
+@router.get("/turns/{turn_id}/events")
+async def turn_events(
+    turn_id: TurnId,
+    user: CurrentUser,
+    threads: Annotated[ThreadStore, Depends(get_threads)],
+    runtime: Annotated[AgentRuntime, Depends(get_runtime)],
+    queue: Annotated[TurnQueue, Depends(get_turn_queue)],
+    last_event_id: Annotated[LastEventId | None, Header()] = None,
+) -> StreamingResponse:
+    """Reattach to a turn's events after the ``Last-Event-ID`` (from the first when absent);
+    404 for an unknown or another user's turn, 410 once its events have expired."""
+    turn = await threads.turns.get(user.id, turn_id)
+    if turn is None:
+        raise HTTPException(status_code=404, detail=UNKNOWN)
+    if not await queue.bus.exists(turn_stream(turn.id, turn.resume_count)):
+        raise HTTPException(status_code=410, detail=EVENTS_EXPIRED)
+    return _relay(turn, queue, threads, runtime, last_event_id)
+
+
+@router.post("/turns/{turn_id}/cancel", status_code=202)
+async def cancel_turn(
+    turn_id: TurnId,
+    user: CurrentUser,
+    threads: Annotated[ThreadStore, Depends(get_threads)],
+) -> Response:
+    """Ask a queued or running turn to stop after its current step (202); its stream then ends
+    as interrupted (``cancelled``). 409 for a finished turn, 404 for an unknown one."""
+    turn = await threads.turns.get(user.id, turn_id)
+    if turn is None:
+        raise HTTPException(status_code=404, detail=UNKNOWN)
+    if turn.status not in OPEN_STATUSES or not await threads.turns.request_cancel(user.id, turn_id):
+        raise HTTPException(status_code=409, detail=FINISHED)
+    return Response(status_code=202)
+
+
+async def _snapshot(
+    threads: ThreadStore,
+    key: ThreadKey,
+    settings: UiSettings,
+    runtime: AgentRuntime,
+    queue: TurnQueue,
+) -> ThreadSnapshot:
+    options = SnapshotOptions(
+        pricing=settings.pricing,
+        max_resumes=runtime.max_resumes_per_turn,
+        rules=runtime.workspace_rules,
+        stale_after=queue.timing.stale_after,
+    )
+    snapshot = await thread_snapshot(threads, key, options)
+    if snapshot is None:
+        raise HTTPException(status_code=404, detail=UNKNOWN)
+    return snapshot
+
+
+@router.get("/current-thread")
+async def get_current_thread(
+    user: CurrentUser,
+    threads: Annotated[ThreadStore, Depends(get_threads)],
+    settings: Annotated[UiSettings, Depends(get_settings)],
+    runtime: Annotated[AgentRuntime, Depends(get_runtime)],
+    queue: Annotated[TurnQueue, Depends(get_turn_queue)],
+) -> ThreadSnapshot:
+    """The snapshot of the user's most recently used thread, so a reloaded page continues it
+    (and reattaches to a turn still running); 404 when the user has none."""
+    thread_id = await threads.latest_thread(user.id)
+    if thread_id is None:
+        raise HTTPException(status_code=404, detail=UNKNOWN)
+    return await _snapshot(threads, ThreadKey(user.id, thread_id), settings, runtime, queue)
 
 
 @router.get("/threads/{thread_id}")
@@ -165,19 +255,12 @@ async def get_thread(
     user: CurrentUser,
     threads: Annotated[ThreadStore, Depends(get_threads)],
     settings: Annotated[UiSettings, Depends(get_settings)],
-    max_resumes: Annotated[int, Depends(get_max_resumes)],
+    runtime: Annotated[AgentRuntime, Depends(get_runtime)],
+    queue: Annotated[TurnQueue, Depends(get_turn_queue)],
 ) -> ThreadSnapshot:
-    """A held thread's messages, workspace, usage and interruption, so the interface can
-    restore it."""
-    snapshot = await thread_snapshot(
-        threads,
-        ThreadKey(user.id, thread_id),
-        settings.pricing,
-        max_resumes,
-    )
-    if snapshot is None:
-        raise HTTPException(status_code=404, detail=UNKNOWN)
-    return snapshot
+    """A held thread's messages, workspace, usage, interruption and running turn, so the
+    interface can restore it (and reattach to a turn still running)."""
+    return await _snapshot(threads, ThreadKey(user.id, thread_id), settings, runtime, queue)
 
 
 @router.get("/threads/{thread_id}/report", response_class=Response, responses=REPORT_RESPONSES)

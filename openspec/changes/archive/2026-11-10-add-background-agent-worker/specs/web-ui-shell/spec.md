@@ -7,8 +7,9 @@ number of turns ahead, thinking, or the label of the step that is running. The h
 indicator SHALL include the queued state. A **Stop** control SHALL be shown while the turn runs;
 it cancels the turn, after which the chat shows the interruption with its Resume button. When
 the page is reloaded during a turn the chat SHALL reattach to it and continue from the last
-event it had, without duplicating messages or tool pills. When the connection drops the chat
-SHALL reattach from the last event received. No dashboard panel SHALL change.
+event it had, without duplicating messages or tool pills (a reloaded page restores its current
+thread from the server, never from browser storage). When the connection drops the chat SHALL
+reattach from the last event received. No dashboard panel SHALL change.
 
 #### Scenario: Queued
 - **WHEN** a turn is waiting with two turns ahead

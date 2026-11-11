@@ -55,4 +55,5 @@ async def test_a_store_failure_while_presenting_is_the_turns_failure(
     assert [e.type for e in events][-3:] == ["error", "usage", "turn_finished"]
     error = events[-3]
     assert isinstance(error, ErrorEvent) and "refused" not in error.message
-    assert [e.seq for e in events] == list(range(len(events)))
+    seqs = [e.seq for e in events]
+    assert seqs == sorted(set(seqs))  # strictly increasing

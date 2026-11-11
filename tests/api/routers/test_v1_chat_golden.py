@@ -93,7 +93,9 @@ def stream(
             body = {"thread_id": "g1", "message": "Assess 1-1-1"}
             response = client.post("/api/v1/chat/stream", json=body, headers=OWN)
         events = parse_sse(response.text)
-        assert [e["seq"] for e in events] == list(range(len(events)))
+        assert [e["seq"] for e in events] == sorted(
+            {e["seq"] for e in events},
+        )  # strictly increasing
         assert KEY not in response.text
         return [_shape(e) for e in events]
 
@@ -122,6 +124,28 @@ USAGE = {"keys": ["seq", "session", "turn", "type"], "type": "usage"}
 FINISHED = {"keys": ["seq", "type"], "type": "turn_finished"}
 STATUS_KEYS = ["call_id", "label", "phase", "seq", "status", "tool_name", "type"]
 WORKSPACE = {"keys": ["seq", "state", "type"], "type": "workspace_update"}
+TURN_STATUS_KEYS = ["label", "phase", "position", "seq", "type"]
+
+
+def _turn_status(
+    phase: str,
+    label: str | None = None,
+    position: int | None = None,
+) -> dict[str, Any]:
+    return {
+        "keys": TURN_STATUS_KEYS,
+        "type": "turn_status",
+        "phase": phase,
+        "label": label,
+        "position": position,
+    }
+
+
+QUEUED = _turn_status("queued", position=0)
+RUNNING = _turn_status("running")
+THINKING = _turn_status("thinking")
+# Every turn: started, then waiting for a worker, then taken by one.
+OPENING = [START, QUEUED, RUNNING]
 
 
 def _status(phase: str, name: str, label: str, status: str | None) -> dict[str, Any]:
@@ -140,10 +164,13 @@ def _message(text: str) -> dict[str, Any]:
 def test_tool_call_then_answer(stream: Any) -> None:
     model = ScriptedChatModel([_call("query_emissions_inventory"), reply("Done now", 10, 2)])
     assert stream(_runtime(model)) == [
-        START,
+        *OPENING,
+        THINKING,
         _status("started", "query_emissions_inventory", "Found facilities", None),
+        _turn_status("running_tool", "Found facilities"),
         _status("finished", "query_emissions_inventory", "Found facilities", "ok"),
         WORKSPACE,
+        THINKING,
         _token("Done"),
         _token(" "),
         _token("now"),
@@ -158,10 +185,13 @@ def test_missing_value_asks_for_confirmation(stream: Any) -> None:
     question = ask_text(ConfirmationRequest(request_id="x", entries=[MISSING]))
     request_keys = ["entries", "request_id", "seq", "type"]
     assert stream(_runtime(model)) == [
-        START,
+        *OPENING,
+        THINKING,
         _status("started", "get_toxicity", "Read toxicity", None),
+        _turn_status("running_tool", "Read toxicity"),
         _status("finished", "get_toxicity", "Read toxicity", "ok"),
         WORKSPACE,
+        THINKING,
         _message(question),
         {"keys": request_keys, "type": "confirmation_request", "entries": [MISSING]},
         USAGE,
@@ -172,7 +202,8 @@ def test_missing_value_asks_for_confirmation(stream: Any) -> None:
 def test_off_topic_turn_is_redirected(stream: Any) -> None:
     model = ScriptedChatModel([], classifier=[verdict(False, "Back to chemicals.", (5, 1))])
     assert stream(_runtime(model, scope_guard=GUARD)) == [
-        START,
+        *OPENING,
+        THINKING,
         {"keys": ["in_scope", "seq", "type"], "type": "scope", "in_scope": False},
         {"keys": ["seq", "text", "type"], "type": "guardrail_pivot", "text": "Back to chemicals."},
         USAGE,
@@ -188,11 +219,13 @@ def test_provider_failure_interrupts_with_a_fixed_message(stream: Any) -> None:
     events = stream(runtime)
     assert [e["type"] for e in events] == [
         "turn_started",
+        "turn_status",
+        "turn_status",
         "turn_interrupted",
         "usage",
         "turn_finished",
     ]
-    interrupted = events[1]
+    interrupted = events[3]
     assert interrupted["keys"] == ["message", "reason", "resumable", "seq", "type"]
     assert (interrupted["reason"], interrupted["resumable"]) == ("out_of_credits", True)
     assert "no credits" in interrupted["message"]

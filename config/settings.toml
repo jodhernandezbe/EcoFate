@@ -926,6 +926,40 @@ thread_retention_days = 30
 # Minutes between purges of idle threads.
 purge_interval_minutes = 60
 
+# Background worker of the web program (worker/): every chat turn runs as one Celery task in a
+# separate process pool, with Redis as broker and as the per-turn event stream the browser reads.
+# The Redis URL is never written here: it is read from the environment variable named below.
+# A task message carries only the turn id. Times are seconds.
+[worker]
+redis_url_env_var = "REDIS_URL"
+# The Celery queue the API enqueues turns on and the worker consumes.
+queue = "ecofate.turns"
+# Turns one worker container runs at once (prefork child processes).
+concurrency = 2
+# Tasks a child reserves ahead of the one it runs (1: a long turn never blocks a waiting one).
+prefetch_multiplier = 1
+# A turn still running after the soft limit is stopped and becomes interrupted/time_limit
+# (resumable); the hard limit kills the child as a backstop. soft < hard < visibility timeout.
+soft_time_limit_seconds = 900
+time_limit_seconds = 960
+# Redis redelivers an unacknowledged task after this; it must exceed the hard limit.
+visibility_timeout_seconds = 1200
+# The worker records a heartbeat on its running turn this often (and extends the thread lease).
+heartbeat_seconds = 15
+# A queued or running turn whose heartbeat is older than this has lost its worker and becomes
+# interrupted/worker_lost (resumable). Must exceed heartbeat_seconds.
+stale_after_seconds = 90
+# Events kept per turn stream (approximate cap; tokens are the bulk) and how long a finished
+# turn's stream stays readable for a reattaching browser.
+event_stream_max_length = 20000
+event_ttl_seconds = 3600
+# How long one blocking read of a turn's stream waits before it checks again.
+relay_block_seconds = 5
+# Seconds the API waits for Redis when it enqueues a turn before answering 503.
+broker_timeout_seconds = 3
+# True runs each task in the calling process with an in-memory event stream (tests only).
+eager = false
+
 # Per-user OpenAI keys of the web program (bring your own key). Each key is stored in PostgreSQL
 # sealed with AES-256-GCM under a key-encryption key (KEK). The KEK itself is never written here:
 # it is read from the environment variable named below (32 random bytes, base64url). During a
@@ -1035,6 +1069,7 @@ trace_url_template = "https://logfire-us.pydantic.dev/{organization}/{project}?q
 [telemetry.spans]
 cli_session = "assessment session"
 web_turn = "assessment turn"
+web_enqueue = "assessment turn queued"
 
 [telemetry.attributes]
 session_id = "session.id"
@@ -1046,6 +1081,7 @@ session_usage_prefix = "exposure.session_usage."
 turn_id = "exposure.turn_id"
 resume_index = "exposure.resume_index"
 user_id = "enduser.id"
+queue_wait_seconds = "exposure.queue_wait_seconds"
 
 # What the LangChain-to-OpenTelemetry bridge writes on its spans (read by the Monitoring view).
 [telemetry.bridge]

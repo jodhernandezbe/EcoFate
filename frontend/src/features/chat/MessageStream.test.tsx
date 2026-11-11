@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import type { ChatMessage } from "../../hooks/chatState";
 import { MessageStream } from "./MessageStream";
@@ -133,5 +134,46 @@ describe("interrupted turn", () => {
     const interrupted = { reason: "worker_lost" as const, resumable: true, message: "Server stopped." };
     render(<MessageStream messages={[assistant("", { streaming: true, interrupted })]} onResume={vi.fn()} />);
     expect(screen.queryByText("Thinking…")).toBeNull();
+  });
+});
+
+describe("MessageStream while a turn runs", () => {
+  const streaming = assistant("Partial answer", { streaming: true });
+
+  it("shows the turn's status under the streaming answer", () => {
+    render(
+      <MessageStream
+        messages={[streaming]}
+        busy
+        status={{ phase: "running_tool", label: "Fetching chemical properties", position: null }}
+      />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("Running: Fetching chemical properties…");
+  });
+
+  it("says how many turns are ahead while it waits for a worker", () => {
+    render(<MessageStream messages={[streaming]} busy status={{ phase: "queued", label: null, position: 2 }} />);
+    expect(screen.getByRole("status")).toHaveTextContent("Waiting for a worker (about 2 ahead)…");
+  });
+
+  it("offers Stop, which asks the turn to stop", async () => {
+    const onStop = vi.fn();
+    render(<MessageStream messages={[streaming]} busy onStop={onStop} />);
+    await userEvent.click(screen.getByRole("button", { name: "Stop" }));
+    expect(onStop).toHaveBeenCalledOnce();
+  });
+
+  it("disables Stop with its reason once a stop was asked for", () => {
+    render(<MessageStream messages={[streaming]} busy stopping onStop={() => {}} />);
+    const stop = screen.getByRole("button", { name: "Stop" });
+    expect(stop).toBeDisabled();
+    expect(stop).toHaveAttribute("aria-description", "Stopping after the current step");
+    expect(screen.getByRole("status")).toHaveTextContent("Stopping after the current step…");
+  });
+
+  it("shows no status line or Stop once the answer is complete", () => {
+    render(<MessageStream messages={[assistant("Done.")]} onStop={() => {}} />);
+    expect(screen.queryByRole("button", { name: "Stop" })).toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
   });
 });

@@ -8,6 +8,7 @@
  */
 export type StreamEventSchema =
   | TurnStarted
+  | TurnStatus
   | ScopeDecision
   | GuardrailPivotResponse
   | ToolStatus
@@ -476,12 +477,29 @@ export interface SignUpRequest {
 export interface TurnStarted {
   resumed: boolean;
   /**
-   * Position of the event in its stream, from 0.
+   * Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.
    */
   seq: number;
   thread_id: string;
   turn_id: string;
   type: "turn_started";
+}
+/**
+ * What the turn is doing now, for the chat's status line: waiting for a worker (with about
+ * how many turns ahead), running, thinking, or running a step (with its label).
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "TurnStatus".
+ */
+export interface TurnStatus {
+  label: string | null;
+  phase: "queued" | "running" | "thinking" | "running_tool";
+  position: number | null;
+  /**
+   * Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.
+   */
+  seq: number;
+  type: "turn_status";
 }
 /**
  * This interface was referenced by `ApiContract`'s JSON-Schema
@@ -490,7 +508,7 @@ export interface TurnStarted {
 export interface ScopeDecision {
   in_scope: boolean;
   /**
-   * Position of the event in its stream, from 0.
+   * Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.
    */
   seq: number;
   type: "scope";
@@ -503,7 +521,7 @@ export interface ScopeDecision {
  */
 export interface GuardrailPivotResponse {
   /**
-   * Position of the event in its stream, from 0.
+   * Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.
    */
   seq: number;
   text: string;
@@ -520,7 +538,7 @@ export interface ToolStatus {
   label: string;
   phase: "started" | "finished";
   /**
-   * Position of the event in its stream, from 0.
+   * Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.
    */
   seq: number;
   status: ("ok" | "error") | null;
@@ -533,7 +551,7 @@ export interface ToolStatus {
  */
 export interface WorkspaceUpdate {
   /**
-   * Position of the event in its stream, from 0.
+   * Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.
    */
   seq: number;
   state: WorkspaceState;
@@ -1303,7 +1321,7 @@ export interface WorkerExtremum {
  */
 export interface Token {
   /**
-   * Position of the event in its stream, from 0.
+   * Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.
    */
   seq: number;
   text: string;
@@ -1315,7 +1333,7 @@ export interface Token {
  */
 export interface AssistantMessage {
   /**
-   * Position of the event in its stream, from 0.
+   * Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.
    */
   seq: number;
   text: string;
@@ -1329,10 +1347,18 @@ export interface AssistantMessage {
  */
 export interface TurnInterrupted {
   message: string;
-  reason: "out_of_credits" | "rate_limited" | "bad_key" | "provider_down" | "step_limit" | "worker_lost";
+  reason:
+    | "out_of_credits"
+    | "rate_limited"
+    | "bad_key"
+    | "provider_down"
+    | "step_limit"
+    | "worker_lost"
+    | "cancelled"
+    | "time_limit";
   resumable: boolean;
   /**
-   * Position of the event in its stream, from 0.
+   * Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.
    */
   seq: number;
   type: "turn_interrupted";
@@ -1343,7 +1369,7 @@ export interface TurnInterrupted {
  */
 export interface Usage {
   /**
-   * Position of the event in its stream, from 0.
+   * Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.
    */
   seq: number;
   session: UsageTotals;
@@ -1379,7 +1405,7 @@ export interface ErrorEvent {
   correlation_id: string;
   message: string;
   /**
-   * Position of the event in its stream, from 0.
+   * Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.
    */
   seq: number;
   type: "error";
@@ -1394,7 +1420,7 @@ export interface ConfirmationRequested {
   entries: MissingValue[];
   request_id: string;
   /**
-   * Position of the event in its stream, from 0.
+   * Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.
    */
   seq: number;
   type: "confirmation_request";
@@ -1420,7 +1446,7 @@ export interface MissingValue {
  */
 export interface TurnFinished {
   /**
-   * Position of the event in its stream, from 0.
+   * Position of the event in its turn's stream: strictly increasing, not contiguous. Sent as the SSE event id; send the last one received as Last-Event-ID to reattach.
    */
   seq: number;
   type: "turn_finished";
@@ -1435,6 +1461,7 @@ export interface ThreadSnapshot {
   confirmation: ConfirmationPrompt | null;
   interrupted: TurnInterruption | null;
   messages: ThreadMessage[];
+  running_turn: RunningTurn | null;
   thread_id: string;
   usage: UsageTotals;
   workspace: WorkspaceState;
@@ -1457,7 +1484,15 @@ export interface ConfirmationPrompt {
  */
 export interface TurnInterruption {
   message: string;
-  reason: "out_of_credits" | "rate_limited" | "bad_key" | "provider_down" | "step_limit" | "worker_lost";
+  reason:
+    | "out_of_credits"
+    | "rate_limited"
+    | "bad_key"
+    | "provider_down"
+    | "step_limit"
+    | "worker_lost"
+    | "cancelled"
+    | "time_limit";
   resumable: boolean;
 }
 /**
@@ -1469,6 +1504,17 @@ export interface TurnInterruption {
 export interface ThreadMessage {
   role: "user" | "assistant";
   text: string;
+}
+/**
+ * A queued or running turn of the thread, so a reloaded page can show it and reattach.
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "RunningTurn".
+ */
+export interface RunningTurn {
+  question: string | null;
+  resumed: boolean;
+  turn_id: string;
 }
 /**
  * ``POST /api/v1/auth/verify``: the token from the emailed link (sent in the body).

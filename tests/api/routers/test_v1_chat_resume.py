@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncGenerator, Iterator, Sequence
+from collections.abc import Iterator, Sequence
 from typing import Any
 
 import pytest
@@ -15,15 +15,15 @@ from langchain_core.tools import tool
 from pydantic import PrivateAttr
 
 from api.dependencies import AgentRuntime, get_runtime
-from api.routers.v1_chat import _frames  # pyright: ignore[reportPrivateUsage]
-from api.schemas.chat import StreamEvent, TurnFinished
+from api.schemas.chat import ChatRequest
 from api.services import provider_errors
+from api.services.key_setup import turn_key_loader
 from api.services.turn_lifecycle import BUSY, NOTHING_TO_RESUME, RESUME_CAP
 from storage.turn_model import Turn, TurnStatus
 from tests.api.auth_support import build_app
 from tests.api.conftest import ORIGIN, signed_in
 from tests.api.keys import OWNER, owned
-from tests.api.streams import parse_sse
+from tests.api.streams import begun_turn, parse_sse
 from tests.fakes import (
     InMemoryThreadStore,
     KeyBench,
@@ -353,29 +353,27 @@ async def _old_turn(app: FastAPI, turn_id: str) -> Turn:
     return next(t for t in store.turns._turns.values() if t.id == turn_id)  # pyright: ignore[reportPrivateUsage]
 
 
-def test_a_stream_the_client_leaves_interrupts_its_turn_and_frees_the_thread() -> None:
+def test_a_client_that_leaves_the_stream_does_not_stop_its_turn(keyed: KeyBench) -> None:
     threads = InMemoryThreadStore()
+    runtime = AgentRuntime(lambda key: ScriptedChatModel([reply("done", 1, 1)]), 10)
 
     async def scenario() -> Turn | None:
         assert await threads.claim(owned(THREAD))
-        turn = await threads.turns.begin(owned(THREAD))
-        assert turn is not None
-
-        async def events() -> AsyncGenerator[StreamEvent]:
-            yield TurnFinished(seq=0)
-            yield TurnFinished(seq=1)
-
-        frames = _frames(events(), threads, turn)
-        await anext(frames)
-        await frames.aclose()  # the client went away mid-stream
-        assert not await threads.running(owned(THREAD))
+        request = ChatRequest(thread_id=THREAD, message="go")
+        loader = turn_key_loader(keyed.services, OWNER)
+        events = begun_turn(request, threads=threads, runtime=runtime, keys=loader)
+        await anext(events)
+        await events.aclose()  # the client went away mid-stream; the worker keeps going
+        for _ in range(200):
+            latest = await threads.turns.latest(owned(THREAD))
+            if latest is not None and latest.status is TurnStatus.COMPLETED:
+                break
+            await asyncio.sleep(0.01)
+        assert not await threads.running(owned(THREAD))  # released by the worker at the end
         return await threads.turns.latest(owned(THREAD))
 
     turn = asyncio.run(scenario())
-    assert turn is not None and (turn.status, turn.reason) == (
-        TurnStatus.INTERRUPTED,
-        "worker_lost",
-    )
+    assert turn is not None and (turn.status, turn.reason) == (TurnStatus.COMPLETED, None)
 
 
 def test_turns_left_running_are_interrupted_at_start_up(store: KeyBench) -> None:

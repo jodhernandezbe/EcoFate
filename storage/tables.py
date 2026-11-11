@@ -175,6 +175,13 @@ turns = Table(
     Column("started_at", DateTime(timezone=True), nullable=True),
     _created_at("updated_at"),
     Column("finished_at", DateTime(timezone=True), nullable=True),
+    # When the worker running the turn last reported it alive (a stale one lost its worker).
+    Column("heartbeat_at", DateTime(timezone=True), nullable=True),
+    # The user asked to stop the turn; its worker stops after the current graph step.
+    Column("cancel_requested", Boolean, nullable=False, server_default=text("false")),
+    # A new turn's input (question, message, note, counted), read by the worker: task messages
+    # carry ids only.
+    Column("planned_input", JSONB, nullable=True),
     CheckConstraint(f"status IN ({_in(tuple(TurnStatus))})", name="status_known"),
     CheckConstraint("resume_count >= 0", name="resume_count_not_negative"),
     CheckConstraint(

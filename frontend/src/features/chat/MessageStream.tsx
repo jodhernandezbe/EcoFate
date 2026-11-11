@@ -1,12 +1,13 @@
-import { CirclePause } from "lucide-react";
+import { CirclePause, CircleStop } from "lucide-react";
 import { useEffect, useRef } from "react";
 import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import type { ChatMessage } from "../../hooks/chatState";
+import type { ChatMessage, LiveStatus } from "../../hooks/chatState";
 import type { TurnInterruption } from "../../types/workspace";
 import { SuggestionChips } from "./SuggestionChips";
 import { ToolExecutionPills } from "./ToolExecutionPill";
+import { STOPPING, turnStatusText } from "./turnStatusText";
 import { Welcome } from "./Welcome";
 
 const CELL = "border-l border-hairline px-3 py-2 first:border-l-0 whitespace-nowrap";
@@ -80,7 +81,45 @@ function StopNotice({ stop, busy, onResume, onOpenSettings }: StopActions & { st
   );
 }
 
-function Assistant({ message, ...actions }: StopActions & { message: ChatMessage }) {
+interface LiveActions {
+  /** What the running turn is doing now. */
+  status?: LiveStatus | null | undefined;
+  /** A stop was asked for; the turn finishes its current step first. */
+  stopping?: boolean | undefined;
+  /** Stop the running turn after its current step. */
+  onStop?: (() => void) | undefined;
+}
+
+/** Under the streaming answer: what the turn is doing now, and a Stop control. */
+function LiveLine({ status = null, stopping = false, onStop }: LiveActions) {
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <span role="status" aria-live="polite" className="text-xs text-fg2">
+        {stopping ? STOPPING : turnStatusText(status)}…
+      </span>
+      {onStop ? (
+        <button
+          type="button"
+          disabled={stopping}
+          title={stopping ? STOPPING : undefined}
+          aria-description={stopping ? STOPPING : undefined}
+          onClick={onStop}
+          className="spring inline-flex items-center gap-1 rounded-full border border-hairline px-3 py-1 text-sm text-fg transition hover:bg-hairline disabled:opacity-30"
+        >
+          <CircleStop className="size-4" aria-hidden="true" />
+          Stop
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+function Assistant({
+  message,
+  live,
+  ...actions
+}: StopActions & { message: ChatMessage; live: LiveActions }) {
+  const running = message.streaming && !message.error && !message.interrupted;
   return (
     <div className="min-w-0 max-w-[92%] text-[15px] leading-relaxed">
       <ToolExecutionPills steps={message.tools} />
@@ -90,11 +129,8 @@ function Assistant({ message, ...actions }: StopActions & { message: ChatMessage
             {message.text}
           </Markdown>
         </div>
-      ) : message.streaming && !message.error && !message.interrupted ? (
-        <span className="text-fg2" aria-live="polite">
-          Thinking…
-        </span>
       ) : null}
+      {running ? <LiveLine {...live} /> : null}
       {message.interrupted ? <StopNotice stop={message.interrupted} {...actions} /> : null}
       {message.error ? (
         <p role="alert" className="mt-2 rounded-xl border border-hairline px-3 py-2 text-sm text-bad">
@@ -124,6 +160,12 @@ interface MessageStreamProps {
   onResume?: (() => void) | undefined;
   /** Open the Settings drawer (offered when the key was rejected). */
   onOpenSettings?: (() => void) | undefined;
+  /** What the running turn is doing now (shown under the streaming answer). */
+  status?: LiveStatus | null | undefined;
+  /** A stop was asked for and the turn is finishing its current step. */
+  stopping?: boolean | undefined;
+  /** Stop the running turn after its current step. */
+  onStop?: (() => void) | undefined;
 }
 
 export function MessageStream({
@@ -134,12 +176,16 @@ export function MessageStream({
   busy = false,
   onResume,
   onOpenSettings,
+  status = null,
+  stopping = false,
+  onStop,
 }: MessageStreamProps) {
+  const live: LiveActions = { status, stopping, onStop };
   const end = useRef<HTMLDivElement>(null);
   const last = messages[messages.length - 1];
   useEffect(() => {
     end.current?.scrollIntoView?.({ block: "end" });
-  }, [messages.length, last?.text]);
+  }, [messages.length, last?.text, status?.phase, status?.label]);
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4" aria-label="Conversation">
@@ -159,7 +205,13 @@ export function MessageStream({
               {message.role === "user" ? (
                 <User message={message} />
               ) : (
-                <Assistant message={message} busy={busy} onResume={onResume} onOpenSettings={onOpenSettings} />
+                <Assistant
+                  message={message}
+                  live={live}
+                  busy={busy}
+                  onResume={onResume}
+                  onOpenSettings={onOpenSettings}
+                />
               )}
             </li>
           ))}

@@ -1,7 +1,8 @@
 """The life of a turn record around the thread's lease: start, resume, abandon, report.
 
-The caller holds the thread's lease (``ThreadStore.claim``) before starting or resuming, so a
-turn still open on the thread is stale (its process stopped) and becomes
+The caller holds the thread's lease (``ThreadStore.claim``) before starting or resuming; the
+worker that runs the turn keeps renewing it and releases it at the end, so a turn still open on
+a thread the caller could claim is stale (its worker stopped) and becomes
 ``interrupted/worker_lost``. A refused resume raises ``TurnRefused`` with a fixed message.
 """
 
@@ -15,7 +16,7 @@ from api.services.provider_errors import interruption_message, message_for
 from api.services.threads import ThreadStore
 from app.turns import FailureReason, KeysUnavailableError, resumable
 from storage.keys import ThreadKey
-from storage.turn_model import Turn, TurnStatus
+from storage.turn_model import PlannedInput, Turn, TurnStatus
 
 BUSY = "A turn is already running for this thread."
 NOTHING_TO_RESUME = "This thread has no interrupted turn to resume."
@@ -64,8 +65,13 @@ def interruption(turn: Turn | None, max_resumes: int) -> TurnInterruption | None
     )
 
 
-async def start_turn(threads: ThreadStore, key: ThreadKey) -> Turn:
-    """Record a new message's turn; an interrupted latest turn is abandoned first.
+async def start_turn(
+    threads: ThreadStore,
+    key: ThreadKey,
+    planned: PlannedInput | None = None,
+) -> Turn:
+    """Record a new message's turn as queued with its input (read by the worker); an
+    interrupted latest turn is abandoned first.
 
     Its unanswered tool calls are closed by the runner before the new message runs.
 
@@ -81,7 +87,7 @@ async def start_turn(threads: ThreadStore, key: ThreadKey) -> Turn:
             TurnStatus.FAILED,
             FailureReason.SUPERSEDED,
         )
-    turn = await threads.turns.begin(key)
+    turn = await threads.turns.begin(key, planned)
     if turn is None:
         raise TurnRefused(BUSY)
     return turn
@@ -93,7 +99,7 @@ async def resume_turn_record(
     max_resumes: int,
     pending_steps: Callable[[], Awaitable[tuple[str, ...]]],
 ) -> Turn:
-    """Move the thread's interrupted turn back to running, after checking it can resume.
+    """Queue the thread's interrupted turn again (for the worker), after checking it can resume.
 
     ``pending_steps`` reports what the checkpoint would run next. A refusal changes nothing,
     except that a turn whose checkpoint has nothing left to run is marked completed.

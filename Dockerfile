@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1.7
-# EcoFate image. Targets: `api` (web program). `worker` is added by a later change on `runtime`.
+# EcoFate image. Targets: `api` (web program) and `worker` (the background agent worker), both on
+# `runtime`, so the two run exactly the same code.
 # Secrets never enter the image: they reach the container at run time from `.env` (compose).
 
 # --- frontend: build the React app into frontend/dist -------------------------------------
@@ -45,6 +46,7 @@ COPY prompts/ prompts/
 COPY storage/ storage/
 COPY alembic.ini ./
 COPY tools/ tools/
+COPY worker/ worker/
 COPY data/ data/
 COPY --from=frontend /src/frontend/dist frontend/dist
 # Run-time caches (SCC index, PubChem answers, the Hugging Face model) live in volumes mounted
@@ -59,3 +61,10 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
     CMD ["python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4).status == 200 else 1)"]
 CMD ["python", "-m", "api", "--container"]
+
+# --- worker: the background agent worker (runs the chat turns the API queues) -----------------
+# Queue, concurrency, prefetch and time limits come from [worker] in config/settings.toml.
+FROM runtime AS worker
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD ["sh", "-c", "celery -A worker.celery_app inspect ping --timeout 5 -d celery@$(hostname) > /dev/null"]
+CMD ["celery", "-A", "worker.celery_app", "worker", "--loglevel=INFO", "--without-gossip", "--without-mingle"]

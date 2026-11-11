@@ -92,7 +92,8 @@ async def test_a_workspace_update_follows_the_tool_results(monkeypatch: pytest.M
         < kinds.index("workspace_update")
         < kinds.index("assistant_message")
     )
-    assert [e.seq for e in events] == list(range(len(events)))
+    seqs = [e.seq for e in events]
+    assert seqs == sorted(set(seqs))  # strictly increasing
 
 
 async def test_the_workspace_is_kept_for_the_thread(monkeypatch: pytest.MonkeyPatch) -> None:

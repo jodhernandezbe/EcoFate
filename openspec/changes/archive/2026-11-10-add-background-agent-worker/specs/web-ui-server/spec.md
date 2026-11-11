@@ -79,3 +79,18 @@ answered 409, an unknown or not visible turn 404, a malformed id 422.
 #### Scenario: Cancel accepted
 - **WHEN** a running turn is cancelled
 - **THEN** the response is 202 and the turn's stream ends with `turn_interrupted` reason `cancelled`
+
+### Requirement: Continue the current thread after a reload
+`GET /api/v1/chat/current-thread` SHALL answer the snapshot of the signed-in user's most
+recently used thread, with the same content as the thread's own snapshot (including the id of a
+turn that is `queued` or `running`), and 404 when the user has no thread. It SHALL never answer
+another user's thread. The browser keeps no thread id: a reloaded page asks for its current
+thread here.
+
+#### Scenario: Reload continues the last thread
+- **WHEN** a user with two threads reloads the page
+- **THEN** the response is the snapshot of the thread they used last
+
+#### Scenario: No thread yet
+- **WHEN** a user who has never sent a message asks for the current thread
+- **THEN** the response is 404

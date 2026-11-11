@@ -9,10 +9,17 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   state serializer, threads, usage) -> the agent core. `core/` holds config view,
   the uvicorn log config (the filter itself is `app.redaction`) and exception handlers;
   `schemas/` holds every wire model.
-- `services/agent_runner.py` presents a turn and never runs the graph itself: it calls
-  `app.turns.execute_turn` and turns each `TurnEvent` into wire events (sequence numbers, step
-  labels, workspace rebuild, pending confirmation, usage summary) and does the `ThreadStore`
-  bookkeeping. `services/provider_errors.py` maps a `FailureReason` to its fixed message.
+- No agent runs in the API. The chat routes record the turn `queued` with its input and
+  `services/turn_queue.submit` enqueues it for the worker (ids only; 503 with a fixed message
+  when Redis is down, the turn then failed and given back, or a resume interrupted again).
+  `services/agent_runner.relay_turn` reads the turn's event stream and only presents it (wire
+  `seq` = record `seq` x `SLOTS` + index, step labels, `turn_status`, workspace rebuilt from the
+  stored tool messages by `services/workspace_sync`, fixed messages, usage); it changes no turn
+  state, so any number of readers see the same events, and ends a turn whose worker vanished
+  from its stored status. `GET /chat/turns/{id}/events` reattaches (`Last-Event-ID`, 410 once
+  expired), `POST /chat/turns/{id}/cancel` asks for a stop (202; 409 finished; 404 unknown or
+  another user's; 422 malformed), `GET /chat/current-thread` lets a reloaded page find its
+  thread. `services/provider_errors.py` maps a `FailureReason` to its fixed message.
 - Allowed imports: `app`, `agent`, `config`, `commons`, `prompts`, `storage`, `tools.schemas` (types
   only) and `tools.user_values` (checks an entered value). Never import tool modules, provider packages or `evals`; nothing imports `api`.
 - Settings come from `[ui]` in `config/settings.toml` via `config.ui`; `api/core/config.py`
@@ -46,29 +53,34 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   PostgreSQL behind the `services/threads.ThreadStore` protocol (`storage.threads` in
   production, `tests/fakes.InMemoryThreadStore` in tests). Never hold thread state on the app
   object or in module globals: another process may serve the next turn. Every store call is
-  awaited; a turn claims its thread (409 when busy) and releases it on every path.
+  awaited; a turn claims its thread (409 when busy); the route releases it when the turn is
+  refused or cannot be queued, otherwise the worker releases it when the turn ends.
   `services/database.py` opens the database in the lifespan and refuses to start without a
   migrated one; tests pass `create_app(..., threads=InMemoryThreadStore(), accounts=...)` (see `tests/api/auth_support.build_app`) and never touch it.
 - Turn status (`services/turn_lifecycle.py`, store `ThreadStore.turns`): each turn has a record;
   with the lease held, a turn left open is stale (`interrupted/worker_lost`), and a new message
   marks an interrupted latest turn `failed/superseded` (the runner closes its unanswered tool
   calls). A `FailureReason` that `app.turns.resumable` accepts interrupts the turn
-  (`turn_interrupted`); any other fails it (`error`). `POST .../resume` continues only the
-  latest interrupted turn, under `[agent].max_resumes_per_turn`, with a key and a next step
-  (none: mark it completed); every refusal is 409 with a fixed message and changes nothing. A
-  stream the client leaves interrupts its turn (`worker_lost`); start-up does the same.
+  (`turn_interrupted`); any other fails it (`error`). `POST .../resume` queues only the
+  latest interrupted turn again, under `[agent].max_resumes_per_turn`, with a key and a next step
+  (none: mark it completed); every refusal is 409 with a fixed message and changes nothing. The
+  worker holds the thread's lease while it runs the turn and releases it; a client that leaves
+  the stream never stops the turn. A running turn with a stale heartbeat becomes
+  `interrupted/worker_lost` at start-up, on a snapshot and when a reader waits on it.
 - Daily quota (`services/quota.py`, `routers/v1_usage.py`, `[limits]` via `config.limits`): the chat
   router counts a new message (`QuotaService.require`, 429 with `Retry-After`) after the thread claim
   and before `plan_turn`, so nothing runs and no model is built over the limit. Resume and an answer
-  to the open confirmation request never count. The runner gives a counted turn back (`refund`) only
-  when it stops for a reason that cannot be resumed and made no model call; counting itself is one
+  to the open confirmation request never count. The worker gives a counted turn back (the turn's
+  `planned_input.counted`) only when it stops for a reason that cannot be resumed and made no
+  model call; counting itself is one
   atomic statement in `storage/quota.py`, never a read then a write.
 - The chat model is built only through `app.chat_model`. Keys are bring-your-own: the user's OpenAI
   key lives in `user_credentials`, sealed (AES-256-GCM, owner and purpose as associated data) under
   the key-encryption key, and `app.user_key_vault.UserKeyVault` is the only module that decrypts it:
-  `read(user_id)` once per turn through `services/key_setup.turn_key_loader` (passed to the runner as
-  its key loader), given to the model and tools for that turn only, protected from the logs and never
-  stored on anything that outlives the turn; never in `os.environ`. A user with no usable key ends
+  `read(user_id)` once per turn by the worker (in-process mode: the same job, through
+  `dependencies.get_turn_queue`), given to the model and tools for that turn only, protected from
+  the logs and never stored on anything that outlives the turn; never in `os.environ`. The API
+  itself decrypts it only for the resume pre-check (`resume_steps`), which calls no model. A user with no usable key ends
   with the add-your-key message whatever the operator keys. Only `/api/v1/settings/openai-key` (and
   `/keys`, with the data services' availability) touch keys; there are no Census or CompTox routes,
   and no response, event or error carries any part of a key.

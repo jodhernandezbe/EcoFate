@@ -14,8 +14,10 @@ from pydantic import PrivateAttr, SecretStr
 
 from app.turns import (
     FailureReason,
+    StopRequestedError,
     TextDelta,
     ToolFinished,
+    ToolResults,
     TurnEvent,
     TurnFailed,
     TurnKeys,
@@ -231,3 +233,34 @@ def test_unanswered_calls_reads_only_the_last_assistant_message() -> None:
     ]
     assert unanswered_calls(history) == [("n2", "lookup")]
     assert unanswered_calls([HumanMessage("only")]) == []
+
+
+async def _stopped_after_tools(request: TurnRequest, services: TurnServices) -> list[TurnEvent]:
+    """Run until a batch of tool results arrives, then stop the turn there (as a cancel does)."""
+    run = execute_turn(request, services, TurnSettings(recursion_limit=20))
+    seen: list[TurnEvent] = []
+    event: TurnEvent | None = await anext(run)
+    while event is not None:
+        seen.append(event)
+        if isinstance(event, ToolResults):
+            event = await run.athrow(StopRequestedError(FailureReason.CANCELLED))
+            continue
+        event = await anext(run, None)
+    return seen
+
+
+async def test_a_turn_stopped_right_after_its_tools_still_has_steps_to_resume() -> None:
+    model = ScriptedChatModel([_calls("c0"), reply("All done", 3, 1)])
+    saver, usages = InMemorySaver(), Usages()
+    services = _services(model, saver, usages)
+    first = await _stopped_after_tools(FIRST, services)
+    failure = _failure(first)
+    assert failure is not None and failure.reason == FailureReason.CANCELLED
+    assert RUNS == ["cas-c0"]
+    steps = await pending_steps(THREAD, services, TurnSettings(recursion_limit=20))
+    assert steps != ()  # the tools' results are written, the step after them has not run
+    resumed = await _run(RESUME, services)
+    assert _failure(resumed) is None
+    assert _text(resumed) == "All done"
+    assert RUNS == ["cas-c0"]  # the finished tool did not run again
+    assert await pending_steps(THREAD, services, TurnSettings(recursion_limit=20)) == ()

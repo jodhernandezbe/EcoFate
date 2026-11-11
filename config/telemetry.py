@@ -26,11 +26,14 @@ class SpanNames:
 
     Attributes:
         cli_session: One command-line run.
-        web_turn: One chat turn of the web program.
+        web_turn: One chat turn of the web program (run by the worker).
+        web_enqueue: The web program handing a turn to the worker (the worker's turn span is
+            its child, across the process boundary).
     """
 
     cli_session: str
     web_turn: str
+    web_enqueue: str
 
 
 @dataclass(frozen=True)
@@ -47,6 +50,7 @@ class AttributeNames:
         turn_id: The web turn the span belongs to (a resumed turn keeps its id).
         resume_index: 0 for a turn's first run, then 1, 2, ... for each resume (web turns only).
         user_id: The signed-in user's opaque id (web turns only; never an email).
+        queue_wait_seconds: Seconds a web turn waited for a worker (web turns only).
     """
 
     session_id: str
@@ -58,6 +62,7 @@ class AttributeNames:
     turn_id: str
     resume_index: str
     user_id: str
+    queue_wait_seconds: str
 
 
 @dataclass(frozen=True)
@@ -132,14 +137,18 @@ def _timeout(table: dict[str, object]) -> float:
     return require_number(table, "query_timeout_seconds", minimum=0.001, name=_NAME)
 
 
+_SPAN_COUNT = 3
+
+
 def _spans(table: dict[str, object]) -> SpanNames:
     name = f"{_NAME}.spans"
     spans = subtable(table, "spans", _NAME)
     values = SpanNames(
         cli_session=require_str(spans, "cli_session", name).strip(),
         web_turn=require_str(spans, "web_turn", name).strip(),
+        web_enqueue=require_str(spans, "web_enqueue", name).strip(),
     )
-    if values.cli_session == values.web_turn:
+    if len({values.cli_session, values.web_turn, values.web_enqueue}) != _SPAN_COUNT:
         raise ValueError(f"{name} must give each span its own name")
     return values
 
@@ -157,6 +166,7 @@ def _attributes(table: dict[str, object]) -> AttributeNames:
         turn_id=require_str(attrs, "turn_id", name).strip(),
         resume_index=require_str(attrs, "resume_index", name).strip(),
         user_id=require_str(attrs, "user_id", name).strip(),
+        queue_wait_seconds=require_str(attrs, "queue_wait_seconds", name).strip(),
     )
     if values.usage_prefix == values.session_usage_prefix:
         raise ValueError(f"{name} must give the turn and the session usage their own prefix")

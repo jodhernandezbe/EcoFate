@@ -2,22 +2,32 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 from collections.abc import AsyncGenerator
+from typing import cast
 
+import logfire
 import pytest
+from celery.signals import before_task_publish
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, ToolCall
 from langchain_core.tools import tool
 from logfire.testing import TestExporter
+from opentelemetry.instrumentation.celery import CeleryInstrumentor
 from opentelemetry.sdk.trace import ReadableSpan
 
 from api.schemas.chat import ChatRequest, StreamEvent
 from api.services.agent_runner import AgentRuntime
 from api.services.key_setup import turn_key_loader
 from api.services.threads import ThreadStore
-from app.telemetry import flush_telemetry
+from app.task_queue import TASK_NAME, build_celery
+from app.telemetry import flush_telemetry, instrument_task_queue
+from commons.key_patterns import KEY_PATTERNS
 from config.telemetry import TelemetrySettings
+from config.worker import get_worker_settings
+from storage.turn_model import TurnStatus
 from tests.api.keys import OTHER_OWNER, OWNER, owned
 from tests.api.streams import begun_turn
 from tests.app.test_usage_meter import PRICING
@@ -152,18 +162,24 @@ async def test_tool_calls_nest_in_the_turn_trace(
     }
 
 
-async def test_closing_the_stream_early_still_ends_the_span_cleanly(
+async def test_a_reader_that_leaves_early_does_not_stop_the_turn(
     monitoring: TelemetrySettings,
     exporter: TestExporter,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
+    threads = InMemoryThreadStore()
     runtime = _runtime(ScriptedChatModel([reply("hello there", 10, 2)]), monitoring)
-    events = _turn("hi", InMemoryThreadStore(), runtime)
+    events = _turn("hi", threads, runtime)
     with caplog.at_level(logging.WARNING):
         await events.__anext__()
-        await events.aclose()
+        await events.aclose()  # the browser left; the worker keeps running the turn
+        for _ in range(200):
+            latest = await threads.turns.latest(owned("t1"))
+            if latest is not None and latest.status is TurnStatus.COMPLETED:
+                break
+            await asyncio.sleep(0.01)
     (span,) = _turn_spans(exporter, monitoring)
-    assert (span.attributes or {})[monitoring.attributes.outcome] == "error"
+    assert (span.attributes or {})[monitoring.attributes.outcome] == "ok"
     assert not [r for r in caplog.records if r.name.startswith("opentelemetry")]
 
 
@@ -189,3 +205,66 @@ async def test_the_checkpoint_of_a_turn_is_scoped_to_its_owner(
     mine = await threads.messages(owned("t1"))
     theirs = await threads.messages(owned("t1", OTHER_OWNER))
     assert [m.content for m in mine][0] == "first user" and theirs == []
+
+
+# --- across the queue -----------------------------------------------------------------------
+
+
+def _named(exporter: TestExporter, name: str) -> list[ReadableSpan]:
+    return [
+        s
+        for s in exporter.exported_spans
+        if s.name == name and (s.attributes or {}).get("logfire.span_type") != "pending_span"
+    ]
+
+
+async def test_the_worker_turn_span_is_a_child_of_the_enqueue_span(
+    monitoring: TelemetrySettings,
+    exporter: TestExporter,
+) -> None:
+    runtime = _runtime(ScriptedChatModel([reply("hello", 10, 2)]), monitoring)
+    await _run("Assess 71-43-2", InMemoryThreadStore(), runtime)
+    (enqueue,) = _named(exporter, monitoring.spans.web_enqueue)
+    (turn,) = _turn_spans(exporter, monitoring)
+    assert enqueue.context is not None and turn.context is not None
+    assert turn.context.trace_id == enqueue.context.trace_id
+    assert turn.parent is not None and turn.parent.span_id == enqueue.context.span_id
+    names, attributes = monitoring.attributes, turn.attributes or {}
+    assert attributes[names.session_id] == "t1" == (enqueue.attributes or {})[names.session_id]
+    wait = attributes[names.queue_wait_seconds]
+    assert isinstance(wait, float) and wait >= 0
+
+
+async def test_no_span_of_a_queued_turn_carries_a_key(
+    monitoring: TelemetrySettings,
+    exporter: TestExporter,
+) -> None:
+    runtime = _runtime(ScriptedChatModel([reply("hello", 10, 2)]), monitoring)
+    await _run("Assess 71-43-2", InMemoryThreadStore(), runtime)
+    flush_telemetry(monitoring)
+    values = [str(v) for s in exporter.exported_spans for v in (s.attributes or {}).values()]
+    assert values
+    assert not [v for v in values if KEY in v or any(p.search(v) for p in KEY_PATTERNS)]
+
+
+def test_the_trace_context_travels_in_the_task_headers_not_its_arguments(
+    monitoring: TelemetrySettings,
+    exporter: TestExporter,
+) -> None:
+    seen: list[tuple[object, object]] = []
+
+    def capture(body: object = None, headers: object = None, **_: object) -> None:
+        seen.append((body, headers))
+
+    app = build_celery(get_worker_settings(), "memory://")
+    instrument_task_queue(monitoring)
+    before_task_publish.connect(capture, weak=False)
+    try:
+        with logfire.span("enqueue"):
+            app.send_task(TASK_NAME, args=["a" * 32, str(OWNER)], retry=False)  # pyright: ignore[reportUnknownMemberType]
+    finally:
+        before_task_publish.disconnect(capture)
+        CeleryInstrumentor().uninstrument()
+    ((body, headers),) = seen
+    assert "traceparent" in cast(dict[str, object], headers)
+    assert "traceparent" not in json.dumps(body, default=str)

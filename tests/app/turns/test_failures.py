@@ -9,6 +9,7 @@ from app.turns.failures import (
     RESUMABLE_REASONS,
     FailureReason,
     KeysUnavailableError,
+    StopRequestedError,
     classify,
     new_correlation_id,
     resumable,
@@ -37,6 +38,14 @@ class ConnectTimeout(Exception):
     """Named like the HTTP client's timeout."""
 
 
+class SoftTimeLimitExceeded(Exception):
+    """Named like the task queue's soft time limit."""
+
+
+class TimeLimitNamedLike(Exception):
+    """A name that only contains the limit's name is not it."""
+
+
 @pytest.mark.parametrize(
     ("error", "reason"),
     [
@@ -57,6 +66,10 @@ class ConnectTimeout(Exception):
             FailureReason.KEYCHAIN_UNAVAILABLE,
         ),
         (GraphRecursionError("Recursion limit of 80 reached"), FailureReason.STEP_LIMIT),
+        (StopRequestedError(FailureReason.CANCELLED), FailureReason.CANCELLED),
+        (StopRequestedError(FailureReason.TIME_LIMIT), FailureReason.TIME_LIMIT),
+        (SoftTimeLimitExceeded(), FailureReason.TIME_LIMIT),
+        (TimeLimitNamedLike("SoftTimeLimitExceeded"), FailureReason.UNEXPECTED),
         (RuntimeError("boom"), FailureReason.UNEXPECTED),
         (ProviderError(400), FailureReason.UNEXPECTED),
         (ProviderError(404), FailureReason.UNEXPECTED),
@@ -99,6 +112,8 @@ def test_correlation_ids_are_short_and_distinct() -> None:
         (FailureReason.PROVIDER_DOWN, True),
         (FailureReason.STEP_LIMIT, True),
         (FailureReason.WORKER_LOST, True),
+        (FailureReason.CANCELLED, True),
+        (FailureReason.TIME_LIMIT, True),
         (FailureReason.FORBIDDEN, False),
         (FailureReason.UNEXPECTED, False),
         (FailureReason.SUPERSEDED, False),

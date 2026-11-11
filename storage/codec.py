@@ -20,7 +20,7 @@ from sqlalchemy import RowMapping
 
 from app.usage_meter import CallUsage
 from storage.account_model import Role, User
-from storage.turn_model import REASONED_STATUSES, Turn, TurnStatus
+from storage.turn_model import REASONED_STATUSES, PlannedInput, Turn, TurnStatus
 from tools.schemas import ConfirmationRequest, MissingEntry
 
 logger = logging.getLogger(__name__)
@@ -205,7 +205,33 @@ def _turn(
         started_at=cast(datetime | None, row["started_at"]),
         updated_at=cast(datetime, row["updated_at"]),
         finished_at=cast(datetime | None, row["finished_at"]),
+        heartbeat_at=cast(datetime | None, row.get("heartbeat_at")),
+        cancel_requested=row.get("cancel_requested") is True,
+        planned=planned_from_json(row.get("planned_input")),
     )
+
+
+def planned_to_json(planned: PlannedInput) -> dict[str, object]:
+    """A new turn's input as JSON-ready data (stored with the turn, never in a task message)."""
+    return {
+        "question": planned.question,
+        "message": planned.message,
+        "note": planned.note,
+        "counted": planned.counted,
+    }
+
+
+def planned_from_json(raw: object) -> PlannedInput | None:
+    """A stored turn input, or None when absent or it does not fit (strings and a boolean)."""
+    if not isinstance(raw, dict):
+        return None
+    data = cast(Mapping[str, object], raw)
+    question, message, note = data.get("question"), data.get("message"), data.get("note")
+    counted = data.get("counted")
+    texts = (question, message, note)
+    if not all(isinstance(text, str) for text in texts) or not isinstance(counted, bool):
+        return None
+    return PlannedInput(str(question), str(message), str(note), counted)
 
 
 def user_from_row(stored: RowMapping | None) -> User | None:

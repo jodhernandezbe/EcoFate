@@ -22,8 +22,14 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   `user_id`), so deleting a thread or its user deletes its rows. Every repository method on these
   tables takes a `ThreadKey` (or the owner id with a turn id) and puts the owner in its `WHERE`;
   none exists without one. The only calls across users are `purge_idle` (retention),
-  `TurnRepository.interrupt_all_open` (start-up recovery) and `forget_owner` (one user's account
-  deletion). The checkpointer's thread key is `ThreadKey.checkpoint_id` (`"{owner}:{thread}"`).
+  `TurnRepository.interrupt_all_open` and `interrupt_stale` (recovery), `queue_position` (a
+  count only) and `forget_owner` (one user's account deletion); `release_lease` is the lease
+  release a worker's recovery uses without a checkpointer. The checkpointer's thread key is
+  `ThreadKey.checkpoint_id` (`"{owner}:{thread}"`).
+- Turns: a new turn is `queued` with its `planned_input` (JSONB, read by the worker; task
+  messages carry ids only), `start` moves it to `running` once (a second delivery does nothing),
+  the worker renews `heartbeat_at` and the thread's lease (`extend`), `cancel_requested` asks it
+  to stop, and a resume queues it again.
 - Daily quota: `daily_turn_usage(user_id, day, turns)`; counting is one atomic upsert guarded by
   `WHERE turns < limit`, the day is the database's UTC date, a refund is guarded by
   `turns.quota_refunded`, and old rows go in the idle-retention purge.

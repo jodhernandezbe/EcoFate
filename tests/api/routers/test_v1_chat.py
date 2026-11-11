@@ -54,7 +54,7 @@ def test_stream_is_sse_with_ordered_events(chat: TestClient) -> None:
     events = parse_sse(response.text)
     assert [e["type"] for e in events][0] == "turn_started"
     assert events[-1]["type"] == "turn_finished"
-    assert [e["seq"] for e in events] == list(range(len(events)))
+    assert [e["seq"] for e in events] == sorted({e["seq"] for e in events})  # strictly increasing
     assert KEY not in response.text
 
 
@@ -94,7 +94,14 @@ def test_no_key_streams_an_error_event(app: FastAPI) -> None:
     app.dependency_overrides[get_runtime] = lambda: AgentRuntime(lambda key: model, 10)
     with signed_in(app) as client:
         events = parse_sse(_post(client).text)
-    assert [e["type"] for e in events] == ["turn_started", "error", "usage", "turn_finished"]
+    assert [e["type"] for e in events] == [
+        "turn_started",
+        "turn_status",  # queued
+        "turn_status",  # running
+        "error",
+        "usage",
+        "turn_finished",
+    ]
 
 
 def test_stream_carries_the_configured_step_labels(
