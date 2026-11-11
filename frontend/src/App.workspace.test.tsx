@@ -52,7 +52,7 @@ function stub(options: { never?: boolean } = {}): Stub {
       state.calls.push(`${init?.method ?? "GET"} ${url}`);
       if (url.endsWith("/settings/client")) return Promise.resolve(new Response(JSON.stringify(CONFIG)));
       if (url.endsWith("/settings/keys")) {
-        const body = { openai: { configured: true }, census: { configured: false }, comptox: { configured: false } };
+        const body = { openai: { configured: true }, services: { census: { available: false }, comptox: { available: false } } };
         return Promise.resolve(new Response(JSON.stringify(body)));
       }
       if (url.endsWith("/report")) return Promise.resolve(state.report());

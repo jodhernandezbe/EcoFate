@@ -14,7 +14,7 @@ from api.services.threads import ThreadStore
 from tests.api.conftest import ORIGIN, signed_in
 from tests.api.keys import owned
 from tests.api.streams import parse_sse
-from tests.fakes import OPENAI_ENTRY, FakeCredentialStore, scripted
+from tests.fakes import KeyBench, scripted
 from tools.schemas import ConfirmationRequest, MissingEntry
 
 OWN = {"Origin": ORIGIN}
@@ -23,8 +23,8 @@ IUR = "iur:71-43-2"
 
 
 @pytest.fixture
-def chat(app: FastAPI, store: FakeCredentialStore) -> Iterator[TestClient]:
-    store.entries[OPENAI_ENTRY] = KEY
+def chat(app: FastAPI, store: KeyBench) -> Iterator[TestClient]:
+    store.give(KEY)
     model = scripted("the answer with the value", "another answer")
     app.dependency_overrides[get_runtime] = lambda: AgentRuntime(lambda key: model, 10)
     with signed_in(app, raise_server_exceptions=False) as client:

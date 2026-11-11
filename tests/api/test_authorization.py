@@ -47,7 +47,7 @@ def test_every_other_route_answers_401_without_a_session(
     app: FastAPI,
 ) -> None:
     protected = [(m, p) for m, p in _routes(app) if (m, p) not in PUBLIC]
-    assert len(protected) > 20  # the table is really being walked
+    assert len(protected) > 15  # the table is really being walked
     for method, path in protected:
         response = anonymous.request(method, _concrete(path), json={}, headers=OWN)
         assert response.status_code == 401, (method, path)

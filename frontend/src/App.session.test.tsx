@@ -23,8 +23,7 @@ function stub({ me = signedOutResponse, routes = {} }: Options = {}) {
       calls.push(key);
       const route = key === "GET /auth/me" ? me : routes[key];
       if (route) return Promise.resolve(route());
-      const none = { configured: false };
-      const body = path === "/settings/client" ? { model: "test-model" } : { openai: { configured: true }, census: none, comptox: none };
+      const body = path === "/settings/client" ? { model: "test-model" } : { openai: { configured: true }, services: { census: { available: false }, comptox: { available: false } } };
       return Promise.resolve(json(body));
     }),
   );
@@ -162,7 +161,7 @@ describe("the account sheet", () => {
           body = JSON.parse(String(init?.body));
           return Promise.resolve(new Response(null, { status: 204 }));
         }
-        return Promise.resolve(json({ openai: { configured: true }, census: { configured: false }, comptox: { configured: false }, model: "m" }));
+        return Promise.resolve(json({ openai: { configured: true }, services: { census: { available: false }, comptox: { available: false } }, model: "m" }));
       }),
     );
     const user = userEvent.setup();

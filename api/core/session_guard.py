@@ -18,7 +18,6 @@ if TYPE_CHECKING:
     from api.services.auth.runtime import AuthRuntime
 
 UNAUTHENTICATED = "Sign in to continue."
-ADMIN_ONLY = "Only an administrator can change this server's API keys."
 
 
 def auth_runtime(request: Request) -> AuthRuntime:
@@ -44,14 +43,6 @@ async def require_admin(user: Annotated[User, Depends(current_user)]) -> User:
     """The signed-in administrator; anyone else gets the 404 of an unknown route."""
     if user.role is not Role.ADMIN:
         raise HTTPException(status_code=404)
-    return user
-
-
-async def require_admin_action(user: Annotated[User, Depends(current_user)]) -> User:
-    """The signed-in administrator, for an action on server-wide state whose route is not
-    hidden (the key routes: everyone may see whether a key is set); anyone else gets 403."""
-    if user.role is not Role.ADMIN:
-        raise Refusal(403, ADMIN_ONLY)
     return user
 
 

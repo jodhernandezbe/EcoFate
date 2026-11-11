@@ -1,9 +1,9 @@
 import type {
   ChatRequest,
   ClientConfig,
-  KeyName,
   KeysStatusResponse,
   KeyStatusResponse,
+  QuotaStatus,
   SessionDetailResponse,
   SessionsResponse,
   SignInResponse,
@@ -20,12 +20,20 @@ export class ApiError extends Error {
   readonly status: number;
   /** Seconds the server asked the client to wait (a 429's `Retry-After`); null otherwise. */
   readonly retryAfter: number | null;
+  /** When the daily quota resets (ISO 8601, UTC), from a 429 over the quota; null otherwise. */
+  readonly resetsAt: string | null;
 
-  constructor(message: string, status: number, retryAfter: number | null = null) {
+  constructor(
+    message: string,
+    status: number,
+    retryAfter: number | null = null,
+    resetsAt: string | null = null,
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.retryAfter = retryAfter;
+    this.resetsAt = resetsAt;
   }
 }
 
@@ -46,6 +54,10 @@ async function errorMessage(response: Response): Promise<string> {
       if (response.status === 422) return fieldMessage(body) ?? String(error);
       if (typeof error === "string") return error;
     }
+    if (typeof body === "object" && body !== null && "detail" in body) {
+      const { detail } = body as { detail: unknown };
+      if (typeof detail === "string") return detail; // the quota's 429 body
+    }
   } catch {
     // not a JSON error body
   }
@@ -55,6 +67,17 @@ async function errorMessage(response: Response): Promise<string> {
 function retryAfter(response: Response): number | null {
   const seconds = Number(response.headers.get("retry-after"));
   return Number.isFinite(seconds) && seconds > 0 ? seconds : null;
+}
+
+/** The reset time a 429 over the daily quota names (its body has `resets_at`), else null. */
+async function quotaReset(response: Response): Promise<string | null> {
+  if (response.status !== 429) return null;
+  try {
+    const body = (await response.clone().json()) as { resets_at?: unknown };
+    return typeof body.resets_at === "string" ? body.resets_at : null;
+  } catch {
+    return null;
+  }
 }
 
 type Listener = () => void;
@@ -77,7 +100,8 @@ async function request(path: string, init?: RequestInit): Promise<Response> {
     if (response.status === 401 && !ANSWERS_OWN_401.some((prefix) => path.startsWith(prefix))) {
       unauthorizedListeners.forEach((listener) => listener());
     }
-    throw new ApiError(await errorMessage(response), response.status, retryAfter(response));
+    const message = await errorMessage(response.clone());
+    throw new ApiError(message, response.status, retryAfter(response), await quotaReset(response));
   }
   return response;
 }
@@ -89,23 +113,21 @@ async function json<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const getClientConfig = (): Promise<ClientConfig> => json("/settings/client");
 
-const KEY_PATHS: Record<KeyName, string> = {
-  openai: "openai-key",
-  census: "census-key",
-  comptox: "comptox-key",
-};
+/** The signed-in user's daily turn quota (`applies` is false when none is enforced on them). */
+export const getQuota = (): Promise<QuotaStatus> => json("/usage/quota");
 
 export const getKeysStatus = (): Promise<KeysStatusResponse> => json("/settings/keys");
 
-export const saveKey = (name: KeyName, apiKey: string): Promise<KeyStatusResponse> =>
-  json(`/settings/${KEY_PATHS[name]}`, {
+/** Store the signed-in user's own OpenAI key, encrypted for their account. */
+export const saveKey = (apiKey: string): Promise<KeyStatusResponse> =>
+  json("/settings/openai-key", {
     method: "POST",
     headers: JSON_HEADERS,
     body: JSON.stringify({ api_key: apiKey }),
   });
 
-export const clearKey = (name: KeyName): Promise<KeyStatusResponse> =>
-  json(`/settings/${KEY_PATHS[name]}`, { method: "DELETE" });
+export const clearKey = (): Promise<KeyStatusResponse> =>
+  json("/settings/openai-key", { method: "DELETE" });
 
 /** A held thread's messages, workspace and usage; rejects with a 404 `ApiError` when gone. */
 export const getThread = (threadId: string): Promise<ThreadSnapshot> =>

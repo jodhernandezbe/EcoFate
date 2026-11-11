@@ -8,11 +8,13 @@ from collections.abc import Iterator
 
 import pytest
 
+import app.redaction as redaction_module
 from app.redaction import (
     LITERAL_REDACTED,
     REDACTED,
     SecretRedactionFilter,
     install_redaction,
+    protect_for_process,
     protect_secrets,
     redact,
 )
@@ -268,3 +270,74 @@ def test_a_database_password_never_reaches_a_log_line() -> None:
     assert "postgresql+psycopg://ecofate:" in line
     assert "@db:5432/ecofate" in line
     assert redact(line) == line  # redacting twice is harmless
+
+
+# --- cookies, emailed-link tokens and process-lifetime values ---------------------------------
+
+SESSION_TOKEN = "Zx81kLmq0PaT3vYb"  # pragma: allowlist secret
+KEK_TEXT = "q9W2e8R7t6Y5u4I3o2P1a0S9d8F7g6H5j4K3l2Z1x0C"  # pragma: allowlist secret
+
+
+@pytest.fixture
+def process_literals(monkeypatch: pytest.MonkeyPatch) -> None:
+    empty: set[str] = set()
+    monkeypatch.setattr(redaction_module, "_PROCESS_LITERALS", empty)
+
+
+def test_a_cookie_header_loses_its_session_token() -> None:
+    text = redact(f"Cookie: ecofate_session={SESSION_TOKEN}; theme=dark")
+    assert SESSION_TOKEN not in text
+    assert text.startswith("Cookie: ")
+
+
+def test_a_set_cookie_header_loses_its_session_token() -> None:
+    assert SESSION_TOKEN not in redact(f"Set-Cookie: ecofate_session={SESSION_TOKEN}; HttpOnly")
+
+
+def test_the_word_cookie_in_prose_is_left_alone() -> None:
+    text = "the session cookie expires after a day; cookie: it is HttpOnly"
+    assert redact(text) == text
+
+
+def test_a_reset_link_keeps_its_address_and_loses_its_token() -> None:
+    text = redact(f"sent https://ecofate.example/reset#token={SESSION_TOKEN}")
+    assert SESSION_TOKEN not in text
+    assert "https://ecofate.example/reset#token=" in text
+
+
+def test_a_fragment_without_a_token_is_left_alone() -> None:
+    text = "see https://example.org/docs#usage"
+    assert redact(text) == text
+
+
+def test_a_process_value_is_redacted_with_no_block_open(process_literals: None) -> None:
+    protect_for_process([KEK_TEXT])
+    assert KEK_TEXT not in redact(f"loaded {KEK_TEXT}")
+
+
+def test_a_process_value_is_redacted_in_a_log_record(
+    captured: tuple[logging.Logger, io.StringIO],
+    process_literals: None,
+) -> None:
+    logger, stream = captured
+    protect_for_process([KEK_TEXT])
+    logger.info("kek %s", KEK_TEXT)
+    assert KEK_TEXT not in stream.getvalue()
+
+
+def test_a_process_value_survives_a_turn_block_ending(process_literals: None) -> None:
+    protect_for_process([KEK_TEXT])
+    with protect_secrets([KEK_TEXT]):
+        pass
+    assert KEK_TEXT not in redact(KEK_TEXT)
+
+
+def test_protecting_for_the_process_twice_is_harmless(process_literals: None) -> None:
+    protect_for_process([KEK_TEXT])
+    protect_for_process([KEK_TEXT])
+    assert redact(f"a {KEK_TEXT} b") == f"a {LITERAL_REDACTED} b"
+
+
+def test_short_process_values_are_ignored(process_literals: None) -> None:
+    protect_for_process(["short", ""])
+    assert redact("a short value") == "a short value"

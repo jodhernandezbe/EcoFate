@@ -27,6 +27,16 @@ ASSIGNMENT_PATTERN = re.compile(
 # password runs to the last "@" before the host, so one containing "@" or ":" is masked whole.
 DATABASE_URL_PATTERN = re.compile(r"(postgres(?:ql)?(?:\+\w+)?://[^:/@\s]*:)(\S+)(@[^@/\s]+)")
 
+# The value of a Cookie or Set-Cookie header (a session token), also as a dict entry
+# ("'cookie': 'sid=...'"): the header name stays, the value goes. A value is one or more
+# name=value pairs, so "cookie: it expires" in prose is left alone.
+COOKIE_PATTERN = re.compile(
+    r"(?i)\b((?:set-)?cookie['\"]?\s*:\s*['\"]?)[^\s=;'\"]+=[^\r\n'\"]*",
+)
+# A token in a URL fragment ("https://host/reset#token=...", the emailed verification and reset
+# links): the "#token=" stays, the token goes. A fragment with no token parameter is not matched.
+FRAGMENT_TOKEN_PATTERN = re.compile(r"(?i)(#(?:[^\s#&]*&)*token=)[^&\s'\")]+")
+
 KEY_PATTERNS: tuple[re.Pattern[str], ...] = (
     SECRET_PATTERN,
     MASKED_KEY_PATTERN,
@@ -34,4 +44,6 @@ KEY_PATTERNS: tuple[re.Pattern[str], ...] = (
     QUERY_PATTERN,
     ASSIGNMENT_PATTERN,
     DATABASE_URL_PATTERN,
+    COOKIE_PATTERN,
+    FRAGMENT_TOKEN_PATTERN,
 )

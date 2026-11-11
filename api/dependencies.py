@@ -11,20 +11,19 @@ from agent.completion import CompletionGuard
 from agent.graph import DEFAULT_SYSTEM_PROMPT
 from agent.guardrails import ScopeGuard
 from api.core.config import ui_settings
-from api.core.security_keyring import default_service_keys
 from api.core.session_guard import auth_runtime
 from api.services.agent_runner import AgentRuntime
 from api.services.auth.throttle import client_address
+from api.services.key_setup import KeyServices
 from api.services.monitoring.service import MonitoringService
 from api.services.projectors.rules import WorkspaceRules
+from api.services.quota import QuotaService
 from api.services.threads import ThreadStore
 from app.chat_model import build_chat_model
-from app.key_vault import ServiceKeys, environment_service_keys
 from config.agent import get_agent_settings
-from config.loader import get_comptox_settings
 from config.population import get_population_settings
 from config.telemetry import get_telemetry_settings
-from config.ui import KeyName, UiSettings
+from config.ui import UiSettings
 from prompts.registry import load_prompt
 
 
@@ -33,24 +32,9 @@ def get_settings() -> UiSettings:
     return ui_settings()
 
 
-def key_variables() -> dict[KeyName, str]:
-    """Key name -> the environment variable that holds it when no keychain is used."""
-    return {
-        "openai": get_agent_settings().api_key_env_var,
-        "census": get_population_settings().api_key_env_var,
-        "comptox": get_comptox_settings().api_key_env_var,
-    }
-
-
-def get_service_keys(request: Request) -> ServiceKeys:
-    """The vaults of every key; keys are read from them once per turn, never cached.
-
-    The OS keychain natively; the environment (``.env``) when the app was built for a
-    container (``python -m api --container``), where no keychain exists.
-    """
-    if getattr(request.app.state, "keys_from_environment", False):
-        return environment_service_keys(key_variables())
-    return default_service_keys()
+def get_key_services(request: Request) -> KeyServices:
+    """The user key vault and the operator's keys (built at start-up, never per request)."""
+    return cast(KeyServices, request.app.state.keys)
 
 
 def _scope_guard(ui: UiSettings) -> ScopeGuard:
@@ -106,6 +90,11 @@ def get_runtime() -> AgentRuntime:
 def get_max_resumes() -> int:
     """How many times one interrupted turn may be resumed (``[agent].max_resumes_per_turn``)."""
     return get_agent_settings().max_resumes_per_turn
+
+
+def get_quota(request: Request) -> QuotaService:
+    """The daily turn quota of this app (built at start-up from ``[limits]`` and the store)."""
+    return cast(QuotaService, request.app.state.quota)
 
 
 def get_threads(request: Request) -> ThreadStore:

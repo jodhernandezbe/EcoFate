@@ -14,6 +14,7 @@ import { chatReducer, initialChatState } from "./chatState";
 const newId = (): string => crypto.randomUUID();
 const NOT_FOUND = 404;
 const UNPROCESSABLE = 422;
+const TOO_MANY_REQUESTS = 429;
 const NOT_CLEARED = "The workspace could not be cleared.";
 
 function describe(error: unknown): string {
@@ -31,11 +32,18 @@ export interface StreamListeners {
   onReplace?: (state: WorkspaceState | null) => void;
 }
 
+/** A message the server refused because the daily quota is used up, and when it resets. */
+export interface QuotaRefusal {
+  text: string;
+  resetsAt: string | null;
+}
+
 /** One conversation at a time: send a message, receive the streamed answer, clear it all. */
 export function useAgentStream(listeners: StreamListeners = {}) {
   const [state, dispatch] = useReducer(chatReducer, initialChatState);
   const [threadId, setThreadId] = useState(() => listeners.firstThreadId ?? newId());
   const [notice, setNotice] = useState<string | null>(null);
+  const [refusal, setRefusal] = useState<QuotaRefusal | null>(null);
   const current = useRef(threadId);
   const busy = useRef(false);
   const heard = useRef(listeners);
@@ -58,10 +66,16 @@ export function useAgentStream(listeners: StreamListeners = {}) {
     async (body: ChatRequest, shown: string, reopen: ConfirmationPrompt | null) => {
       const abort = new AbortController();
       setNotice(null);
+      setRefusal(null);
       dispatch({ type: "user_sent", id: newId(), assistantId: newId(), text: shown });
       try {
         await follow(streamChat(body, abort.signal));
       } catch (error) {
+        if (error instanceof ApiError && error.status === TOO_MANY_REQUESTS && error.resetsAt) {
+          dispatch({ type: "refused" });
+          setRefusal({ text: shown, resetsAt: error.resetsAt });
+          return;
+        }
         // A value the server refuses leaves the request open: show it again to correct.
         if (reopen && error instanceof ApiError && error.status === UNPROCESSABLE) {
           dispatch({ type: "rejected", prompt: reopen });
@@ -126,5 +140,5 @@ export function useAgentStream(listeners: StreamListeners = {}) {
     return true;
   }, []);
 
-  return { ...state, threadId, notice, send, answer, resume, clearWorkspace };
+  return { ...state, threadId, notice, refusal, send, answer, resume, clearWorkspace };
 }

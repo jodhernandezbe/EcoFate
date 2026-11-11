@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import pytest
+from pydantic import SecretStr
 from uvicorn.config import LOGGING_CONFIG
 
+import app.redaction as redaction
 from api.core.logging_filter import LITERAL_REDACTED, redact, uvicorn_log_config
+from app.operator_keys import OperatorKeys
+from config.telemetry import get_telemetry_settings
 from tests.api.auth_support import build_app
-from tests.fakes import InMemoryThreadStore
+from tests.fakes import InMemoryThreadStore, KeyBench
 
 CENSUS = "c3n5u5k3y" + "7f" * 16  # pragma: allowlist secret
+LOGFIRE = "write-token-" + "w" * 20  # pragma: allowlist secret
 
 
 def test_uvicorn_log_config_filters_every_handler_without_mutating_the_base() -> None:
@@ -24,14 +29,17 @@ def test_root_logger_goes_through_a_redacting_handler() -> None:
     assert "redact_secrets" in config["handlers"]["default"]["filters"]
 
 
-def test_keys_from_the_environment_are_protected_while_the_app_runs(
+def test_operator_keys_and_process_secrets_are_protected_once_the_app_starts(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from fastapi.testclient import TestClient
 
-    monkeypatch.setenv("CENSUS_API_KEY", CENSUS)
-    monkeypatch.setenv("COMPTOX_API_KEY", "ct0x-key-" + "9d" * 14)  # pragma: allowlist secret
-    with TestClient(build_app(threads=InMemoryThreadStore())):
+    empty: set[str] = set()
+    monkeypatch.setattr(redaction, "_PROCESS_LITERALS", empty)
+    monkeypatch.setenv(get_telemetry_settings().write_token_env_var, LOGFIRE)
+    operator = OperatorKeys(census=SecretStr(CENSUS))
+    keys = KeyBench(operator).services
+    with TestClient(build_app(threads=InMemoryThreadStore(), keys=keys)):
         assert CENSUS not in redact(f"plain text {CENSUS} in a log")
-        assert "ct0x-key-" not in redact("value ct0x-key-" + "9d" * 14)
-    assert redact(f"plain text {CENSUS}") != "plain text " + LITERAL_REDACTED  # not after shutdown
+        assert LOGFIRE not in redact(f"token {LOGFIRE}")
+        assert redact(f"plain text {CENSUS}") == f"plain text {LITERAL_REDACTED}"

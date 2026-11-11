@@ -8,8 +8,7 @@ function stubApi() {
   const fetchMock = vi.fn((input: RequestInfo | URL) => {
     const url = String(input);
     if (url.endsWith("/auth/me")) return Promise.resolve(meResponse());
-    const none = { configured: false };
-    let body: object = { openai: { configured: true }, census: none, comptox: none };
+    let body: object = { openai: { configured: true }, services: { census: { available: false }, comptox: { available: false } } };
     if (url.endsWith("/settings/client")) body = { model: "test-model" };
     if (url.endsWith("/monitoring/sessions")) body = { state: "ok", message: null, sessions: [] };
     return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));

@@ -16,23 +16,21 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from api.dependencies import get_service_keys
 from api.main import create_app
 from api.services.auth.runtime import AuthRuntime
-from app.key_vault import default_service_keys
 from config.ui import UiSettings, get_ui_settings
 from storage.account_model import User
 from storage.keys import ThreadKey
 from tests.api.auth_support import SECRET, fast_settings
-from tests.fakes import FakeCredentialStore, InMemoryThreadStore
+from tests.fakes import InMemoryThreadStore, KeyBench
 from tests.fakes_accounts import FakeClock, RecordingMailer, in_memory_accounts
 
 ORIGIN = "http://127.0.0.1:8000"
 
 
 @pytest.fixture
-def store() -> FakeCredentialStore:
-    return FakeCredentialStore()
+def store() -> KeyBench:
+    return KeyBench()
 
 
 @pytest.fixture
@@ -57,7 +55,7 @@ def threads() -> InMemoryThreadStore:
 
 @pytest.fixture
 def app(
-    store: FakeCredentialStore,
+    store: KeyBench,
     settings: UiSettings,
     clock: FakeClock,
     mailer: RecordingMailer,
@@ -71,9 +69,8 @@ def app(
         accounts=in_memory_accounts(clock),
         mailer=mailer,
         session_secret=SECRET,
+        keys=store.services,
     )
-    keys = default_service_keys(store)
-    api.dependency_overrides[get_service_keys] = lambda: keys
     return api
 
 

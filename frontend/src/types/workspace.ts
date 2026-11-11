@@ -17,6 +17,8 @@ export type {
   GuardrailPivotResponse,
   LayoutConfig,
   KeysStatusResponse,
+  QuotaExhausted,
+  QuotaStatus,
   KeyStatusResponse,
   KeyUpdatePayload,
   Meteorology,
@@ -59,8 +61,8 @@ export type {
 
 import type { Extremum, KeysStatusResponse, OccupationalExposure } from "./api";
 
-/** The keys the interface stores: the model key and the two service keys the tools use. */
-export type KeyName = keyof KeysStatusResponse;
+/** The data services an installation may provide (their keys belong to the operator). */
+export type ServiceName = keyof KeysStatusResponse["services"];
 
 /** Tier of the worker screening: how the 8-hour average, hazard quotient and cancer risk compare. */
 export type OccupationalTier = NonNullable<OccupationalExposure["risk_tier"]>;

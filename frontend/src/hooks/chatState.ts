@@ -44,6 +44,7 @@ export type ChatAction =
   | { type: "failed"; message: string }
   | { type: "closed" }
   | { type: "rejected"; prompt: ConfirmationPrompt | null }
+  | { type: "refused" }
   | { type: "restore"; snapshot: ThreadSnapshot; ids: string[] }
   | { type: "reset" };
 
@@ -190,6 +191,9 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
         busy: false,
         confirmation: action.prompt,
       };
+    case "refused":
+      // Over the daily quota: nothing ran or was recorded, so take back the optimistic turn.
+      return { ...state, messages: state.messages.slice(0, -2), busy: false };
     case "restore":
       return restored(action.snapshot, action.ids);
     case "reset":

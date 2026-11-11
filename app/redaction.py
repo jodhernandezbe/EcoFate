@@ -15,7 +15,9 @@ from contextlib import contextmanager
 from commons.key_patterns import (
     ASSIGNMENT_PATTERN,
     BEARER_PATTERN,
+    COOKIE_PATTERN,
     DATABASE_URL_PATTERN,
+    FRAGMENT_TOKEN_PATTERN,
     MASKED_KEY_PATTERN,
     QUERY_PATTERN,
     SECRET_PATTERN,
@@ -32,6 +34,19 @@ LITERAL_REDACTED = "***REDACTED***"
 MIN_LITERAL_LENGTH = 8  # shorter values would mangle ordinary log text
 _LITERALS: Counter[str] = Counter()
 _LITERALS_LOCK = threading.Lock()
+_PROCESS_LITERALS: set[str] = set()
+
+
+def protect_for_process(values: Iterable[str]) -> None:
+    """Redact these exact values, wherever they appear, for the rest of the process.
+
+    For secrets that live as long as the program: the key-encryption keys, the session secret,
+    the SMTP password, the operator's service keys and the monitoring tokens. Idempotent. Values
+    shorter than ``MIN_LITERAL_LENGTH`` are ignored, as in ``protect_secrets``.
+    """
+    items = {value for value in values if len(value) >= MIN_LITERAL_LENGTH}
+    with _LITERALS_LOCK:
+        _PROCESS_LITERALS.update(items)
 
 
 @contextmanager
@@ -56,12 +71,14 @@ def protect_secrets(values: Iterable[str]) -> Generator[None]:
 def redact(text: str) -> str:
     """Return ``text`` with key-shaped substrings and protected values replaced."""
     text = DATABASE_URL_PATTERN.sub(rf"\1{LITERAL_REDACTED}\3", text)
+    text = COOKIE_PATTERN.sub(rf"\1{LITERAL_REDACTED}", text)
+    text = FRAGMENT_TOKEN_PATTERN.sub(rf"\1{LITERAL_REDACTED}", text)
     text = BEARER_PATTERN.sub(rf"\1{LITERAL_REDACTED}", text)
     text = QUERY_PATTERN.sub(rf"\1{LITERAL_REDACTED}", text)
     text = ASSIGNMENT_PATTERN.sub(rf"\1\2{LITERAL_REDACTED}", text)
     text = SECRET_PATTERN.sub(REDACTED, MASKED_KEY_PATTERN.sub(REDACTED, text))
     with _LITERALS_LOCK:
-        literals = sorted(_LITERALS, key=len, reverse=True)
+        literals = sorted(_LITERALS.keys() | _PROCESS_LITERALS, key=len, reverse=True)
     for value in literals:
         text = text.replace(value, LITERAL_REDACTED)
     return text

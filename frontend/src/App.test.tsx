@@ -10,10 +10,9 @@ function stubApi(keyConfigured: boolean) {
     const url = String(input);
     if (url.endsWith("/auth/me")) return Promise.resolve(meResponse());
     const status = { configured: keyConfigured };
-    const none = { configured: false };
     const body = url.endsWith("/settings/client")
       ? { model: "test-model" }
-      : { openai: status, census: none, comptox: none };
+      : { openai: status, services: { census: { available: false }, comptox: { available: false } } };
     return Promise.resolve(new Response(JSON.stringify(body), { status: 200 }));
   });
   vi.stubGlobal("fetch", fetchMock);
@@ -47,9 +46,10 @@ describe("App", () => {
     await user.click(screen.getByRole("button", { name: "Settings" }));
     expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Map" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Assistant" }));
+    expect(await screen.findByText("Key stored encrypted for your account")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Data services" }));
-    expect(await screen.findByText("Key stored securely in OS Keychain")).toBeInTheDocument();
-    expect(screen.getAllByText("No key configured")).toHaveLength(2); // Census and CompTox
+    expect(screen.getAllByText("Not available on this installation")).toHaveLength(2); // Census and CompTox
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).toBeNull();
   });
@@ -88,8 +88,7 @@ describe("onboarding and clearing the workspace", () => {
     if (url.endsWith("/auth/me")) return Promise.resolve(meResponse());
         calls.push({ url, method: init?.method ?? "GET" });
         const stored = { configured: true };
-        const none = { configured: false };
-        let body: object = { openai: stored, census: none, comptox: none };
+        let body: object = { openai: stored, services: { census: { available: false }, comptox: { available: false } } };
         if (url.endsWith("/settings/client")) body = { model: "m", suggestions: ["Assess benzene"] };
         if (url.endsWith("/chat/stream")) {
           const text = events.map((e) => `data: ${JSON.stringify(e)}\n\n`).join("");

@@ -1,14 +1,14 @@
-"""Settings routes: the API-key vaults and the display settings. Thin handlers only."""
+"""Settings routes: the signed-in user's OpenAI key, data-service availability and the display
+settings. Thin handlers only."""
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
 
-from api.core.session_guard import current_user, require_admin_action
-from api.dependencies import get_service_keys, get_settings
+from api.core.session_guard import CurrentUser, current_user
+from api.dependencies import get_key_services, get_settings
 from api.schemas.settings import (
     ClientConfig,
     InitialView,
@@ -17,13 +17,16 @@ from api.schemas.settings import (
     KeyUpdatePayload,
     LayoutConfig,
     MapConfig,
+    ServiceAvailability,
+    ServicesAvailability,
     Thresholds,
     WorkerThresholds,
 )
-from app.key_vault import KeyStatus, ServiceKeys
+from api.services.key_setup import KeyServices
+from app.key_vault import KeyStatus
 from config.agent import get_agent_settings
 from config.occupational import get_occupational_settings
-from config.ui import KeyName, UiSettings
+from config.ui import UiSettings
 
 router = APIRouter(
     prefix="/api/v1/settings",
@@ -32,75 +35,46 @@ router = APIRouter(
 )
 # Display settings every visitor needs, the sign-in screen included: no session required.
 public_router = APIRouter(prefix="/api/v1/settings", tags=["settings"])
-Keys = Annotated[ServiceKeys, Depends(get_service_keys)]
 Settings = Annotated[UiSettings, Depends(get_settings)]
-# One entry per key: its name and the path segment of its routes.
-KEY_PATHS: dict[KeyName, str] = {
-    "openai": "openai-key",
-    "census": "census-key",
-    "comptox": "comptox-key",
-}
+Keys = Annotated[KeyServices, Depends(get_key_services)]
 
 
 def _status(status: KeyStatus) -> KeyStatusResponse:
     return KeyStatusResponse(configured=status.configured)
 
 
-def _status_endpoint(name: KeyName) -> Callable[[Keys], KeyStatusResponse]:
-    def key_status(keys: Keys) -> KeyStatusResponse:
-        """Whether the key is stored; never any part of it."""
-        return _status(keys.vault(name).status())
-
-    return key_status
+@router.get("/openai-key")
+async def openai_key_status(user: CurrentUser, keys: Keys) -> KeyStatusResponse:
+    """Whether the signed-in user has an OpenAI key stored; never any part of it."""
+    return _status(await keys.vault.status(user.id))
 
 
-def _save_endpoint(name: KeyName) -> Callable[[KeyUpdatePayload, Keys], KeyStatusResponse]:
-    def save_key(payload: KeyUpdatePayload, keys: Keys) -> KeyStatusResponse:
-        """Store the key in the OS keychain."""
-        return _status(keys.vault(name).save(payload.api_key.get_secret_value()))
-
-    return save_key
-
-
-def _clear_endpoint(name: KeyName) -> Callable[[Keys], KeyStatusResponse]:
-    def clear_key(keys: Keys) -> KeyStatusResponse:
-        """Remove the key from the OS keychain."""
-        return _status(keys.vault(name).clear())
-
-    return clear_key
+@router.post("/openai-key")
+async def save_openai_key(
+    payload: KeyUpdatePayload,
+    user: CurrentUser,
+    keys: Keys,
+) -> KeyStatusResponse:
+    """Seal the user's OpenAI key in the database (encrypted, bound to their account)."""
+    return _status(await keys.vault.save(user.id, payload.api_key.get_secret_value()))
 
 
-def _add_key_routes(name: KeyName, path: str) -> None:
-    """Status for every signed-in user; save and clear only for administrators, because the
-    keys are the server's and every user's turns run with them."""
-    admin = [Depends(require_admin_action)]
-    for method, endpoint, guard in (
-        ("GET", _status_endpoint(name), []),
-        ("POST", _save_endpoint(name), admin),
-        ("DELETE", _clear_endpoint(name), admin),
-    ):
-        router.add_api_route(
-            f"/{path}",
-            endpoint,
-            methods=[method],
-            response_model=KeyStatusResponse,
-            name=f"{method.lower()}_{name}_key",
-            dependencies=guard,
-        )
-
-
-for _name, _path in KEY_PATHS.items():
-    _add_key_routes(_name, _path)
+@router.delete("/openai-key")
+async def clear_openai_key(user: CurrentUser, keys: Keys) -> KeyStatusResponse:
+    """Delete the user's stored OpenAI key."""
+    return _status(await keys.vault.clear(user.id))
 
 
 @router.get("/keys")
-def all_keys_status(keys: Keys) -> KeysStatusResponse:
-    """The status of every key at once (never a key)."""
-    statuses = keys.statuses()
+async def all_keys_status(user: CurrentUser, keys: Keys) -> KeysStatusResponse:
+    """The user's OpenAI key status and which data services this installation provides."""
+    available = keys.operator.available()
     return KeysStatusResponse(
-        openai=_status(statuses["openai"]),
-        census=_status(statuses["census"]),
-        comptox=_status(statuses["comptox"]),
+        openai=_status(await keys.vault.status(user.id)),
+        services=ServicesAvailability(
+            census=ServiceAvailability(available=available["census"]),
+            comptox=ServiceAvailability(available=available["comptox"]),
+        ),
     )
 
 

@@ -20,7 +20,15 @@ from langgraph.checkpoint.memory import InMemorySaver
 from pydantic import PrivateAttr
 
 from api.schemas.workspace import WorkspaceState
+from api.services.key_setup import KeyServices
+from app.operator_keys import OperatorKeys
 from app.usage_meter import CallUsage
+from app.user_key_vault import (
+    OPENAI_PURPOSE,
+    KeyEncryptionKeys,
+    UserKeyVault,
+)
+from commons.sealed_secret import kek_id, seal
 from storage.keys import ThreadKey
 from storage.turn_model import (
     OPEN_STATUSES,
@@ -30,6 +38,7 @@ from storage.turn_model import (
     TurnTransitionError,
     check_transition,
 )
+from storage.user_credentials import StoredCredential
 from tools.schemas import ConfirmationRequest
 
 
@@ -475,3 +484,65 @@ class InMemoryThreadStore:
         for key in owned:
             self._forget(key)
         return len(owned)
+
+
+class InMemorySealedStore:
+    """In-memory ``SealedCredentialStore``: the ``user_credentials`` table without PostgreSQL."""
+
+    def __init__(self) -> None:
+        self.rows: dict[tuple[UUID, str], StoredCredential] = {}
+
+    async def get(self, user_id: UUID, purpose: str) -> StoredCredential | None:
+        return self.rows.get((user_id, purpose))
+
+    async def put(self, credential: StoredCredential) -> None:
+        self.rows[(credential.user_id, credential.purpose)] = credential
+
+    async def delete(self, user_id: UUID, purpose: str) -> None:
+        self.rows.pop((user_id, purpose), None)
+
+    async def replace_if_sealed_by(self, credential: StoredCredential, old_kek_id: str) -> bool:
+        current = self.rows.get((credential.user_id, credential.purpose))
+        if current is None or current.kek_id != old_kek_id:
+            return False
+        self.rows[(credential.user_id, credential.purpose)] = credential
+        return True
+
+    async def unsealed_by_other_keys(
+        self,
+        current_kek_id: str,
+        limit: int,
+        after: tuple[UUID, str] | None = None,
+    ) -> list[StoredCredential]:
+        rows = sorted(
+            (row for row in self.rows.values() if row.kek_id != current_kek_id),
+            key=lambda row: (row.user_id, row.purpose),
+        )
+        return [r for r in rows if after is None or (r.user_id, r.purpose) > after][:limit]
+
+    async def count_sealed_by(self, kek_id: str) -> int:
+        return sum(1 for row in self.rows.values() if row.kek_id == kek_id)
+
+
+TEST_KEK = bytes(range(32))
+OWNER_ID = UUID(int=1)  # the id the in-memory account store gives its first account
+
+
+class KeyBench:
+    """The key services over an in-memory sealed store: a real ``UserKeyVault`` with a test KEK.
+
+    ``give`` seals a user's key straight into the store (the default signed-in test user is
+    ``OWNER_ID``), so a test starts "with a key saved" without going through a route.
+    """
+
+    def __init__(self, operator: OperatorKeys | None = None) -> None:
+        self.rows = InMemorySealedStore()
+        self.vault = UserKeyVault(self.rows, KeyEncryptionKeys(TEST_KEK), max_length=200)
+        self.operator = operator or OperatorKeys()
+        self.services = KeyServices(self.vault, self.operator)
+
+    def give(self, key: str, user_id: UUID = OWNER_ID) -> None:
+        """Store ``key`` as ``user_id``'s sealed OpenAI key."""
+        nonce, ciphertext = seal(TEST_KEK, key, f"ecofate:{OPENAI_PURPOSE}:{user_id}".encode())
+        row = StoredCredential(user_id, OPENAI_PURPOSE, nonce, ciphertext, kek_id(TEST_KEK))
+        self.rows.rows[(user_id, OPENAI_PURPOSE)] = row

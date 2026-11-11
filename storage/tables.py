@@ -1,6 +1,7 @@
 """The program's tables (SQLAlchemy Core). Changed only through a new Alembic revision.
 
-Accounts: ``users``, ``sessions``, ``auth_tokens`` and ``login_attempts``. Every conversation
+Accounts: ``users``, ``sessions``, ``auth_tokens``, ``login_attempts`` and the sealed
+``user_credentials``. Every conversation
 table belongs to one user: ``threads`` is keyed by ``(owner_id, id)`` (two users may pick the
 same thread id) and every other table refers to it through the composite foreign key
 ``(owner_id, thread_id)``, which cascades, so deleting a thread or its user deletes everything
@@ -15,6 +16,7 @@ from sqlalchemy import (
     Boolean,
     CheckConstraint,
     Column,
+    Date,
     DateTime,
     Double,
     ForeignKey,
@@ -22,6 +24,7 @@ from sqlalchemy import (
     Identity,
     Index,
     Integer,
+    LargeBinary,
     MetaData,
     Table,
     Text,
@@ -117,6 +120,23 @@ auth_tokens = Table(
     Index("ix_auth_tokens_user_id_purpose", "user_id", "purpose"),
 )
 
+# A user's sealed secret (today only the OpenAI key): AES-256-GCM nonce and ciphertext, never the
+# plaintext, plus the id of the key-encryption key that sealed it. The owner and purpose are the
+# ciphertext's associated data, so a row copied to another user does not open.
+user_credentials = Table(
+    "user_credentials",
+    metadata,
+    Column("user_id", Uuid, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("purpose", Text, primary_key=True),
+    Column("nonce", LargeBinary, nullable=False),
+    Column("ciphertext", LargeBinary, nullable=False),
+    Column("kek_id", Text, nullable=False),
+    _created_at("updated_at"),
+    CheckConstraint("length(nonce) = 12", name="nonce_96_bits"),
+    CheckConstraint("purpose <> ''", name="purpose_not_blank"),
+    Index("ix_user_credentials_kek_id", "kek_id"),
+)
+
 # Failed sign-in and recovery attempts per key (``email:<address>`` or ``ip:<address>``).
 login_attempts = Table(
     "login_attempts",
@@ -149,6 +169,8 @@ turns = Table(
     Column("status", Text, nullable=False),
     Column("reason", Text, nullable=True),
     Column("resume_count", Integer, nullable=False, server_default=text("0")),
+    # True once the daily-quota turn this record counted was given back (at most once).
+    Column("quota_refunded", Boolean, nullable=False, server_default=text("false")),
     _created_at(),
     Column("started_at", DateTime(timezone=True), nullable=True),
     _created_at("updated_at"),
@@ -169,6 +191,16 @@ turns = Table(
         postgresql_where=text(f"status IN ({_OPEN_VALUES})"),
     ),
     Index("ix_turns_user_id_thread_id_created_at", "user_id", "thread_id", "created_at"),
+)
+
+# Agent turns a user started on one UTC day (the daily quota); the day comes from the database.
+daily_turn_usage = Table(
+    "daily_turn_usage",
+    metadata,
+    Column("user_id", Uuid, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True),
+    Column("day", Date, primary_key=True),
+    Column("turns", Integer, nullable=False),
+    CheckConstraint("turns >= 0", name="turns_not_negative"),
 )
 
 thread_usage = Table(
@@ -233,6 +265,8 @@ TABLES = (
     sessions,
     auth_tokens,
     login_attempts,
+    user_credentials,
+    daily_turn_usage,
     threads,
     turns,
     thread_usage,

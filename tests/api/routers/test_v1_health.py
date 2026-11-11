@@ -1,23 +1,22 @@
-"""Tests for the liveness route: answers without any key, keychain, model or network call."""
+"""Tests for the liveness route: answers without any key, model or network call."""
 
 from __future__ import annotations
 
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from api.dependencies import get_runtime, get_service_keys
+from api.dependencies import get_runtime
 from api.services.agent_runner import AgentRuntime
-from app.key_vault import default_service_keys
 from config.ui import UiSettings
 from tests.api.auth_support import build_app
 from tests.api.conftest import ORIGIN
-from tests.fakes import FakeCredentialStore, InMemoryThreadStore
+from tests.fakes import InMemoryThreadStore, KeyBench
 
 
 def test_health_answers_ok_without_keys_or_model(
     app: FastAPI,
     client: TestClient,
-    store: FakeCredentialStore,
+    store: KeyBench,
 ) -> None:
     built: list[object] = []
 
@@ -29,17 +28,7 @@ def test_health_answers_ok_without_keys_or_model(
     response = client.get("/api/health")
     assert (response.status_code, response.json()) == (200, {"status": "ok"})
     assert built == []
-    assert store.calls == []
-
-
-def test_health_answers_when_the_keychain_is_unavailable(settings: UiSettings) -> None:
-    failing = FakeCredentialStore(fail=True)
-    api = build_app(settings, threads=InMemoryThreadStore())
-    keys = default_service_keys(failing)
-    api.dependency_overrides[get_service_keys] = lambda: keys
-    with TestClient(api, base_url=ORIGIN) as client:
-        assert client.get("/api/health").status_code == 200
-    assert failing.calls == []
+    assert store.rows.rows == {}
 
 
 def test_health_refuses_a_foreign_host(client: TestClient) -> None:

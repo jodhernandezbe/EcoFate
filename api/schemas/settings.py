@@ -1,4 +1,4 @@
-"""Settings contract: the API-key vault and the display settings sent to the frontend."""
+"""Settings contract: the user's key status and the display settings sent to the frontend."""
 
 from __future__ import annotations
 
@@ -10,7 +10,9 @@ from api.schemas.base import ContractModel
 class KeyUpdatePayload(ContractModel):
     """Body of ``POST /api/v1/settings/openai-key``; the key is never echoed or logged."""
 
-    api_key: SecretStr = Field(description="OpenAI API key to store in the OS keychain.")
+    api_key: SecretStr = Field(
+        description="The user's OpenAI API key; stored encrypted for their account only.",
+    )
 
 
 class KeyStatusResponse(ContractModel):
@@ -19,12 +21,24 @@ class KeyStatusResponse(ContractModel):
     configured: bool
 
 
+class ServiceAvailability(ContractModel):
+    """Whether a data service is provided by this installation (never its key)."""
+
+    available: bool
+
+
+class ServicesAvailability(ContractModel):
+    """The data services the operator may provide."""
+
+    census: ServiceAvailability
+    comptox: ServiceAvailability
+
+
 class KeysStatusResponse(ContractModel):
-    """The status of every key the interface stores, in one response."""
+    """The user's OpenAI key status and the data services this installation provides."""
 
     openai: KeyStatusResponse
-    census: KeyStatusResponse
-    comptox: KeyStatusResponse
+    services: ServicesAvailability
 
 
 class Thresholds(ContractModel):

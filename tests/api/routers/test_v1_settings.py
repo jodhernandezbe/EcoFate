@@ -1,70 +1,175 @@
-"""Tests for the settings routes: the key never leaves the vault in plaintext."""
+"""Tests for the settings routes: a user's key is sealed per account and never returned."""
 
 from __future__ import annotations
+
+from typing import Any
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from pydantic import SecretStr
 
-from api.core.session_guard import ADMIN_ONLY
+from app.operator_keys import OperatorKeys
 from tests.api.conftest import ORIGIN, signed_in
-from tests.fakes import CENSUS_ENTRY, COMPTOX_ENTRY, OPENAI_ENTRY, FakeCredentialStore
+from tests.api.keys import OTHER_OWNER, OWNER
+from tests.fakes import KeyBench
 
 KEY = "sk-proj-" + "q9W8e7R6t5" * 3  # pragma: allowlist secret
+OTHER_KEY = "sk-proj-" + "z9Y8x7W6v5" * 3  # pragma: allowlist secret
+COMPTOX = "ct0x-" + "9d" * 14  # pragma: allowlist secret
 OWN = {"Origin": ORIGIN}
+PATH = "/api/v1/settings/openai-key"
 
 
 @pytest.fixture
-def client(admin_client: TestClient) -> TestClient:
-    """These tests manage the server's keys, which only an administrator may change."""
-    return admin_client
+def store() -> KeyBench:
+    """The installation provides a CompTox key and no Census key."""
+    return KeyBench(OperatorKeys(comptox=SecretStr(COMPTOX)))
 
 
 def test_status_without_key(client: TestClient) -> None:
-    response = client.get("/api/v1/settings/openai-key")
-    assert response.json() == {"configured": False}
+    assert client.get(PATH).json() == {"configured": False}
 
 
-def test_save_then_status_shows_only_that_a_key_is_stored(
-    client: TestClient,
-    store: FakeCredentialStore,
-) -> None:
-    saved = client.post("/api/v1/settings/openai-key", json={"api_key": KEY}, headers=OWN)
-    assert saved.status_code == 200
-    assert saved.json() == {"configured": True}
-    assert store.calls[-1][0] == "set"
-    status = client.get("/api/v1/settings/openai-key")
-    assert status.json()["configured"] is True
-    assert KEY not in saved.text + status.text
+def test_save_stores_only_ciphertext_for_that_user(client: TestClient, store: KeyBench) -> None:
+    saved = client.post(PATH, json={"api_key": KEY}, headers=OWN)
+    assert (saved.status_code, saved.json()) == (200, {"configured": True})
+    assert list(store.rows.rows) == [(OWNER, "openai")]
+    assert KEY.encode() not in store.rows.rows[(OWNER, "openai")].ciphertext
+    assert client.get(PATH).json() == {"configured": True}
+    assert KEY not in saved.text
 
 
-def test_clear_removes_the_key(client: TestClient) -> None:
-    client.post("/api/v1/settings/openai-key", json={"api_key": KEY}, headers=OWN)
-    cleared = client.delete("/api/v1/settings/openai-key", headers=OWN)
+def test_saving_twice_stores_a_different_ciphertext(client: TestClient, store: KeyBench) -> None:
+    client.post(PATH, json={"api_key": KEY}, headers=OWN)
+    first = store.rows.rows[(OWNER, "openai")]
+    client.post(PATH, json={"api_key": KEY}, headers=OWN)
+    second = store.rows.rows[(OWNER, "openai")]
+    assert (first.nonce, first.ciphertext) != (second.nonce, second.ciphertext)
+
+
+def test_replacing_a_key_keeps_one_row(client: TestClient, store: KeyBench) -> None:
+    client.post(PATH, json={"api_key": KEY}, headers=OWN)
+    client.post(PATH, json={"api_key": OTHER_KEY}, headers=OWN)
+    assert len(store.rows.rows) == 1
+
+
+def test_clear_deletes_the_row(client: TestClient, store: KeyBench) -> None:
+    client.post(PATH, json={"api_key": KEY}, headers=OWN)
+    cleared = client.delete(PATH, headers=OWN)
     assert cleared.json() == {"configured": False}
-    assert client.delete("/api/v1/settings/openai-key", headers=OWN).status_code == 200
+    assert store.rows.rows == {}
+    assert client.delete(PATH, headers=OWN).status_code == 200  # clearing is idempotent
 
 
-@pytest.mark.parametrize("bad", ["", "   ", "sk-has space", "x" * 513])
-def test_invalid_key_is_rejected_without_echo(client: TestClient, bad: str) -> None:
-    response = client.post("/api/v1/settings/openai-key", json={"api_key": bad}, headers=OWN)
+@pytest.mark.parametrize("bad", ["", "   ", "sk-has space", "tab\there", "x" * 513])
+def test_invalid_key_is_rejected_without_echo_and_stores_nothing(
+    client: TestClient,
+    store: KeyBench,
+    bad: str,
+) -> None:
+    response = client.post(PATH, json={"api_key": bad}, headers=OWN)
     assert response.status_code == 422
     assert bad.strip() == "" or bad not in response.text
+    assert store.rows.rows == {}
 
 
-def test_no_get_endpoint_returns_the_key(client: TestClient) -> None:
-    client.post("/api/v1/settings/openai-key", json={"api_key": KEY}, headers=OWN)
-    for path in ("/api/v1/settings/openai-key", "/api/v1/settings/client"):
-        assert KEY not in client.get(path).text
+def test_another_users_status_is_not_configured(app: FastAPI, store: KeyBench) -> None:
+    store.give(KEY, OWNER)
+    with (
+        signed_in(app, email="a@example.com") as ana,
+        signed_in(app, email="b@example.com") as bo,
+    ):
+        assert ana.get(PATH).json() == {"configured": True}
+        assert bo.get(PATH).json() == {"configured": False}
+        assert bo.get("/api/v1/settings/keys").json()["openai"] == {"configured": False}
 
 
-def test_unavailable_keychain_is_a_safe_503(app: FastAPI, store: FakeCredentialStore) -> None:
-    store.fail = True
-    with signed_in(app, admin=True, raise_server_exceptions=False) as client:
-        response = client.post("/api/v1/settings/openai-key", json={"api_key": KEY}, headers=OWN)
-    assert response.status_code == 503
-    assert "keychain is unavailable" in response.json()["error"]
-    assert KEY not in response.text
+def test_one_users_save_and_clear_never_touch_another(app: FastAPI, store: KeyBench) -> None:
+    store.give(KEY, OWNER)
+    store.give(OTHER_KEY, OTHER_OWNER)
+    with (
+        signed_in(app, email="a@example.com") as ana,
+        signed_in(app, email="b@example.com") as bo,
+    ):
+        bo.delete(PATH, headers=OWN)
+        assert ana.get(PATH).json() == {"configured": True}
+        bo.post(PATH, json={"api_key": KEY}, headers=OWN)
+    assert (OWNER, "openai") in store.rows.rows
+    assert (OTHER_OWNER, "openai") in store.rows.rows
+
+
+def test_a_ciphertext_copied_to_another_user_reads_as_not_configured(
+    app: FastAPI,
+    store: KeyBench,
+) -> None:
+    store.give(KEY, OWNER)
+    from dataclasses import replace
+
+    store.rows.rows[(OTHER_OWNER, "openai")] = replace(
+        store.rows.rows[(OWNER, "openai")],
+        user_id=OTHER_OWNER,
+    )
+    with signed_in(app, email="a@example.com"), signed_in(app, email="b@example.com") as bo:
+        assert bo.get(PATH).json() == {"configured": False}
+
+
+@pytest.mark.parametrize("name", ["census-key", "comptox-key"])
+@pytest.mark.parametrize("method", ["get", "post", "delete"])
+def test_the_operator_key_routes_are_gone(
+    client: TestClient,
+    store: KeyBench,
+    name: str,
+    method: str,
+) -> None:
+    body = {"api_key": KEY} if method == "post" else None
+    response = client.request(method, f"/api/v1/settings/{name}", json=body, headers=OWN)
+    assert response.status_code == 404
+    assert store.rows.rows == {}
+
+
+def test_the_combined_status_reports_the_users_key_and_the_services(
+    client: TestClient,
+) -> None:
+    client.post(PATH, json={"api_key": KEY}, headers=OWN)
+    response = client.get("/api/v1/settings/keys")
+    assert response.json() == {
+        "openai": {"configured": True},
+        "services": {"census": {"available": False}, "comptox": {"available": True}},
+    }
+    assert KEY not in response.text and COMPTOX not in response.text
+
+
+def test_the_combined_status_with_no_keys_at_all(app: FastAPI, store: KeyBench) -> None:
+    quiet = KeyBench()
+    app.state.keys = quiet.services
+    with signed_in(app, email="solo@example.com") as client:
+        assert client.get("/api/v1/settings/keys").json() == {
+            "openai": {"configured": False},
+            "services": {"census": {"available": False}, "comptox": {"available": False}},
+        }
+
+
+def _walk_gets(client: TestClient) -> list[Any]:
+    paths = ["/api/v1/settings/openai-key", "/api/v1/settings/keys", "/api/v1/settings/client"]
+    return [client.get(path) for path in paths]
+
+
+def test_no_get_endpoint_returns_a_key(client: TestClient) -> None:
+    client.post(PATH, json={"api_key": KEY}, headers=OWN)
+    for response in _walk_gets(client):
+        assert KEY not in response.text
+        assert COMPTOX not in response.text
+
+
+def test_writes_need_the_own_origin(client: TestClient) -> None:
+    assert client.post(PATH, json={"api_key": KEY}).status_code == 403
+    assert client.delete(PATH).status_code == 403
+
+
+def test_a_provider_failure_message_carries_no_key(client: TestClient) -> None:
+    response = client.post(PATH, json={"api_key": "x" * 513}, headers=OWN)
+    assert KEY not in response.text and "x" * 20 not in response.text
 
 
 def test_client_config_comes_from_settings(client: TestClient) -> None:
@@ -90,131 +195,7 @@ def test_client_config_carries_the_layout_limits(client: TestClient) -> None:
     assert 0 < layout["overview"]["min_share"] <= layout["overview"]["max_share"] < 1
 
 
-# --- the three keys ---------------------------------------------------------------------------
-
-ENTRIES = {"openai": OPENAI_ENTRY, "census": CENSUS_ENTRY, "comptox": COMPTOX_ENTRY}
-PATHS = {
-    "openai": "/api/v1/settings/openai-key",
-    "census": "/api/v1/settings/census-key",
-    "comptox": "/api/v1/settings/comptox-key",
-}
-SECRETS = {
-    "openai": "sk-proj-" + "O1p2e3n4a5" * 3,  # pragma: allowlist secret
-    "census": "c3n5u5k3y" + "7f" * 16,  # pragma: allowlist secret
-    "comptox": "ct0x-" + "9d" * 14,  # pragma: allowlist secret
-}
-
-
-@pytest.mark.parametrize("name", list(PATHS))
-def test_each_key_is_saved_under_its_own_keychain_entry(
-    client: TestClient,
-    store: FakeCredentialStore,
-    name: str,
-) -> None:
-    response = client.post(PATHS[name], json={"api_key": SECRETS[name]}, headers=OWN)
-    assert response.status_code == 200
-    assert store.entries == {ENTRIES[name]: SECRETS[name]}
-    assert response.json()["configured"] is True
-    assert SECRETS[name] not in response.text
-
-
-@pytest.mark.parametrize("name", list(PATHS))
-def test_each_key_can_be_read_and_cleared(client: TestClient, name: str) -> None:
-    assert client.get(PATHS[name]).json() == {"configured": False}
-    client.post(PATHS[name], json={"api_key": SECRETS[name]}, headers=OWN)
-    assert client.get(PATHS[name]).json()["configured"] is True
-    cleared = client.delete(PATHS[name], headers=OWN)
-    assert cleared.json() == {"configured": False}
-    assert client.delete(PATHS[name], headers=OWN).status_code == 200  # clearing is idempotent
-
-
-def test_saving_or_clearing_one_key_leaves_the_others(
-    client: TestClient,
-    store: FakeCredentialStore,
-) -> None:
-    for name, path in PATHS.items():
-        client.post(path, json={"api_key": SECRETS[name]}, headers=OWN)
-    client.delete(PATHS["census"], headers=OWN)
-    assert store.entries == {
-        OPENAI_ENTRY: SECRETS["openai"],
-        COMPTOX_ENTRY: SECRETS["comptox"],
-    }
-    replacement = "sk-new-" + "N" * 20  # pragma: allowlist secret
-    client.post(PATHS["openai"], json={"api_key": replacement}, headers=OWN)
-    assert store.entries[OPENAI_ENTRY] == replacement
-    assert store.entries[COMPTOX_ENTRY] == SECRETS["comptox"]
-
-
-def test_the_combined_status_reports_every_key_without_revealing_any(
-    client: TestClient,
-) -> None:
-    client.post(PATHS["openai"], json={"api_key": SECRETS["openai"]}, headers=OWN)
-    client.post(PATHS["comptox"], json={"api_key": SECRETS["comptox"]}, headers=OWN)
-    response = client.get("/api/v1/settings/keys")
-    body = response.json()
-    assert body["openai"]["configured"] is True
-    assert body["census"] == {"configured": False}
-    assert body["comptox"]["configured"] is True
-    assert not any(secret in response.text for secret in SECRETS.values())
-
-
-@pytest.mark.parametrize("name", list(PATHS))
-@pytest.mark.parametrize("bad", ["", "   ", "has space", "tab\there", "x" * 513])
-def test_each_key_is_validated_before_storing(
-    client: TestClient,
-    store: FakeCredentialStore,
-    name: str,
-    bad: str,
-) -> None:
-    response = client.post(PATHS[name], json={"api_key": bad}, headers=OWN)
-    assert response.status_code == 422
-    assert store.entries == {}
-    assert bad.strip() == "" or bad not in response.text
-
-
-@pytest.mark.parametrize("path", [*PATHS.values(), "/api/v1/settings/keys"])
-def test_an_unavailable_keychain_is_a_safe_503_for_every_status(
-    app: FastAPI,
-    store: FakeCredentialStore,
-    path: str,
-) -> None:
-    store.fail = True
-    with signed_in(app, admin=True, raise_server_exceptions=False) as client:
-        response = client.get(path)
-    assert response.status_code == 503
-    assert "keychain is unavailable" in response.json()["error"]
-
-
-@pytest.mark.parametrize("name", ["census", "comptox"])
-def test_writes_to_the_service_keys_need_the_own_origin(client: TestClient, name: str) -> None:
-    response = client.post(PATHS[name], json={"api_key": SECRETS[name]})
-    assert response.status_code == 403
-
-
 def test_the_map_starts_on_the_configured_view(client: TestClient) -> None:
     view = client.get("/api/v1/settings/client").json()["map"]["initial_view"]
     assert view["west"] < view["east"] and view["south"] < view["north"]
     assert -125.0 <= view["west"] and view["east"] <= -66.0  # the contiguous United States
-
-
-@pytest.mark.parametrize("method", ["post", "delete"])
-def test_an_ordinary_user_cannot_change_the_servers_keys(
-    app: FastAPI,
-    store: FakeCredentialStore,
-    method: str,
-) -> None:
-    store.entries[OPENAI_ENTRY] = KEY
-    with signed_in(app, email="ordinary@example.com", raise_server_exceptions=False) as user:
-        if method == "post":
-            other = "sk-proj-" + "z9Y8x7W6v5" * 3  # pragma: allowlist secret
-            response = user.post(
-                "/api/v1/settings/openai-key",
-                json={"api_key": other},
-                headers=OWN,
-            )
-        else:
-            response = user.delete("/api/v1/settings/openai-key", headers=OWN)
-        assert response.status_code == 403
-        assert response.json()["error"] == ADMIN_ONLY
-        assert user.get("/api/v1/settings/openai-key").json() == {"configured": True}
-    assert store.entries[OPENAI_ENTRY] == KEY  # neither replaced nor removed

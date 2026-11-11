@@ -7,7 +7,8 @@ become spans inside the session span. Nothing here is imported by ``agent/`` or 
 
 from __future__ import annotations
 
-from collections.abc import Callable, Generator, Mapping, Sequence
+import re
+from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import lru_cache
@@ -29,43 +30,67 @@ SCRUBBED = "***REDACTED***"
 _KEY_PATTERN_SOURCES = tuple(pattern.pattern.removeprefix("(?i)") for pattern in KEY_PATTERNS)
 
 
-def _hide_keys(own: Callable[[str], bool]) -> Callable[[logfire.ScrubMatch], object | None]:
-    """The scrubbing callback: what looks like a key is replaced with a fixed marker, and the
-    attributes this module writes itself (those ``own`` accepts) are kept as they are.
+def _shows_secret(text: str, protected: frozenset[str]) -> bool:
+    """Whether ``text`` has a key-shaped part or contains a protected value (any letter case)."""
+    lowered = text.lower()
+    return any(p.search(text) for p in KEY_PATTERNS) or any(v in lowered for v in protected)
 
-    Logfire's own marker quotes the matched text, which for the key patterns is the key itself.
-    Its built-in patterns would otherwise hide the session id (they match "session"). Every
-    other match keeps Logfire's default handling (None).
+
+def _hide_keys(
+    own: Callable[[str], bool],
+    protected: frozenset[str],
+) -> Callable[[logfire.ScrubMatch], object | None]:
+    """The scrubbing callback: what looks like a key, or is a protected value, is replaced with a
+    fixed marker, and the attributes this module writes itself (those ``own`` accepts) are kept as
+    they are.
+
+    Logfire's own marker quotes the matched text, which for the key patterns and the protected
+    values is the secret itself. Its built-in patterns would otherwise hide the session id (they
+    match "session"). Every other match keeps Logfire's default handling (None).
     """
 
     def decide(match: logfire.ScrubMatch) -> object | None:
-        if any(p.search(match.pattern_match.group(0)) for p in KEY_PATTERNS):
+        if _shows_secret(match.pattern_match.group(0), protected):
             return SCRUBBED
         if match.path and own(str(match.path[-1])):
             text = match.value if isinstance(match.value, str) else ""
-            return SCRUBBED if any(p.search(text) for p in KEY_PATTERNS) else match.value
+            return SCRUBBED if _shows_secret(text, protected) else match.value
         return None
 
     return decide
 
 
-def scrubbing_options(settings: TelemetrySettings) -> logfire.ScrubbingOptions:
-    """Logfire scrubbing that also hides everything the log redaction hides."""
+def scrubbing_options(
+    settings: TelemetrySettings,
+    protected: Iterable[str] = (),
+) -> logfire.ScrubbingOptions:
+    """Logfire scrubbing that also hides everything the log redaction hides.
+
+    Args:
+        settings: The monitoring settings (the attributes this module writes itself).
+        protected: Exact secret values with no recognisable shape (the key-encryption keys, the
+            session secret, the SMTP password, the operator's service keys, the monitoring
+            tokens); each is hidden wherever it appears in a span. Logfire compiles its patterns
+            once at configuration, so these must be known then.
+    """
     names = settings.attributes
     exact = {names.session_id, names.question, names.model, names.outcome, names.user_id}
     prefixes = (names.usage_prefix, names.session_usage_prefix)
+    literals = frozenset(value.lower() for value in protected if value)
 
     def own(key: str) -> bool:
         return key in exact or key.startswith(prefixes)
 
     return logfire.ScrubbingOptions(
-        extra_patterns=list(_KEY_PATTERN_SOURCES),
-        callback=_hide_keys(own),
+        extra_patterns=[*_KEY_PATTERN_SOURCES, *(re.escape(value) for value in sorted(literals))],
+        callback=_hide_keys(own, literals),
     )
 
 
-def configure_telemetry(settings: TelemetrySettings) -> None:
+def configure_telemetry(settings: TelemetrySettings, protected: Iterable[str] = ()) -> None:
     """Configure Logfire once, at start-up; does nothing when monitoring is disabled.
+
+    ``protected`` are secret values to hide in every span (see ``scrubbing_options``).
 
     Spans are exported only when a write token is present (``LOGFIRE_TOKEN`` or the project
     credentials of ``logfire projects use``). Call it before the first ``run_tracer``.
@@ -77,7 +102,7 @@ def configure_telemetry(settings: TelemetrySettings) -> None:
         environment=settings.environment,
         send_to_logfire="if-token-present",
         console=logfire.ConsoleOptions() if settings.console else False,
-        scrubbing=scrubbing_options(settings),
+        scrubbing=scrubbing_options(settings, protected),
     )
 
 

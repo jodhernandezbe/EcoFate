@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 from dataclasses import replace
 from pathlib import Path
 
@@ -9,13 +10,25 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from api.main import _environment_keys, create_app  # pyright: ignore[reportPrivateUsage]
+import app.redaction as redaction
+from api.main import create_app
+from api.services.key_setup import load_key_config
+from app.redaction import redact
+from config.auth import get_auth_settings
+from config.byok import get_byok_settings
+from config.mail import get_mail_settings
 from config.telemetry import get_telemetry_settings
 from config.ui import UiSettings
 from tests.api.auth_support import build_app
 from tests.api.conftest import ORIGIN, make_user, sign_in_as
 from tests.fakes import InMemoryThreadStore
 
+KEK = bytes(range(32))
+WRITE_TOKEN = "write-token-" + "w" * 20  # pragma: allowlist secret
+READ_TOKEN = "read-token-" + "r" * 20  # pragma: allowlist secret
+SESSION_SECRET = "session-secret-" + "s" * 20  # pragma: allowlist secret
+SMTP_PASSWORD = "smtp-password-" + "p" * 20  # pragma: allowlist secret
+KEK_TEXT = base64.urlsafe_b64encode(KEK).decode()
 KEY = "sk-proj-" + "m3N4b5V6c7" * 3  # pragma: allowlist secret
 BODY = {"api_key": "sk-" + "a" * 20}  # pragma: allowlist secret
 
@@ -95,13 +108,20 @@ def test_frontend_is_served_when_built(settings: UiSettings, tmp_path: Path) -> 
         assert client.get("/api/v1/settings/openai-key").status_code == 200
 
 
-def test_both_logfire_tokens_are_kept_out_of_the_logs(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_process_secrets_are_kept_out_of_the_logs(monkeypatch: pytest.MonkeyPatch) -> None:
     monitoring = get_telemetry_settings()
-    monkeypatch.setenv(monitoring.write_token_env_var, "write-token-" + "w" * 20)
-    monkeypatch.setenv(monitoring.read_token_env_var, "read-token-" + "r" * 20)
-    protected = _environment_keys()
-    assert "write-token-" + "w" * 20 in protected
-    assert "read-token-" + "r" * 20 in protected
+    secrets = {
+        monitoring.write_token_env_var: WRITE_TOKEN,
+        monitoring.read_token_env_var: READ_TOKEN,
+        get_auth_settings().session_secret_env_var: SESSION_SECRET,
+        get_mail_settings().variables.password: SMTP_PASSWORD,
+    }
+    empty: set[str] = set()
+    monkeypatch.setattr(redaction, "_PROCESS_LITERALS", empty)
+    environ = {**secrets, get_byok_settings().kek_env_var: KEK_TEXT}
+    load_key_config(environ)
+    for value in secrets.values():
+        assert value not in redact(f"leaked {value}")
 
 
 @pytest.mark.anyio
@@ -110,6 +130,7 @@ async def test_without_an_injected_store_start_up_needs_the_database_url(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setenv(get_byok_settings().kek_env_var, KEK_TEXT)
     app = create_app(settings)
     with pytest.raises(SystemExit) as stopped:
         async with app.router.lifespan_context(app):
@@ -127,7 +148,7 @@ SMTP_ENV = {
 
 def _app_with_real_mailer(settings: UiSettings, container: bool) -> FastAPI:
     from api import main as main_module
-    from tests.fakes import InMemoryThreadStore
+    from tests.fakes import InMemoryThreadStore, KeyBench
     from tests.fakes_accounts import FakeClock, in_memory_accounts
 
     return main_module.create_app(
@@ -135,6 +156,7 @@ def _app_with_real_mailer(settings: UiSettings, container: bool) -> FastAPI:
         keys_from_environment=container,
         threads=InMemoryThreadStore(),
         accounts=in_memory_accounts(FakeClock()),
+        keys=KeyBench().services,
         session_secret=b"s" * 40,
     )
 
@@ -165,3 +187,24 @@ def test_without_the_smtp_variables_the_app_refuses_to_start(
     with pytest.raises(SystemExit) as stopped:
         _app_with_real_mailer(settings, False)
     assert "SMTP_HOST" in str(stopped.value.code)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("value", [None, "", "not base64 !!", "c2hvcnQ"])
+async def test_a_missing_or_malformed_kek_stops_start_up_naming_the_variable(
+    settings: UiSettings,
+    monkeypatch: pytest.MonkeyPatch,
+    value: str | None,
+) -> None:
+    variable = get_byok_settings().kek_env_var
+    if value is None:
+        monkeypatch.delenv(variable, raising=False)
+    else:
+        monkeypatch.setenv(variable, value)
+    app = create_app(settings)
+    with pytest.raises(SystemExit) as stopped:
+        async with app.router.lifespan_context(app):
+            pytest.fail("must not serve")
+    message = str(stopped.value.code)
+    assert variable in message
+    assert value is None or value == "" or value not in message

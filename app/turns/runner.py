@@ -122,14 +122,15 @@ class TurnServices:
     """The collaborators of one turn, injected by the front end.
 
     Attributes:
-        load_keys: Reads the turn's keys (raises ``KeysUnavailableError`` when it cannot).
+        load_keys: Reads the turn's keys, decrypting the user's once (raises
+            ``KeysUnavailableError`` when it cannot).
         build_model: Builds the chat model from the turn's model key.
         checkpointer: Keeps the thread's history.
         user_values: Returns the values the user supplied and the entries they declined.
         record_usage: Stores the turn's model calls and returns every call of the thread so far.
     """
 
-    load_keys: Callable[[], TurnKeys]
+    load_keys: Callable[[], Awaitable[TurnKeys]]
     build_model: Callable[[SecretStr], BaseChatModel]
     checkpointer: BaseCheckpointSaver[str]
     user_values: Callable[[], Awaitable[UserValues]]
@@ -155,7 +156,7 @@ async def execute_turn(
         # a failure is logged while the turn's keys are still redacted from the logs.
         # ``aclosing`` closes each stage at once, in this context, when the caller stops early.
         with _captured(outcome):
-            keys = services.load_keys()
+            keys = await services.load_keys()
             with provided(keys), _captured(outcome):  # the tools see the keys, the logs never do
                 model = services.build_model(keys.openai)
                 agent_run = _agent_events(request, model, services, settings, recorder)
@@ -269,9 +270,9 @@ async def pending_steps(
     Builds the agent with the stored model key but calls no model and runs no tool.
 
     Raises:
-        KeysUnavailableError: The keychain cannot be used, or no model key is stored.
+        KeysUnavailableError: The user has no usable model key.
     """
-    keys = services.load_keys()
+    keys = await services.load_keys()
     agent = _build(services.build_model(keys.openai), services, settings)
     snapshot = await agent.aget_state({"configurable": {"thread_id": thread_id}})
     return tuple(snapshot.next)

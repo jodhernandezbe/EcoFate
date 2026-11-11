@@ -1,14 +1,20 @@
-"""The keys of one turn: read once, given to the tools and kept out of the logs while it runs."""
+"""The keys of one turn: read once, given to the tools and kept out of the logs while it runs.
+
+The user's model key is decrypted here and only here per turn; the operator's service keys come
+from the environment through ``OperatorKeys``.
+"""
 
 from __future__ import annotations
 
 from collections.abc import Generator
 from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
+from typing import Protocol
+from uuid import UUID
 
 from pydantic import SecretStr
 
-from app.key_vault import KeychainUnavailableError, ServiceKeys, stored_key
+from app.operator_keys import OperatorKeys
 from app.redaction import protect_secrets
 from app.turns.failures import FailureReason, KeysUnavailableError
 from tools.credentials import HOLDERS
@@ -32,23 +38,29 @@ class TurnKeys:
         return [key.get_secret_value() for _, key in self.named()]
 
 
-def load_turn_keys(keys: ServiceKeys) -> TurnKeys:
-    """Read each stored key once. Only the model key is required.
+class UserKeyReader(Protocol):
+    """The one way to obtain a user's model key (``app.user_key_vault.UserKeyVault``)."""
+
+    async def read(self, user_id: UUID) -> SecretStr | None: ...
+
+
+async def load_turn_keys(
+    vault: UserKeyReader,
+    operator: OperatorKeys,
+    user_id: UUID,
+) -> TurnKeys:
+    """Decrypt the user's model key once and add the operator's service keys.
+
+    Only the model key is required; a service key the installation does not provide is None.
 
     Raises:
-        KeysUnavailableError: The keychain cannot be used, or no model key is stored.
+        KeysUnavailableError: The user has no usable model key; the operator keys are not
+            consulted then, and no model is built.
     """
-    try:
-        openai = keys.vault("openai").load()
-    except KeychainUnavailableError as error:
-        raise KeysUnavailableError(FailureReason.KEYCHAIN_UNAVAILABLE) from error
+    openai = await vault.read(user_id)
     if openai is None:
         raise KeysUnavailableError(FailureReason.NO_KEY)
-    return TurnKeys(
-        openai=openai,
-        census=stored_key(keys.vault("census")),
-        comptox=stored_key(keys.vault("comptox")),
-    )
+    return TurnKeys(openai=openai, census=operator.census, comptox=operator.comptox)
 
 
 @contextmanager

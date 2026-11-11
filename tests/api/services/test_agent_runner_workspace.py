@@ -9,12 +9,12 @@ from langchain_core.tools import StructuredTool, ToolException
 
 from api.schemas.chat import ChatRequest, StreamEvent, WorkspaceUpdate
 from api.services.agent_runner import AgentRuntime
+from api.services.key_setup import turn_key_loader
 from api.services.threads import ThreadStore
-from app.key_vault import default_service_keys
-from tests.api.keys import owned
+from tests.api.keys import OWNER, owned
 from tests.api.services.projectors.factories import RULES, record
 from tests.api.streams import begun_turn
-from tests.fakes import OPENAI_ENTRY, FakeCredentialStore, InMemoryThreadStore, ScriptedChatModel
+from tests.fakes import InMemoryThreadStore, KeyBench, ScriptedChatModel
 
 pytestmark = pytest.mark.anyio
 
@@ -65,12 +65,12 @@ async def _turn(
     with_rules: bool = True,
 ) -> list[StreamEvent]:
     monkeypatch.setattr("agent.graph.get_all_tools", lambda: [INVENTORY, BROKEN])
-    store = FakeCredentialStore()
-    store.entries[OPENAI_ENTRY] = "sk-proj-" + "w1X2y3Z4a5" * 3  # pragma: allowlist secret
+    bench = KeyBench()
+    bench.give("sk-proj-" + "w1X2y3Z4a5" * 3)  # pragma: allowlist secret
     runtime = AgentRuntime(lambda key: model, 10, workspace_rules=RULES if with_rules else None)
     run = begun_turn(
         ChatRequest(thread_id="t1", message="go"),
-        keys=default_service_keys(store),
+        keys=turn_key_loader(bench.services, OWNER),
         threads=threads,
         runtime=runtime,
     )

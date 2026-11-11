@@ -16,8 +16,7 @@ from tests.api.conftest import ORIGIN, signed_in
 from tests.api.keys import owned
 from tests.api.streams import parse_sse
 from tests.fakes import (
-    OPENAI_ENTRY,
-    FakeCredentialStore,
+    KeyBench,
     ScriptedChatModel,
     scripted,
 )
@@ -27,13 +26,13 @@ KEY = "sk-proj-" + "r4T5y6U7i8" * 3  # pragma: allowlist secret
 
 
 @pytest.fixture
-def keyed(store: FakeCredentialStore) -> FakeCredentialStore:
-    store.entries[OPENAI_ENTRY] = KEY
+def keyed(store: KeyBench) -> KeyBench:
+    store.give(KEY)
     return store
 
 
 @pytest.fixture
-def chat(app: FastAPI, keyed: FakeCredentialStore) -> Iterator[TestClient]:
+def chat(app: FastAPI, keyed: KeyBench) -> Iterator[TestClient]:
     model = scripted("an answer", "another answer")
     app.dependency_overrides[get_runtime] = lambda: AgentRuntime(lambda key: model, 10)
     with signed_in(app, raise_server_exceptions=False) as client:
@@ -100,7 +99,7 @@ def test_no_key_streams_an_error_event(app: FastAPI) -> None:
 
 def test_stream_carries_the_configured_step_labels(
     app: FastAPI,
-    keyed: FakeCredentialStore,
+    keyed: KeyBench,
 ) -> None:
     from langchain_core.messages import AIMessage
     from langchain_core.tools import tool

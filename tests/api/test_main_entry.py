@@ -83,7 +83,7 @@ def test_main_configures_monitoring_after_the_dotenv_file_and_before_serving(
     order: list[str] = []
     settings = replace(get_ui_settings(), frontend_dist=tmp_path)
 
-    def configure(monitoring: TelemetrySettings) -> None:
+    def configure(monitoring: TelemetrySettings, protected: object = ()) -> None:
         order.append("monitoring")
 
     def serve(app: object, **kwargs: object) -> None:

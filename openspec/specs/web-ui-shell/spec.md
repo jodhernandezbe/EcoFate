@@ -255,35 +255,39 @@ without page-level scroll. Both stay mounted, so nothing is lost when switching.
 Choosing Settings in the navigation rail SHALL open a bottom drawer over the workspace. The drawer
 SHALL keep the workspace and the chat mounted, can be resized and maximized, closes with
 Escape or its close control, and keeps focus inside it while open, returning focus on close. The
-drawer SHALL hold collapsible sections: an Assistant section for the OpenAI key and a Data
-services section for the Census and CompTox keys. Each key SHALL have a label with an info
-tooltip stating what it is used for (the OpenAI key runs the assistant, the Census key counts the
-people around a facility, the CompTox key looks up chemical properties and toxicity), a
-password-type input that can be cleared, a status reading "Key stored securely in OS Keychain"
-or "No key configured" (never any part of the key), and "Clear key", "Reset" and "Save"
-actions. Save SHALL be disabled while the input is blank or a request is running. The outcome of
-a save or clear SHALL be shown in an inline success or error message in that key's section.
-Saving or clearing one key SHALL NOT affect the others. Inputs SHALL be cleared after saving and
-by Reset, and no key SHALL be written to browser storage, the URL or logs. Only the OpenAI key is
-required: when it is not configured, the chat input SHALL point the user to Settings and the
-Assistant section SHALL open expanded. When the Census or CompTox key is missing, its section
-SHALL say which lookups will be unavailable.
+drawer SHALL hold collapsible sections: an Assistant section for the user's OpenAI key and a
+read-only Data services section. The OpenAI key SHALL have a label with an info tooltip stating
+that it runs the assistant and is billed to the user's own OpenAI account, a password-type input
+that can be cleared, a status reading "Key stored encrypted for your account" or "No key
+configured" (never any part of the key), and "Clear key", "Reset" and "Save" actions. Save SHALL
+be disabled while the input is blank or a request is running. The outcome of a save or clear
+SHALL be shown in an inline success or error message in the section. Inputs SHALL be cleared
+after saving and by Reset, and no key SHALL be written to browser storage, the URL or logs. The
+Data services section SHALL list the Census service (counts the people around a facility) and
+the CompTox service (looks up chemical properties and toxicity), each with "Provided by this
+installation" or "Not available on this installation" and, when unavailable, which lookups will
+be missing; it SHALL have no input for any key. When the OpenAI key is not configured, the chat
+input SHALL point the user to Settings and the Assistant section SHALL open expanded.
 
 #### Scenario: Open from the rail
 - **WHEN** the user activates Settings in the navigation rail
 - **THEN** the drawer opens over the workspace and the map and chat stay as they were
 
 #### Scenario: Save key
-- **WHEN** the user enters a key in a section and saves
-- **THEN** that section shows a success message and the stored state, showing no part of the key, its input is empty, and the other sections are unchanged
+- **WHEN** the user enters their OpenAI key and saves
+- **THEN** the section shows a success message and the stored state, showing no part of the key, and its input is empty
 
 #### Scenario: Save fails
 - **WHEN** the server rejects a key
-- **THEN** that section shows an error message and the stored state is unchanged
+- **THEN** the section shows an error message and the stored state is unchanged
+
+#### Scenario: Data services are read-only
+- **WHEN** the drawer is open
+- **THEN** the Data services section shows each service's availability and contains no input or save action
 
 #### Scenario: Optional keys missing
-- **WHEN** only the OpenAI key is stored
-- **THEN** the Census and CompTox entries say which lookups are unavailable until their keys are saved
+- **WHEN** the installation has no Census key
+- **THEN** the Census entry says it is not available on this installation and which lookups will be missing
 
 #### Scenario: No browser storage
 - **WHEN** a key has been saved
@@ -725,3 +729,27 @@ sign in without a reload and without keeping the previous user's workspace on sc
 #### Scenario: No credentials in storage
 - **WHEN** a user has signed up, signed in and reset a password
 - **THEN** `localStorage` and `sessionStorage` contain no password and no token
+
+### Requirement: Remaining turns shown before typing
+When the daily quota applies to the signed-in user, the header SHALL show the number of turns
+left today next to the usage meter, refreshed when the page loads and after every finished
+turn. When no turns are left, the chat input SHALL be disabled and SHALL say that the daily
+limit was reached and when it resets, in the user's local time. A 429 answer from the chat
+endpoint SHALL put the interface in the same state. When the quota does not apply (disabled,
+or an exempt admin), no quota figure SHALL be shown.
+
+#### Scenario: Turns left
+- **WHEN** a user with 3 turns left opens the app
+- **THEN** the header says 3 turns are left today
+
+#### Scenario: Limit reached
+- **WHEN** the user's last turn of the day finishes
+- **THEN** the header shows none left and the chat input is disabled with the reason and the local reset time
+
+#### Scenario: Refused by the server
+- **WHEN** the chat endpoint answers 429
+- **THEN** the interface shows the same disabled state with the reset time from the response and the typed message stays in the input
+
+#### Scenario: Exempt admin
+- **WHEN** an exempt admin is signed in
+- **THEN** no quota figure is shown and the chat input is enabled

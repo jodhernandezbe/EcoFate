@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncGenerator, Awaitable, Callable
 from datetime import datetime
+from functools import partial
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Response
@@ -15,22 +16,25 @@ from starlette.responses import StreamingResponse
 
 from api.core.session_guard import CurrentUser, current_user
 from api.dependencies import (
+    get_key_services,
     get_max_resumes,
+    get_quota,
     get_runtime,
-    get_service_keys,
     get_settings,
     get_threads,
 )
 from api.schemas.chat import ChatRequest, StreamEvent, ThreadId, ThreadSnapshot
+from api.schemas.quota import QuotaExhausted
 from api.services.agent_runner import AgentRuntime, resume_steps, run_resume, run_turn
 from api.services.confirmation import ConfirmationError, TurnPlan, plan_turn
+from api.services.key_setup import KeyServices, turn_key_loader
+from api.services.quota import QuotaService
 from api.services.report.builder import MEDIA_TYPE
 from api.services.report.service import ReportUnavailable, thread_report
 from api.services.snapshots import thread_snapshot
 from api.services.sse import encode_event
 from api.services.threads import ThreadStore
 from api.services.turn_lifecycle import BUSY, TurnRefused, resume_turn_record, start_turn
-from app.key_vault import ServiceKeys
 from app.turns import FailureReason
 from config.ui import UiSettings
 from storage.keys import ThreadKey
@@ -94,24 +98,39 @@ async def _holding_lease[T](
         raise
 
 
-@router.post("/stream")
+@router.post("/stream", responses={429: {"model": QuotaExhausted}})
 async def chat_stream(
     body: ChatRequest,
     user: CurrentUser,
-    keys: Annotated[ServiceKeys, Depends(get_service_keys)],
+    keys: Annotated[KeyServices, Depends(get_key_services)],
     threads: Annotated[ThreadStore, Depends(get_threads)],
     runtime: Annotated[AgentRuntime, Depends(get_runtime)],
+    quota: Annotated[QuotaService, Depends(get_quota)],
 ) -> StreamingResponse:
-    """Run one turn of ``thread_id`` and stream its events (an interrupted turn is abandoned)."""
+    """Run one turn of ``thread_id`` and stream its events (an interrupted turn is abandoned).
+
+    A new message counts against the user's daily quota (429 over it) once the thread is claimed
+    and before anything runs; an answer to the thread's open request continues a counted turn
+    and is free.
+    """
 
     key = ThreadKey(user.id, body.thread_id)
 
-    async def prepare() -> tuple[TurnPlan, Turn]:
+    async def prepare() -> tuple[TurnPlan, Turn, bool]:
+        counted = body.answers is None and await quota.require(user)
         plan = await plan_turn(body, threads, key)
-        return plan, await start_turn(threads, key)
+        return plan, await start_turn(threads, key), counted
 
-    plan, turn = await _holding_lease(threads, key, prepare)
-    events = run_turn(body, keys=keys, threads=threads, runtime=runtime, turn=turn, plan=plan)
+    plan, turn, counted = await _holding_lease(threads, key, prepare)
+    events = run_turn(
+        body,
+        keys=turn_key_loader(keys, user.id),
+        threads=threads,
+        runtime=runtime,
+        turn=turn,
+        plan=plan,
+        refund=partial(quota.refund, user.id) if counted else None,
+    )
     return _streaming(_frames(events, threads, turn), threads, key)
 
 
@@ -119,23 +138,24 @@ async def chat_stream(
 async def resume_chat(
     thread_id: ThreadId,
     user: CurrentUser,
-    keys: Annotated[ServiceKeys, Depends(get_service_keys)],
+    keys: Annotated[KeyServices, Depends(get_key_services)],
     threads: Annotated[ThreadStore, Depends(get_threads)],
     runtime: Annotated[AgentRuntime, Depends(get_runtime)],
 ) -> StreamingResponse:
     """Continue the thread's interrupted turn from where it stopped and stream its events."""
     key = ThreadKey(user.id, thread_id)
+    loader = turn_key_loader(keys, user.id)
     if not await threads.holds(key):
         raise HTTPException(status_code=404, detail=UNKNOWN)
 
     async def steps() -> tuple[str, ...]:
-        return await resume_steps(key, keys=keys, threads=threads, runtime=runtime)
+        return await resume_steps(key, keys=loader, threads=threads, runtime=runtime)
 
     async def prepare() -> Turn:
         return await resume_turn_record(threads, key, runtime.max_resumes_per_turn, steps)
 
     turn = await _holding_lease(threads, key, prepare)
-    events = run_resume(keys=keys, threads=threads, runtime=runtime, turn=turn)
+    events = run_resume(keys=loader, threads=threads, runtime=runtime, turn=turn)
     return _streaming(_frames(events, threads, turn), threads, key)
 
 

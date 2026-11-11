@@ -227,3 +227,67 @@ def test_configure_sends_only_with_a_token(monkeypatch: pytest.MonkeyPatch) -> N
         SETTINGS.environment,
     )
     assert seen["console"] is False
+
+
+@pytest.mark.parametrize(
+    ("secret", "hidden"),
+    [
+        ("Cookie: ecofate_session=Zx81kLmq0PaT3vYb; theme=dark", "Zx81kLmq0PaT3vYb"),
+        ("https://ecofate.example/reset#token=Zx81kLmq0PaT3vYb", "Zx81kLmq0PaT3vYb"),
+        (
+            "postgresql://ecofate:Tr0ub4dor3x@db:5432/ecofate",  # pragma: allowlist secret
+            "Tr0ub4dor3x",
+        ),  # pragma: allowlist secret
+    ],
+)
+def test_cookies_link_tokens_and_database_passwords_never_reach_a_span(
+    secret: str,
+    hidden: str,
+    exporter: TestExporter,
+) -> None:
+    with session_span(SETTINGS, SETTINGS.spans.web_turn, "t", f"q {secret}", "m"):
+        logfire.info("event {r}", r=f"failed with {secret}")
+    logfire.force_flush()
+    dumped = " ".join(str(dict(s.attributes or {})) for s in exporter.exported_spans)
+    assert hidden not in dumped
+
+
+@pytest.mark.parametrize("text", ["see https://example.org/docs#usage", "benzene 71-43-2"])
+def test_ordinary_text_is_kept_in_a_span(text: str, exporter: TestExporter) -> None:
+    logfire.info("event {r}", r=text)
+    logfire.force_flush()
+    dumped = " ".join(str(dict(s.attributes or {})) for s in exporter.exported_spans)
+    assert text in dumped
+
+
+PROTECTED = (
+    "kek-" + "Q9w2E8r7T6y5U4i3O2p1A0s9D8f7G6h5",  # pragma: allowlist secret
+    "smtp-pass-" + "Zx81kLmq0PaT3vYb",
+)  # pragma: allowlist secret
+
+
+def test_protected_values_with_no_shape_never_reach_a_span(
+    monitoring: TelemetrySettings,
+) -> None:
+    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+
+    memory = TestExporter()
+    logfire.configure(
+        send_to_logfire=False,
+        console=False,
+        scrubbing=telemetry.scrubbing_options(monitoring, PROTECTED),
+        additional_span_processors=[SimpleSpanProcessor(memory)],
+    )
+    secret = PROTECTED[0]
+    with session_span(monitoring, monitoring.spans.web_turn, "t", f"question {secret}", "m"):
+        logfire.info("event {r}", r=f"loaded {secret.upper()} and {PROTECTED[1]}")
+    logfire.force_flush()
+    dumped = " ".join(str(dict(s.attributes or {})) for s in memory.exported_spans)
+    assert all(value.lower() not in dumped.lower() for value in PROTECTED)
+    assert SCRUBBED in dumped
+
+
+def test_without_protected_values_ordinary_words_are_kept(exporter: TestExporter) -> None:
+    logfire.info("event {r}", r="loaded kek words")
+    logfire.force_flush()
+    assert "kek words" in " ".join(str(dict(s.attributes or {})) for s in exporter.exported_spans)

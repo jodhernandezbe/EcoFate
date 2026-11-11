@@ -93,12 +93,16 @@ def _tools(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("agent.graph.get_all_tools", lambda: [lookup, read_values])
 
 
+async def keys() -> TurnKeys:
+    return KEYS
+
+
 def _services(model: ScriptedChatModel, saver: InMemorySaver, usages: Usages) -> TurnServices:
     async def values() -> UserValues:
         return {"rfc": 0.5}, frozenset()
 
     return TurnServices(
-        load_keys=lambda: KEYS,
+        load_keys=keys,
         build_model=lambda key: model,
         checkpointer=saver,
         user_values=values,

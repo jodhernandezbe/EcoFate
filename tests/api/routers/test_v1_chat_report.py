@@ -18,7 +18,7 @@ from api.services.threads import ThreadStore
 from tests.api.conftest import ORIGIN, signed_in
 from tests.api.keys import owned
 from tests.api.services.report.fixtures import assessed, lines, load
-from tests.fakes import OPENAI_ENTRY, FakeCredentialStore, scripted
+from tests.fakes import KeyBench, scripted
 
 OWN = {"Origin": ORIGIN}
 KEY = "sk-proj-" + "q1W2e3R4t5" * 3  # pragma: allowlist secret
@@ -26,8 +26,8 @@ URL = "/api/v1/chat/threads/{}/report"
 
 
 @pytest.fixture
-def chat(app: FastAPI, store: FakeCredentialStore) -> Iterator[TestClient]:
-    store.entries[OPENAI_ENTRY] = KEY
+def chat(app: FastAPI, store: KeyBench) -> Iterator[TestClient]:
+    store.give(KEY)
     model = scripted("The **assistant** answer.")
     app.dependency_overrides[get_runtime] = lambda: AgentRuntime(lambda key: model, 10)
     with signed_in(app, raise_server_exceptions=False) as client:

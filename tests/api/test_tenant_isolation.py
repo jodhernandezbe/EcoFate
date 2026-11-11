@@ -16,17 +16,20 @@ from fastapi.testclient import TestClient
 from api.dependencies import AgentRuntime, get_runtime
 from storage.keys import ThreadKey
 from tests.api.conftest import ORIGIN, make_user, signed_in
+from tests.api.keys import OTHER_OWNER, OWNER
 from tests.api.streams import parse_sse
-from tests.fakes import OPENAI_ENTRY, FakeCredentialStore, scripted
+from tests.fakes import KeyBench, scripted
 
 OWN = {"Origin": ORIGIN}
 CHAT = "/api/v1/chat"
 KEY = "sk-proj-" + "i5S6o7L8a9" * 3  # pragma: allowlist secret
+OTHER_KEY = "sk-proj-" + "j1T2p3M4b5" * 3  # pragma: allowlist secret
 
 
 @pytest.fixture
-def two(app: FastAPI, store: FakeCredentialStore) -> Iterator[tuple[TestClient, TestClient]]:
-    store.entries[OPENAI_ENTRY] = KEY
+def two(app: FastAPI, store: KeyBench) -> Iterator[tuple[TestClient, TestClient]]:
+    store.give(KEY, OWNER)
+    store.give(OTHER_KEY, OTHER_OWNER)
     model = scripted(*["an answer"] * 8)
     app.dependency_overrides[get_runtime] = lambda: AgentRuntime(lambda key: model, 10)
     with (

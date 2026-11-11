@@ -10,11 +10,12 @@ from langchain_core.tools import tool
 
 from api.schemas.chat import ChatRequest, ErrorEvent
 from api.services.agent_runner import AgentRuntime
-from app.key_vault import default_service_keys
+from api.services.key_setup import turn_key_loader
 from storage.keys import ThreadKey
+from tests.api.keys import OWNER
 from tests.api.services.projectors.factories import RULES
 from tests.api.streams import begun_turn
-from tests.fakes import OPENAI_ENTRY, FakeCredentialStore, InMemoryThreadStore, ScriptedChatModel
+from tests.fakes import InMemoryThreadStore, KeyBench, ScriptedChatModel
 
 pytestmark = pytest.mark.anyio
 KEY = "sk-proj-" + "p1R2e3S4n5" * 3  # pragma: allowlist secret
@@ -42,11 +43,11 @@ async def test_a_store_failure_while_presenting_is_the_turns_failure(
         tool_calls=[ToolCall(name="lookup", args={"cas_number": "1"}, id="c")],
     )
     model = ScriptedChatModel([call, AIMessage(content="never")])
-    store = FakeCredentialStore()
-    store.entries[OPENAI_ENTRY] = KEY
+    bench = KeyBench()
+    bench.give(KEY)
     run = begun_turn(
         ChatRequest(thread_id="p1", message="go"),
-        keys=default_service_keys(store),
+        keys=turn_key_loader(bench.services, OWNER),
         threads=_ToolStoreDown(),
         runtime=AgentRuntime(lambda key: model, 10, workspace_rules=RULES),
     )

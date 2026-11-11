@@ -926,6 +926,34 @@ thread_retention_days = 30
 # Minutes between purges of idle threads.
 purge_interval_minutes = 60
 
+# Per-user OpenAI keys of the web program (bring your own key). Each key is stored in PostgreSQL
+# sealed with AES-256-GCM under a key-encryption key (KEK). The KEK itself is never written here:
+# it is read from the environment variable named below (32 random bytes, base64url). During a
+# rotation the old KEK stays in `previous_kek_env_var` until `python -m api rotate-keys` has
+# re-sealed every stored key. The operator's Census and CompTox keys are named in [population]
+# and [comptox] (`api_key_env_var`).
+[byok]
+kek_env_var = "ECOFATE_KEY_ENCRYPTION_KEY"  # pragma: allowlist secret
+previous_kek_env_var = "ECOFATE_KEY_ENCRYPTION_KEY_PREVIOUS"  # pragma: allowlist secret
+# Rows re-sealed per database round trip by `rotate-keys`.
+rotation_batch_size = 100
+
+# Daily quota of agent turns per user in the web program (api/). A turn counts when the server
+# accepts a new message; resuming an interrupted turn and answering the assistant's confirmation
+# request are free. The day is the UTC calendar day (reset at 00:00 UTC). A change takes effect
+# on restart. The command line program and the evaluations are never limited.
+[limits]
+# False turns the quota off (local single-user runs).
+enabled = true
+# New agent turns each user may start per UTC day (a whole number, at least 1).
+daily_turns_per_user = 20
+# True: administrators are not counted or refused.
+admin_exempt = true
+# Usage rows older than this many days are deleted by the periodic purge.
+retention_days = 35
+# Fixed text of the 429 answer and of the disabled chat input (never built from user input).
+exhausted_message = "You have used all of today's assessments. The limit resets at 00:00 UTC."
+
 # Accounts of the web program (api/). Passwords are hashed with Argon2id; sessions are random
 # tokens kept hashed in PostgreSQL and sent in an HttpOnly cookie. Secrets (the session secret)
 # come only from the environment variable named here, never from this file.

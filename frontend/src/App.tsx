@@ -13,6 +13,7 @@ import { SettingsDrawer } from "./features/settings/SettingsDrawer";
 import { useAgentStream } from "./hooks/useAgentStream";
 import { useClientConfig } from "./hooks/useClientConfig";
 import { useKeyStatus } from "./hooks/useKeyStatus";
+import { useQuota } from "./hooks/useQuota";
 import { useReportDownload } from "./hooks/useReportDownload";
 import { useSession } from "./hooks/useSession";
 import { useWorkspaceStore } from "./hooks/useWorkspaceStore";
@@ -43,6 +44,7 @@ function Workspace({ user, onSignOut, onGone }: WorkspaceProps) {
     onWorkspace: store.apply,
     onReplace: (state) => (state ? store.replace(state) : store.clear()),
   });
+  const quota = useQuota(chat.busy, chat.refusal);
   const report = useReportDownload();
   const key = useKeyStatus();
   const config = useClientConfig();
@@ -118,6 +120,8 @@ function Workspace({ user, onSignOut, onGone }: WorkspaceProps) {
             model={config?.model}
             suggestions={config?.suggestions}
             usage={chat.usage}
+            quota={quota}
+            refusedText={chat.refusal?.text}
             notice={chat.notice}
             confirmation={chat.confirmation}
             onSend={(text) => void chat.send(text)}
@@ -142,7 +146,7 @@ function Workspace({ user, onSignOut, onGone }: WorkspaceProps) {
         open={settingsOpen}
         statuses={key.statuses}
         busy={key.busy}
-        outcomes={key.outcomes}
+        outcome={key.outcome}
         loadError={key.loadError}
         onSave={key.save}
         onClear={key.clear}

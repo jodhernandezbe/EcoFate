@@ -40,17 +40,19 @@ from api.schemas.chat import (
     WorkspaceUpdate,
 )
 from api.services.confirmation import TurnPlan, request_event
+from api.services.key_setup import KeyLoader
 from api.services.projectors.rules import WorkspaceRules
 from api.services.provider_errors import NO_KEY_MESSAGE, interruption_message, message_for
+from api.services.quota import Refund, refund_if_unused
 from api.services.state_serializer import build_workspace
 from api.services.threads import ThreadStore
 from api.services.turn_lifecycle import can_resume
 from api.services.usage_meter import summarize
-from app.key_vault import ServiceKeys
 from app.turns import (
     AgentStarted,
     AssistantText,
     ConfirmationNeeded,
+    FailureReason,
     ScopePassed,
     ScopeRedirect,
     TextDelta,
@@ -68,7 +70,6 @@ from app.turns import (
     TurnSettings,
     TurnUsage,
     execute_turn,
-    load_turn_keys,
     pending_steps,
     resumable,
 )
@@ -152,9 +153,10 @@ class EventSequence:
 
 @dataclass
 class _Outcome:
-    """Whether the turn being presented stopped before its answer."""
+    """Whether the turn being presented stopped before its answer, and why."""
 
     stopped: bool = False
+    reason: FailureReason | None = None
 
 
 @dataclass(frozen=True)
@@ -165,6 +167,7 @@ class _Turn:
     threads: ThreadStore
     runtime: AgentRuntime
     resumed: bool = False
+    refund: Refund | None = None
     seq: EventSequence = field(default_factory=EventSequence)
     outcome: _Outcome = field(default_factory=_Outcome)
 
@@ -177,11 +180,12 @@ class _Turn:
 async def run_turn(
     request: ChatRequest,
     *,
-    keys: ServiceKeys,
+    keys: KeyLoader,
     threads: ThreadStore,
     runtime: AgentRuntime,
     turn: Turn,
     plan: TurnPlan | None = None,
+    refund: Refund | None = None,
 ) -> AsyncGenerator[StreamEvent]:
     """Run one turn (its record ``turn`` is running) and yield its events; always ends with
     ``usage`` and ``turn_finished``.
@@ -196,6 +200,9 @@ async def run_turn(
     message, and the record becomes ``interrupted``. Any other failure becomes one ``error``
     event (a fixed message for a missing key or a refused account, otherwise a generic one with
     the id the details were logged under) and the record becomes ``failed``.
+
+    ``refund`` is given only for a turn that was counted against the daily quota: it gives the
+    turn back (by id) when the turn stops before reaching the model and cannot be resumed.
     """
     chosen = plan or TurnPlan(message=request.message, note="")
     turn_request = TurnRequest(
@@ -207,7 +214,8 @@ async def run_turn(
         user_id=str(turn.owner_id),
         checkpoint_id=turn.key.checkpoint_id,
     )
-    presented = _present_turn(turn_request, keys, _Turn(turn, threads, runtime))
+    shown = _Turn(turn, threads, runtime, refund=refund)
+    presented = _present_turn(turn_request, keys, shown)
     async with aclosing(
         presented,
     ) as events:  # closed here, in this context, when the client leaves
@@ -217,7 +225,7 @@ async def run_turn(
 
 async def run_resume(
     *,
-    keys: ServiceKeys,
+    keys: KeyLoader,
     threads: ThreadStore,
     runtime: AgentRuntime,
     turn: Turn,
@@ -246,7 +254,7 @@ async def run_resume(
 async def resume_steps(
     key: ThreadKey,
     *,
-    keys: ServiceKeys,
+    keys: KeyLoader,
     threads: ThreadStore,
     runtime: AgentRuntime,
 ) -> tuple[str, ...]:
@@ -257,7 +265,7 @@ async def resume_steps(
 
 async def _present_turn(
     request: TurnRequest,
-    keys: ServiceKeys,
+    keys: KeyLoader,
     turn: _Turn,
 ) -> AsyncGenerator[StreamEvent]:
     services = _services(keys, turn.threads, turn.runtime, turn.key, turn.record.id)
@@ -268,20 +276,20 @@ async def _present_turn(
 
 
 def _services(
-    keys: ServiceKeys,
+    keys: KeyLoader,
     threads: ThreadStore,
     runtime: AgentRuntime,
     key: ThreadKey,
     turn_id: str | None,
 ) -> TurnServices:
-    """The runner's collaborators: this turn's keys, model factory and the thread's store."""
+    """The runner's collaborators: this turn's key loader, model factory and the thread's store."""
 
     async def record_usage(calls: Sequence[CallUsage]) -> Sequence[CallUsage]:
         await threads.add_usage(key, calls, turn_id)
         return await threads.session_calls(key)
 
     return TurnServices(
-        load_keys=lambda: load_turn_keys(keys),
+        load_keys=keys,
         build_model=runtime.build_model,
         checkpointer=threads.checkpointer,
         user_values=lambda: threads.answers(key),
@@ -354,6 +362,7 @@ async def _closing(event: TurnFailed | TurnUsage | TurnDone, turn: _Turn) -> lis
 async def _stopped(event: TurnFailed, turn: _Turn) -> StreamEvent:
     """Interrupt the turn for a reason the user can fix; fail it for any other."""
     turn.outcome.stopped = True
+    turn.outcome.reason = event.reason
     seq, reason = turn.seq, event.reason
     if not resumable(reason):
         await _move(turn, TurnStatus.FAILED, reason)
@@ -435,6 +444,8 @@ async def _usage(event: TurnUsage, turn: _Turn) -> Usage:
     """The turn's calls (every segment of a resumed turn) and the thread's so far."""
     pricing = turn.runtime.pricing
     calls = await turn.threads.turn_calls(turn.key, turn.record.id)
+    reason, calls_made = turn.outcome.reason, len(calls)
+    await refund_if_unused(turn.refund, turn.record.id, reason=reason, model_calls=calls_made)
     return Usage(
         seq=turn.seq.next(),
         turn=summarize(calls, pricing),

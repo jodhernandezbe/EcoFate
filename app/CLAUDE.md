@@ -17,13 +17,18 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   counted and priced (CLI summary, web usage meter and span attributes all use it). Span and
   attribute names come from `[telemetry]`; keys and tokens are scrubbed from spans with the same
   patterns as the logs (`commons/key_patterns.py`). `ask` returns a `RunResult` (answer and calls).
-- `key_vault.py` is the only module that touches the OS credential store (`keyring`), for the
-  OpenAI, Census and CompTox keys (`ServiceKeys`, one entry each from `[ui.keyring]`). A key
-  leaves it only as a `SecretStr`: the OpenAI one to `build_chat_model(..., api_key=...)`, all
-  of them to the tools through `run.stored_keys_provided`. The program uses the stored keys and
-  falls back to each key's environment variable for headless runs. `EnvironmentVault` (same
-  `KeyVault` protocol) reads a key from its variable and never stores one; the web program
-  uses it only in container mode. `app` never imports `api` (`tests/test_layering.py`).
+- `key_vault.py` is the only module that touches the OS credential store (`keyring`), and it is for
+  the command line and the evaluations only: the OpenAI, Census and CompTox keys (`ServiceKeys`, one
+  entry each from `[ui.keyring]`), each falling back to its environment variable for headless runs.
+  A key leaves it only as a `SecretStr`. `EnvironmentVault` reads a key from its variable and never
+  stores one. The web program uses neither keychain nor `ServiceKeys`.
+- `user_key_vault.py` is the only module that decrypts a user's OpenAI key (`UserKeyVault`: `save`,
+  `clear`, `status`, and `read(user_id)`, the one per-turn decrypt that the API runner and a
+  background worker both call). AES-256-GCM through `commons.sealed_secret`; the key-encryption key
+  comes from the variable named in `[byok]`, a previous one is accepted during a rotation (lazy
+  re-seal on read, `rotate` for the rest); an unreadable row is absent, logged by user id only.
+  `operator_keys.py` reads the Census and CompTox keys from the environment once. `app` never
+  imports `api` (`tests/test_layering.py`).
 - `turns/` is the one turn runner. `execute_turn(request, services, settings)` yields
   transport-neutral `TurnEvent`s (frozen dataclasses: no sequence numbers, labels, user-facing
   text or wire schemas) and owns key provision for the turn (`keys.provided`, released on
@@ -36,5 +41,7 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   `pending_steps` says what would run next); a new message first answers tool calls an abandoned
   turn left without a result (`history.py`). `failures.resumable` names the reasons that
   interrupt a turn instead of failing it.
-- `redaction.py` is the one log-redaction filter (`protect_secrets`, `redact`,
-  `install_redaction`); it holds no HTTP knowledge. Front ends only configure their loggers.
+- `redaction.py` is the one log-redaction filter (`protect_secrets` per turn, `protect_for_process`
+  for the life of the process, `redact`, `install_redaction`); it holds no HTTP knowledge. Front
+  ends only configure their loggers. `telemetry.scrubbing_options(settings, protected)` hides the same
+  values in spans; the protected values must be known when Logfire is configured.

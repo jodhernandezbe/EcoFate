@@ -15,7 +15,7 @@ from api.services.auth.stores import Accounts
 from api.services.auth.throttle import Throttle
 from api.services.auth.tokens import TokenHasher, TokenService
 from config.auth import Argon2Settings, AuthSettings, ThrottleSettings, get_auth_settings
-from tests.fakes import InMemoryThreadStore
+from tests.fakes import InMemoryThreadStore, KeyBench
 from tests.fakes_accounts import FakeClock, RecordingMailer, in_memory_accounts
 
 SECRET = b"unit-test-session-secret-0123456789abcdef"  # pragma: allowlist secret
@@ -91,4 +91,5 @@ def build_app(*args: Any, **kwargs: Any) -> FastAPI:  # noqa: ANN401
     kwargs.setdefault("accounts", in_memory_accounts(FakeClock()))
     kwargs.setdefault("mailer", RecordingMailer())
     kwargs.setdefault("session_secret", SECRET)
+    kwargs.setdefault("keys", KeyBench().services)
     return create_app(*args, **kwargs)

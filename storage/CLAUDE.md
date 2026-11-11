@@ -6,8 +6,9 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   schema, SQLAlchemy Core), `migrations/` (Alembic), `codec.py` (rows to and from the program's
   types), `threads.py` (`PostgresThreadStore`), `turn_model.py` (`Turn`, statuses and allowed
   moves), `turns.py` (`TurnRepository`), `keys.py` (`ThreadKey`), the accounts (`account_model.py`,
-  `users.py`, `user_sessions.py`, `auth_tokens.py`, `login_attempts.py`), `health.py`, `purge.py`,
-  `revisions.py`, and `__main__.py` (`python -m storage upgrade | current | downgrade <rev>`).
+  `users.py`, `user_sessions.py`, `auth_tokens.py`, `login_attempts.py`), `user_credentials.py`
+  (`CredentialRepository`: a user's sealed secrets), `health.py`, `purge.py`,
+  `quota.py` (`QuotaRepository`, the daily turn quota), `revisions.py`, and `__main__.py` (`python -m storage upgrade | current | downgrade <rev>`).
 - Imports: `config` and `commons`, plus types only from `app.usage_meter` (`CallUsage`) and
   `tools.schemas` (`ConfirmationRequest`, `MissingEntry`). Never `api` (the workspace model class
   is passed in), `agent`, tool modules or providers. `api` imports `storage`; `agent/`, `tools/`
@@ -23,6 +24,12 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   none exists without one. The only calls across users are `purge_idle` (retention),
   `TurnRepository.interrupt_all_open` (start-up recovery) and `forget_owner` (one user's account
   deletion). The checkpointer's thread key is `ThreadKey.checkpoint_id` (`"{owner}:{thread}"`).
+- Daily quota: `daily_turn_usage(user_id, day, turns)`; counting is one atomic upsert guarded by
+  `WHERE turns < limit`, the day is the database's UTC date, a refund is guarded by
+  `turns.quota_refunded`, and old rows go in the idle-retention purge.
+- `user_credentials` holds only nonce, ciphertext and the id of the key-encryption key that sealed
+  it (never a plaintext or a key); it cascades with the user. Every method takes `user_id` except
+  the rotation batch (`unsealed_by_other_keys`, `count_sealed_by`), the one cross-user call.
 - Accounts: `users`, `sessions`, `auth_tokens`, `login_attempts`. A session or emailed token is
   stored only as its hash (the repository is given the hash, never the token). Using a token or
   counting a failed attempt is one atomic statement.

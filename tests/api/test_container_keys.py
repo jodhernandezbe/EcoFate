@@ -1,40 +1,62 @@
-"""Keys in container mode come from the environment (no keychain); native mode ignores it."""
+"""Container mode: the OpenAI key always comes from the user's row, never from the environment;
+only the operator's Census and CompTox keys are read from it."""
 
 from __future__ import annotations
 
+import base64
 from collections.abc import Iterator
-from types import SimpleNamespace
-from typing import cast
 
 import pytest
-from fastapi import Request
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
-from api import dependencies
-from api.dependencies import AgentRuntime, get_runtime, key_variables
-from app.key_vault import default_service_keys
+import app.redaction as redaction
+from api.dependencies import AgentRuntime, get_runtime
+from api.services.key_setup import KeyServices, load_key_config
+from app.operator_keys import OperatorKeys, load_operator_keys
+from config.agent import get_agent_settings
+from config.byok import get_byok_settings
+from config.loader import get_comptox_settings
+from config.population import get_population_settings
 from config.ui import UiSettings
 from tests.api.auth_support import build_app
 from tests.api.conftest import ORIGIN, make_user, sign_in_as
+from tests.api.keys import OWNER
 from tests.api.streams import parse_sse
-from tests.fakes import OPENAI_ENTRY, FakeCredentialStore, InMemoryThreadStore, scripted
+from tests.fakes import KeyBench, scripted
 
 OWN = {"Origin": ORIGIN}
-KEY = "sk-proj-" + "c0N7a1N3r9" * 3  # pragma: allowlist secret
+ENV_KEY = "sk-proj-" + "e0N7v1R0n9" * 3  # pragma: allowlist secret
+STORED_KEY = "sk-proj-" + "s7O2r3E4d5" * 3  # pragma: allowlist secret
+CENSUS = "c3n5u5k3y" + "7f" * 16  # pragma: allowlist secret
+COMPTOX = "ct0x-" + "9d" * 14  # pragma: allowlist secret
+KEK_TEXT = base64.urlsafe_b64encode(bytes(range(32))).decode()
 
 
-@pytest.fixture
-def environment_key(monkeypatch: pytest.MonkeyPatch) -> str:
-    variables = key_variables()
-    monkeypatch.setenv(variables["openai"], KEY)
-    monkeypatch.delenv(variables["census"], raising=False)
-    monkeypatch.delenv(variables["comptox"], raising=False)
-    return KEY
+@pytest.fixture(autouse=True)
+def environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An environment that holds an OpenAI key and both operator keys."""
+    monkeypatch.setenv(get_agent_settings().api_key_env_var, ENV_KEY)
+    monkeypatch.setenv(get_population_settings().api_key_env_var, CENSUS)
+    monkeypatch.setenv(get_comptox_settings().api_key_env_var, COMPTOX)
+    empty: set[str] = set()
+    monkeypatch.setattr(redaction, "_PROCESS_LITERALS", empty)
 
 
-def _client(settings: UiSettings, *, container: bool, used: list[str]) -> Iterator[TestClient]:
-    app = build_app(settings, keys_from_environment=container, threads=InMemoryThreadStore())
+def _operator() -> OperatorKeys:
+    return load_operator_keys(
+        {
+            get_population_settings().api_key_env_var: CENSUS,
+            get_comptox_settings().api_key_env_var: COMPTOX,
+        },
+        get_population_settings().api_key_env_var,
+        get_comptox_settings().api_key_env_var,
+    )
+
+
+def _client(settings: UiSettings, bench: KeyBench, used: list[str]) -> Iterator[TestClient]:
+    services = KeyServices(bench.vault, _operator())
+    app = build_app(settings, keys_from_environment=True, keys=services)
     model = scripted("an answer")
 
     def build(key: SecretStr) -> object:
@@ -43,7 +65,7 @@ def _client(settings: UiSettings, *, container: bool, used: list[str]) -> Iterat
 
     app.dependency_overrides[get_runtime] = lambda: AgentRuntime(build, 10)  # pyright: ignore[reportArgumentType]
     with TestClient(app, base_url=ORIGIN, raise_server_exceptions=False) as client:
-        sign_in_as(app, client, make_user(app, admin=True))
+        sign_in_as(app, client, make_user(app))
         yield client
 
 
@@ -53,64 +75,64 @@ def used() -> list[str]:
 
 
 @pytest.fixture
-def container(settings: UiSettings, environment_key: str, used: list[str]) -> Iterator[TestClient]:
-    assert environment_key
-    yield from _client(settings, container=True, used=used)
+def keyless(settings: UiSettings, used: list[str]) -> Iterator[TestClient]:
+    yield from _client(settings, KeyBench(), used)
 
 
-def test_container_status_reports_the_environment_key(container: TestClient) -> None:
-    response = container.get("/api/v1/settings/keys")
-    assert response.json() == {
-        "openai": {"configured": True},
-        "census": {"configured": False},
-        "comptox": {"configured": False},
-    }
-    assert KEY not in response.text
+@pytest.fixture
+def keyed(settings: UiSettings, used: list[str]) -> Iterator[TestClient]:
+    bench = KeyBench()
+    bench.give(STORED_KEY, OWNER)
+    yield from _client(settings, bench, used)
 
 
-def test_container_turn_uses_the_environment_key(container: TestClient, used: list[str]) -> None:
-    response = container.post(
-        "/api/v1/chat/stream",
-        json={"thread_id": "t1", "message": "hello"},
-        headers=OWN,
-    )
-    events = parse_sse(response.text)
-    assert [e["type"] for e in events if e["type"] == "error"] == []
-    assert used and set(used) == {KEY}
-    assert KEY not in response.text
+def _say(client: TestClient) -> list[dict[str, object]]:
+    body = {"thread_id": "t1", "message": "hello"}
+    return parse_sse(client.post("/api/v1/chat/stream", json=body, headers=OWN).text)
 
 
-@pytest.mark.parametrize("method", ["post", "delete"])
-def test_container_refuses_to_save_or_clear_a_key(container: TestClient, method: str) -> None:
-    path = "/api/v1/settings/openai-key"
-    if method == "post":
-        response = container.post(path, json={"api_key": "sk-other" + "z" * 20}, headers=OWN)
-    else:
-        response = container.delete(path, headers=OWN)
-    assert response.status_code == 503
-    assert ".env" in response.json()["error"]
-    assert KEY not in response.text
+def test_the_environment_openai_key_is_not_a_users_key(keyless: TestClient) -> None:
+    assert keyless.get("/api/v1/settings/openai-key").json() == {"configured": False}
+    status = keyless.get("/api/v1/settings/keys")
+    assert status.json()["openai"] == {"configured": False}
+    assert ENV_KEY not in status.text
 
 
-@pytest.mark.usefixtures("environment_key")
-def test_native_mode_ignores_the_environment_key(
-    settings: UiSettings,
+def test_a_turn_without_a_stored_key_ends_with_the_add_your_key_message(
+    keyless: TestClient,
+    used: list[str],
+) -> None:
+    events = _say(keyless)
+    errors = [e for e in events if e["type"] == "error"]
+    assert len(errors) == 1
+    assert used == []  # no model was built, with the environment key or any other
+
+
+def test_a_turn_uses_the_stored_key_and_never_the_environment_one(
+    keyed: TestClient,
+    used: list[str],
+) -> None:
+    events = _say(keyed)
+    assert [e for e in events if e["type"] == "error"] == []
+    assert used and set(used) == {STORED_KEY}
+    assert ENV_KEY not in str(events)
+
+
+def test_the_operator_keys_still_come_from_the_environment(keyless: TestClient) -> None:
+    services = keyless.get("/api/v1/settings/keys").json()["services"]
+    assert services == {"census": {"available": True}, "comptox": {"available": True}}
+
+
+def test_start_up_reads_the_operator_keys_and_no_openai_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    store = FakeCredentialStore()
-    monkeypatch.setattr(dependencies, "default_service_keys", lambda: default_service_keys(store))
-    native = build_app(settings, threads=InMemoryThreadStore())
-    keys = dependencies.get_service_keys(cast(Request, SimpleNamespace(app=native)))
-    assert keys.vault("openai").load() is None
-    assert store.calls == [("get", *OPENAI_ENTRY)]
-
-
-def test_container_mode_selects_the_environment_vaults(
-    settings: UiSettings,
-    environment_key: str,
-) -> None:
-    app = build_app(settings, keys_from_environment=True, threads=InMemoryThreadStore())
-    keys = dependencies.get_service_keys(cast(Request, SimpleNamespace(app=app)))
-    loaded = keys.vault("openai").load()
-    assert loaded is not None
-    assert loaded.get_secret_value() == environment_key
+    environ = {
+        get_byok_settings().kek_env_var: KEK_TEXT,
+        get_agent_settings().api_key_env_var: ENV_KEY,
+        get_population_settings().api_key_env_var: CENSUS,
+    }
+    _, operator = load_key_config(environ)
+    assert operator.census is not None and operator.census.get_secret_value() == CENSUS
+    assert operator.comptox is None
+    assert ENV_KEY not in repr(operator)
+    assert ENV_KEY not in str(operator.values())

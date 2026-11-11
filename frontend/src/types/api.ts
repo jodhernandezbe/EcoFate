@@ -30,6 +30,8 @@ export interface ApiContract {
   KeyStatusResponse: KeyStatusResponse;
   KeyUpdatePayload: KeyUpdatePayload;
   KeysStatusResponse: KeysStatusResponse;
+  QuotaExhausted: QuotaExhausted;
+  QuotaStatus: QuotaStatus;
   ResetRequest: ResetRequest;
   SessionDetailResponse: SessionDetailResponse;
   SessionsResponse: SessionsResponse;
@@ -247,20 +249,77 @@ export interface KeyStatusResponse {
  */
 export interface KeyUpdatePayload {
   /**
-   * OpenAI API key to store in the OS keychain.
+   * The user's OpenAI API key; stored encrypted for their account only.
    */
   api_key: string;
 }
 /**
- * The status of every key the interface stores, in one response.
+ * The user's OpenAI key status and the data services this installation provides.
  *
  * This interface was referenced by `ApiContract`'s JSON-Schema
  * via the `definition` "KeysStatusResponse".
  */
 export interface KeysStatusResponse {
-  census: KeyStatusResponse;
-  comptox: KeyStatusResponse;
   openai: KeyStatusResponse;
+  services: ServicesAvailability;
+}
+/**
+ * The data services the operator may provide.
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "ServicesAvailability".
+ */
+export interface ServicesAvailability {
+  census: ServiceAvailability;
+  comptox: ServiceAvailability;
+}
+/**
+ * Whether a data service is provided by this installation (never its key).
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "ServiceAvailability".
+ */
+export interface ServiceAvailability {
+  available: boolean;
+}
+/**
+ * The body of the 429 answer to a new turn over the quota.
+ *
+ * Attributes:
+ *     detail: Fixed message from configuration.
+ *     limit: Turns allowed per UTC day.
+ *     resets_at: The next 00:00 UTC.
+ *     correlation_id: Id to quote when asking about this refusal.
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "QuotaExhausted".
+ */
+export interface QuotaExhausted {
+  correlation_id: string;
+  detail: string;
+  limit: number;
+  resets_at: string;
+}
+/**
+ * The signed-in user's quota today.
+ *
+ * Attributes:
+ *     applies: Whether the quota applies to this user (false when it is disabled or the user
+ *         is an exempt administrator; the other figures are then absent).
+ *     limit: Turns allowed per UTC day.
+ *     used: Turns counted today.
+ *     remaining: Turns left today.
+ *     resets_at: The next 00:00 UTC (the figures start again then).
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "QuotaStatus".
+ */
+export interface QuotaStatus {
+  applies: boolean;
+  limit: number | null;
+  remaining: number | null;
+  resets_at: string | null;
+  used: number | null;
 }
 /**
  * ``POST /api/v1/auth/reset``: the token from the emailed link and the new password.

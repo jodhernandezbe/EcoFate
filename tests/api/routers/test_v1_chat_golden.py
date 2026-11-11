@@ -24,7 +24,7 @@ from api.dependencies import AgentRuntime, get_runtime
 from tests.api.conftest import ORIGIN, signed_in
 from tests.api.services.projectors.factories import RULES, record
 from tests.api.streams import parse_sse
-from tests.fakes import OPENAI_ENTRY, FakeCredentialStore, ScriptedChatModel, reply, verdict
+from tests.fakes import KeyBench, ScriptedChatModel, reply, verdict
 from tools.schemas import ConfirmationRequest, MissingEntry
 
 OWN = {"Origin": ORIGIN}
@@ -81,10 +81,10 @@ def _shape(event: dict[str, Any]) -> dict[str, Any]:
 @pytest.fixture
 def stream(
     app: FastAPI,
-    store: FakeCredentialStore,
+    store: KeyBench,
     monkeypatch: pytest.MonkeyPatch,
 ) -> Iterator[Any]:
-    store.entries[OPENAI_ENTRY] = KEY
+    store.give(KEY)
     monkeypatch.setattr("agent.graph.get_all_tools", lambda: [INVENTORY, TOXICITY])
 
     def run(runtime: AgentRuntime) -> list[dict[str, Any]]:

@@ -14,21 +14,19 @@ from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, ToolCa
 from langchain_core.tools import tool
 from pydantic import PrivateAttr
 
-from api.dependencies import AgentRuntime, get_runtime, get_service_keys
+from api.dependencies import AgentRuntime, get_runtime
 from api.routers.v1_chat import _frames  # pyright: ignore[reportPrivateUsage]
 from api.schemas.chat import StreamEvent, TurnFinished
 from api.services import provider_errors
 from api.services.turn_lifecycle import BUSY, NOTHING_TO_RESUME, RESUME_CAP
-from app.key_vault import default_service_keys
 from storage.turn_model import Turn, TurnStatus
 from tests.api.auth_support import build_app
 from tests.api.conftest import ORIGIN, signed_in
 from tests.api.keys import OWNER, owned
 from tests.api.streams import parse_sse
 from tests.fakes import (
-    OPENAI_ENTRY,
-    FakeCredentialStore,
     InMemoryThreadStore,
+    KeyBench,
     ScriptedChatModel,
     reply,
 )
@@ -90,8 +88,8 @@ def _tools(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.fixture
-def keyed(store: FakeCredentialStore) -> FakeCredentialStore:
-    store.entries[OPENAI_ENTRY] = KEY
+def keyed(store: KeyBench) -> KeyBench:
+    store.give(KEY)
     return store
 
 
@@ -102,7 +100,7 @@ def _client(app: FastAPI, model: ScriptedChatModel, max_resumes: int = 3) -> Tes
 
 
 @pytest.fixture
-def flaky(app: FastAPI, keyed: FakeCredentialStore) -> Iterator[TestClient]:
+def flaky(app: FastAPI, keyed: KeyBench) -> Iterator[TestClient]:
     """No credits on the second model call: after tool c0 ran, before the next step."""
     model = FlakyModel([_calls("c0"), _calls("c1"), reply("All done", 2, 1)], fail_at=[1])
     with _client(app, model) as client:
@@ -172,7 +170,7 @@ def test_the_snapshot_reports_the_interruption(flaky: TestClient) -> None:
     }
 
 
-def test_the_step_limit_interrupts_the_turn(app: FastAPI, keyed: FakeCredentialStore) -> None:
+def test_the_step_limit_interrupts_the_turn(app: FastAPI, keyed: KeyBench) -> None:
     model = ScriptedChatModel([_calls("a"), _calls("b"), _calls("c"), reply("x", 1, 1)])
     runtime = AgentRuntime(lambda key: model, 2)
     app.dependency_overrides[get_runtime] = lambda: runtime
@@ -186,7 +184,7 @@ def test_the_step_limit_interrupts_the_turn(app: FastAPI, keyed: FakeCredentialS
 
 def test_an_unexpected_failure_fails_the_turn_and_offers_no_resume(
     app: FastAPI,
-    keyed: FakeCredentialStore,
+    keyed: KeyBench,
 ) -> None:
     model = FlakyModel([reply("x", 1, 1)], fail_at=[0], error=RuntimeError("boom"))
     with _client(app, model) as client:
@@ -198,7 +196,7 @@ def test_an_unexpected_failure_fails_the_turn_and_offers_no_resume(
     assert turn is not None and (turn.status, turn.reason) == (TurnStatus.FAILED, "unexpected")
 
 
-def test_a_turn_that_answers_is_completed(app: FastAPI, keyed: FakeCredentialStore) -> None:
+def test_a_turn_that_answers_is_completed(app: FastAPI, keyed: KeyBench) -> None:
     with _client(app, ScriptedChatModel([reply("hello", 1, 1)])) as client:
         assert _types(_send(client))[-1] == "turn_finished"
         assert (
@@ -244,7 +242,7 @@ def test_resumed_usage_is_added_to_the_same_turn(flaky: TestClient) -> None:
 
 def test_an_interruption_at_the_cap_is_not_resumable(
     app: FastAPI,
-    keyed: FakeCredentialStore,
+    keyed: KeyBench,
 ) -> None:
     model = FlakyModel([_calls("c0"), reply("done", 1, 1)], fail_at=[1, 1])
     with _client(app, model, max_resumes=1) as client:
@@ -270,7 +268,7 @@ def test_resume_of_a_malformed_id_is_422(flaky: TestClient) -> None:
 
 def test_resume_of_a_completed_turn_is_409_and_changes_nothing(
     app: FastAPI,
-    keyed: FakeCredentialStore,
+    keyed: KeyBench,
 ) -> None:
     with _client(app, ScriptedChatModel([reply("hello", 1, 1)])) as client:
         _send(client)
@@ -282,7 +280,7 @@ def test_resume_of_a_completed_turn_is_409_and_changes_nothing(
 
 def test_resume_past_the_cap_is_409_and_changes_nothing(
     app: FastAPI,
-    keyed: FakeCredentialStore,
+    keyed: KeyBench,
 ) -> None:
     turn = _interrupted_turn(app, resumes=3)
     with _client(app, ScriptedChatModel([]), max_resumes=3) as client:
@@ -293,7 +291,7 @@ def test_resume_past_the_cap_is_409_and_changes_nothing(
 
 def test_resume_while_a_turn_runs_is_409_and_leaves_it_running(
     app: FastAPI,
-    keyed: FakeCredentialStore,
+    keyed: KeyBench,
 ) -> None:
     turn = _interrupted_turn(app)
     asyncio.run(app.state.threads.claim(owned(THREAD)))
@@ -315,7 +313,7 @@ def test_resume_without_a_key_is_409_and_changes_nothing(app: FastAPI) -> None:
 
 def test_resume_with_nothing_left_to_run_completes_the_turn_and_is_409(
     app: FastAPI,
-    keyed: FakeCredentialStore,
+    keyed: KeyBench,
 ) -> None:
     _interrupted_turn(app)  # no checkpoint: nothing would run next
     with _client(app, ScriptedChatModel([])) as client:
@@ -327,7 +325,7 @@ def test_resume_with_nothing_left_to_run_completes_the_turn_and_is_409(
 
 def test_an_unknown_stored_reason_is_not_resumable(
     app: FastAPI,
-    keyed: FakeCredentialStore,
+    keyed: KeyBench,
 ) -> None:
     turn = _interrupted_turn(app, reason="something_new")
     with _client(app, ScriptedChatModel([])) as client:
@@ -380,13 +378,12 @@ def test_a_stream_the_client_leaves_interrupts_its_turn_and_frees_the_thread() -
     )
 
 
-def test_turns_left_running_are_interrupted_at_start_up(store: FakeCredentialStore) -> None:
+def test_turns_left_running_are_interrupted_at_start_up(store: KeyBench) -> None:
     threads = InMemoryThreadStore()
     asyncio.run(threads.touch(owned(THREAD)))
     left = asyncio.run(threads.turns.begin(owned(THREAD)))
     assert left is not None
-    app = build_app(threads=threads)
-    app.dependency_overrides[get_service_keys] = lambda: default_service_keys(store)
+    app = build_app(threads=threads, keys=store.services)
     with signed_in(app, raise_server_exceptions=False) as client:
         turn = _latest(app)
         assert turn is not None and (turn.status, turn.reason) == (

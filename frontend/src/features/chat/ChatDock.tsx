@@ -1,11 +1,13 @@
 import { TopHeaderBar, type AssistantStatus } from "../../components/layout/TopHeaderBar";
 import type { ChatMessage, UsageView } from "../../hooks/chatState";
-import type { ConfirmationAnswers, ConfirmationPrompt } from "../../types/workspace";
+import type { ConfirmationAnswers, ConfirmationPrompt, QuotaStatus } from "../../types/workspace";
 import { ChatComposer } from "./ChatComposer";
 import { ClearChatButton } from "./ClearChatButton";
 import { clearBlockedReason } from "./clearBlockedReason";
 import { ConfirmationCard } from "./ConfirmationCard";
 import { MessageStream } from "./MessageStream";
+import { QuotaMeter } from "./QuotaMeter";
+import { limitReachedReason } from "./quotaText";
 import { UsageMeter } from "./UsageMeter";
 
 interface ChatDockProps {
@@ -15,6 +17,10 @@ interface ChatDockProps {
   model?: string | undefined;
   suggestions?: string[] | undefined;
   usage: UsageView | null;
+  /** The user's daily turn quota (null until loaded; `applies` false shows nothing). */
+  quota?: QuotaStatus | null | undefined;
+  /** A message the server refused over the quota, put back in the input. */
+  refusedText?: string | null | undefined;
   /** A message about switching runs (for example, that one is no longer available). */
   notice?: string | null | undefined;
   /** The open request for missing values, if the turn stopped for one. */
@@ -43,6 +49,8 @@ export function ChatDock({
   model,
   suggestions,
   usage,
+  quota,
+  refusedText,
   notice,
   confirmation,
   onSend,
@@ -60,13 +68,14 @@ export function ChatDock({
         status={statusOf(messages, busy)}
         onCollapse={onCollapse}
       >
+        <QuotaMeter quota={quota ?? null} />
         <UsageMeter usage={usage} />
         <ClearChatButton blocked={clearBlockedReason(busy, messages.length)} onClear={onClear} />
       </TopHeaderBar>
       <MessageStream
         messages={messages}
         suggestions={suggestions ?? []}
-        canSend={hasKey && !busy}
+        canSend={hasKey && !busy && limitReachedReason(quota ?? null) === null}
         onSend={onSend}
         busy={busy}
         onResume={onResume}
@@ -85,6 +94,8 @@ export function ChatDock({
         hasKey={hasKey}
         onSend={onSend}
         onOpenSettings={onOpenSettings}
+        limitReason={limitReachedReason(quota ?? null)}
+        restore={refusedText}
       />
     </div>
   );

@@ -18,15 +18,16 @@ The intended tool flow for an assessment is: chemical properties -> emissions in
 
 The quickest way to see the app: no Python or Node needed, only Docker (Docker Desktop on macOS or Windows).
 
-    cp .env.example .env          # then put your OpenAI key in OPENAI_API_KEY (Census and CompTox keys too, for complete assessments)
+    cp .env.example .env          # then set the key-encryption key (see "Keys and BYOK"), the Census and CompTox keys (for complete assessments) and the other required values
                                   # a long random POSTGRES_PASSWORD (letters and digits)
                                   # and ECOFATE_SESSION_SECRET (see "Accounts" below)
     docker compose --profile dev up --build   # first build takes several minutes
-    # open http://127.0.0.1:8000, sign up, and open the verification link in the inbox at http://127.0.0.1:8025
+    # open http://127.0.0.1:8000, sign up, open the verification link in the inbox at http://127.0.0.1:8025,
+    # then save your own OpenAI key in Settings (the gear)
 
 The image is about 2 GB (CPU-only PyTorch and RDKit), and the container needs about 4 GB of RAM once the read-across encoder is loaded: give Docker Desktop at least that much memory and enough disk for the image. The port is published on the host's loopback only (`127.0.0.1:8000`).
 
-Inside the container there is no OS keychain, so the keys come from `.env` (`OPENAI_API_KEY`, `CENSUS_API_KEY`, `COMPTOX_API_KEY`): Settings shows which ones are set, and saving or clearing a key there is refused with a note to edit `.env` and restart (`docker compose up -d` picks up the change). The SCC search index, PubChem answers and the read-across encoder (about 500 MB, downloaded from Hugging Face on first use) are kept in named Docker volumes, so they are built or downloaded once; `make warm` downloads the encoder ahead of the first assessment.
+Only the operator's keys go in `.env` (`CENSUS_API_KEY`, `COMPTOX_API_KEY`, the key-encryption key and the Logfire tokens): Settings shows whether each data service is available, and has no input for them. Every user saves their own OpenAI key in Settings after signing in; the container never reads `OPENAI_API_KEY`. The SCC search index, PubChem answers and the read-across encoder (about 500 MB, downloaded from Hugging Face on first use) are kept in named Docker volumes, so they are built or downloaded once; `make warm` downloads the encoder ahead of the first assessment.
 
 The `Makefile` is the index of everyday commands (`make help` lists them):
 
@@ -139,11 +140,37 @@ The left rail has these entries (Monitoring only for administrators), with **Acc
 - **Generate report**: downloads a Word document laid out like an EPA screening-level assessment (summary, chemical properties, data sources, releases, exposure, risk, uncertainties, and the assistant's last answer labelled as model-generated). Every value in it comes from the dashboard.
 - **Monitoring**: lists recorded agent sessions (see [Monitoring](#monitoring)).
 
-#### API keys
+#### Keys and BYOK
 
-The keys are the server's, shared by every account's turns, so only an administrator can save or clear them (anyone signed in can see whether each one is set). Open the page as an administrator, click the gear (top right) and save the keys: the OpenAI key (required, it runs the assistant), and the Census and CompTox keys (the tools need them to count the people around a facility and to look up chemical properties). Each goes to the OS keychain (macOS Keychain, Linux Secret Service, Windows Credential Locker) and nowhere else: never to a file or the browser. It reaches the model and tools only for the turn that uses it. The command line program uses the same stored keys.
+The web program is bring-your-own-key: every user pays for their own model calls with their own OpenAI key, and the operator provides the data services.
 
-For any key not stored, the environment variable is the fallback (`OPENAI_API_KEY`, `CENSUS_API_KEY`, `COMPTOX_API_KEY`, also read from `.env`). The server listens on loopback only (`[ui]` in `config/settings.toml`).
+- **Your OpenAI key** (required, it runs the assistant): click the gear (top right) and save it. It is stored in the database encrypted with AES-256-GCM, a fresh random nonce each time and your account and the key's purpose as associated data, so a copy of your row in another account does not decrypt. Settings only ever says whether a key is stored ("Key stored encrypted for your account"); no endpoint returns any part of it. It is decrypted once per turn, in the process that runs the turn, given to the model and tools for that turn only, and dropped when the turn ends. "Clear key" deletes it, and so does deleting your account.
+- **Operator keys** (`CENSUS_API_KEY`, `COMPTOX_API_KEY`, `LOGFIRE_TOKEN`, `LOGFIRE_READ_TOKEN`): set by whoever runs the installation, in `.env` or the server environment. Users never type, see or receive them. Settings lists each data service as "Provided by this installation" or "Not available on this installation" (and what is missing without it).
+- **Command line** (`python -m app`, the evaluations): unchanged. They keep using the OS keychain, with the environment variables as the fallback, for all three keys.
+
+**The key-encryption key (KEK).** Required: the web program refuses to start without `ECOFATE_KEY_ENCRYPTION_KEY` (the variable name is `[byok].kek_env_var`), naming it in the message. Generate one (32 random bytes, base64url) and put it in `.env` or your secret store; never in the database, the image or the repository:
+
+    python -c "import secrets,base64;print(base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())"
+
+**Rotating the KEK** (no downtime, no user action):
+
+1. Generate a new key. Set it as `ECOFATE_KEY_ENCRYPTION_KEY` and move the old value to `ECOFATE_KEY_ENCRYPTION_KEY_PREVIOUS`. Restart: every key still works (a key sealed with the previous KEK is re-sealed under the new one the first time it is read).
+2. Run `uv run python -m api rotate-keys` (in Docker: `docker compose exec api python -m api rotate-keys`). It re-seals every stored key and prints counts only (re-sealed, already current, unreadable); it exits with an error when some row is unreadable.
+3. Remove `ECOFATE_KEY_ENCRYPTION_KEY_PREVIOUS` and restart.
+
+**If the KEK is lost**, every stored key becomes unreadable: the program treats those users as having no key (they see "No key configured" and the assistant asks them to add one) and nothing is guessed or deleted. Users save their key again; a key is replaceable by its owner, so nothing else is lost. Back the KEK up with the same care as the database password.
+
+The server listens on loopback only (`[ui]` in `config/settings.toml`).
+
+#### Daily limit
+
+Each user may start a limited number of new agent turns per UTC day (the count restarts at 00:00 UTC). The operator sets it in `[limits]` in `config/settings.toml` (`daily_turns_per_user`, `enabled`, `admin_exempt`, `retention_days`, `exhausted_message`); a change takes effect on restart.
+
+- **Counted:** a new message the server accepts (signed in, thread free). A turn that stops before it reaches the model and cannot be resumed (for example, no OpenAI key) is given back, once.
+- **Free:** resuming an interrupted turn and answering the assistant's confirmation request. Both continue a turn that was already counted.
+- **Over the limit** the server answers `429` with the reset time and `Retry-After`, before anything runs. The header shows "N turns left today" and, at none, the chat input says when it resets in local time.
+
+The command line program and the evaluations are not limited. `GET /api/v1/usage/quota` returns the signed-in user's figures.
 
 #### What the workspace shows (and does not)
 

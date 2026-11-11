@@ -3,14 +3,18 @@
 ``create-admin --email <address>`` creates (or promotes) the first administrator; see
 ``api/admin_command.py``.
 
+``rotate-keys`` re-seals every stored user key under the current key-encryption key; see
+``api/rotate_keys_command.py``.
+
 ``--container`` binds the address in ``[ui.container]`` instead (inside a container, where the
-port is published on the host's loopback only) and reads the keys from the environment, since a
-container has no OS keychain; the origin checks still use ``[ui]``.
+port is published on the host's loopback only), and a loopback SMTP host is taken to be Mailpit;
+the origin checks still use ``[ui]``.
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -23,6 +27,8 @@ from api.admin_command import main as create_admin
 from api.core.config import ui_settings
 from api.core.logging_filter import uvicorn_log_config
 from api.main import create_app
+from api.rotate_keys_command import main as rotate_keys
+from api.services.key_setup import process_secret_values
 from app.telemetry import configure_telemetry
 from config.telemetry import get_telemetry_settings
 
@@ -47,22 +53,33 @@ def _arguments(argv: Sequence[str]) -> argparse.Namespace:
     return parser.parse_args(list(argv))
 
 
+def _run_command(argv: Sequence[str]) -> bool:
+    """Run ``create-admin`` or ``rotate-keys`` when ``argv`` starts with it; whether it did."""
+    commands = {"create-admin": create_admin, "rotate-keys": rotate_keys}
+    command = commands.get(argv[0]) if argv else None
+    if command is None:
+        return False
+    load_dotenv()
+    command(argv[1:])
+    return True
+
+
 def main(argv: Sequence[str] = ()) -> None:
     """Serve the API and the built frontend on the configured loopback address.
 
-    Loads ``.env`` first, like the command line program, so the tools find their service
-    keys (Census, CompTox). The OpenAI key is not read from there: it comes from the keychain.
+    Loads ``.env`` first, like the command line program, so the tools find the operator's
+    service keys (Census, CompTox). Users' OpenAI keys are never read from there: each comes
+    from the user's encrypted row.
 
     Args:
         argv: Command line arguments after the program name (``--container``).
     """
-    if list(argv)[:1] == ["create-admin"]:
-        load_dotenv()
-        create_admin(argv[1:])
+    if _run_command(argv):
         return
     container = _arguments(argv).container
     load_dotenv()
-    configure_telemetry(get_telemetry_settings())  # after .env, which may hold the token
+    # after .env, which holds the token; every secret read from it is hidden in the spans
+    configure_telemetry(get_telemetry_settings(), process_secret_values(os.environ))
     settings = ui_settings()
     require_built_frontend(settings.frontend_dist)
     uvicorn.run(

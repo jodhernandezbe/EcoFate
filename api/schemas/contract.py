@@ -22,6 +22,7 @@ from api.schemas.auth import (
 )
 from api.schemas.chat import ChatRequest, StreamEventSchema, ThreadSnapshot, UsageTotals
 from api.schemas.monitoring import SessionDetailResponse, SessionsResponse
+from api.schemas.quota import QuotaExhausted, QuotaStatus
 from api.schemas.settings import (
     ClientConfig,
     KeysStatusResponse,
@@ -52,6 +53,8 @@ _MODELS: tuple[tuple[type[BaseModel], JsonSchemaMode], ...] = (
     (AcceptedResponse, "serialization"),
     (UserInfo, "serialization"),
     (SignInResponse, "serialization"),
+    (QuotaStatus, "serialization"),
+    (QuotaExhausted, "serialization"),
 )
 
 

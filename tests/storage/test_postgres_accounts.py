@@ -24,6 +24,7 @@ from storage.engine import create_engine
 from storage.keys import ThreadKey
 from storage.login_attempts import LoginAttemptRepository
 from storage.tables import metadata
+from storage.user_credentials import CredentialRepository, StoredCredential
 from storage.user_sessions import SessionRepository
 from storage.users import UserRepository
 from tests.postgres import SETTINGS, Database, database, migrated_schema, run_alembic, test_url
@@ -142,8 +143,19 @@ async def test_deleting_an_account_deletes_everything_that_refers_to_it(repos: R
     await repos.db.store.set_pending(key, None)
     keep = ThreadKey(other, "t1")
     await repos.db.store.claim(keep)
+    sealed = CredentialRepository(async_sessionmaker(repos.db.engine))
+    await sealed.put(StoredCredential(user_id, "openai", bytes(12), b"x" * 40, "kek-a"))
+    await sealed.put(StoredCredential(other, "openai", bytes(12), b"y" * 40, "kek-a"))
     assert await repos.users.delete(user_id)
-    for table in ("sessions", "auth_tokens", "turns", "thread_usage", "thread_answers"):
+    assert await sealed.get(user_id, "openai") is None
+    assert await sealed.get(other, "openai") is not None  # only the deleted account's row goes
+    for table in (
+        "sessions",
+        "auth_tokens",
+        "turns",
+        "thread_usage",
+        "thread_answers",
+    ):
         assert await _count(repos.db.engine, table) == (1 if table == "threads" else 0), table
     assert await _count(repos.db.engine, "threads") == 1
     assert await repos.db.store.holds(keep)

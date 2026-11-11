@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import io
 import logging
-from collections.abc import Callable, Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import replace
 
 import pytest
@@ -72,10 +72,14 @@ async def _no_values() -> UserValues:
     return {}, frozenset()
 
 
+async def _keys() -> TurnKeys:
+    return KEYS
+
+
 def _services(
     model: BaseChatModel,
     *,
-    load_keys: Callable[[], TurnKeys] = lambda: KEYS,
+    load_keys: Callable[[], Awaitable[TurnKeys]] = _keys,
     usages: Usages | None = None,
 ) -> TurnServices:
     return TurnServices(
@@ -182,7 +186,7 @@ async def test_a_failure_inside_the_graph_releases_the_keys() -> None:
 async def test_missing_keys_fail_with_their_reason_and_log_nothing(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    def no_key() -> TurnKeys:
+    async def no_key() -> TurnKeys:
         raise KeysUnavailableError(FailureReason.NO_KEY)
 
     with caplog.at_level(logging.INFO, logger="app.turns"):

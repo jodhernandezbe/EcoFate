@@ -1627,7 +1627,7 @@
       "description": "Body of ``POST /api/v1/settings/openai-key``; the key is never echoed or logged.",
       "properties": {
         "api_key": {
-          "description": "OpenAI API key to store in the OS keychain.",
+          "description": "The user's OpenAI API key; stored encrypted for their account only.",
           "format": "password",
           "type": "string",
           "writeOnly": true
@@ -1641,22 +1641,18 @@
     },
     "KeysStatusResponse": {
       "additionalProperties": false,
-      "description": "The status of every key the interface stores, in one response.",
+      "description": "The user's OpenAI key status and the data services this installation provides.",
       "properties": {
-        "census": {
-          "$ref": "#/$defs/KeyStatusResponse"
-        },
-        "comptox": {
-          "$ref": "#/$defs/KeyStatusResponse"
-        },
         "openai": {
           "$ref": "#/$defs/KeyStatusResponse"
+        },
+        "services": {
+          "$ref": "#/$defs/ServicesAvailability"
         }
       },
       "required": [
         "openai",
-        "census",
-        "comptox"
+        "services"
       ],
       "title": "KeysStatusResponse",
       "type": "object"
@@ -2170,6 +2166,92 @@
         "coordinates"
       ],
       "title": "Polygon",
+      "type": "object"
+    },
+    "QuotaExhausted": {
+      "additionalProperties": false,
+      "description": "The body of the 429 answer to a new turn over the quota.\n\nAttributes:\n    detail: Fixed message from configuration.\n    limit: Turns allowed per UTC day.\n    resets_at: The next 00:00 UTC.\n    correlation_id: Id to quote when asking about this refusal.",
+      "properties": {
+        "correlation_id": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "resets_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "detail",
+        "limit",
+        "resets_at",
+        "correlation_id"
+      ],
+      "title": "QuotaExhausted",
+      "type": "object"
+    },
+    "QuotaStatus": {
+      "additionalProperties": false,
+      "description": "The signed-in user's quota today.\n\nAttributes:\n    applies: Whether the quota applies to this user (false when it is disabled or the user\n        is an exempt administrator; the other figures are then absent).\n    limit: Turns allowed per UTC day.\n    used: Turns counted today.\n    remaining: Turns left today.\n    resets_at: The next 00:00 UTC (the figures start again then).",
+      "properties": {
+        "applies": {
+          "type": "boolean"
+        },
+        "limit": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "remaining": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resets_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "used": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "applies",
+        "limit",
+        "used",
+        "remaining",
+        "resets_at"
+      ],
+      "title": "QuotaStatus",
       "type": "object"
     },
     "RailLayout": {
@@ -2842,6 +2924,38 @@
         "reason"
       ],
       "title": "Screening",
+      "type": "object"
+    },
+    "ServiceAvailability": {
+      "additionalProperties": false,
+      "description": "Whether a data service is provided by this installation (never its key).",
+      "properties": {
+        "available": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "available"
+      ],
+      "title": "ServiceAvailability",
+      "type": "object"
+    },
+    "ServicesAvailability": {
+      "additionalProperties": false,
+      "description": "The data services the operator may provide.",
+      "properties": {
+        "census": {
+          "$ref": "#/$defs/ServiceAvailability"
+        },
+        "comptox": {
+          "$ref": "#/$defs/ServiceAvailability"
+        }
+      },
+      "required": [
+        "census",
+        "comptox"
+      ],
+      "title": "ServicesAvailability",
       "type": "object"
     },
     "SessionDetailResponse": {
@@ -4523,6 +4637,12 @@
     "KeysStatusResponse": {
       "$ref": "#/$defs/KeysStatusResponse"
     },
+    "QuotaExhausted": {
+      "$ref": "#/$defs/QuotaExhausted"
+    },
+    "QuotaStatus": {
+      "$ref": "#/$defs/QuotaStatus"
+    },
     "ResetRequest": {
       "$ref": "#/$defs/ResetRequest"
     },
@@ -4570,6 +4690,8 @@
     "KeyStatusResponse",
     "KeyUpdatePayload",
     "KeysStatusResponse",
+    "QuotaExhausted",
+    "QuotaStatus",
     "ResetRequest",
     "SessionDetailResponse",
     "SessionsResponse",
