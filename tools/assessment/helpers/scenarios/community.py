@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from typing import Literal
 
-from config.assessment import get_assessment_settings
 from config.exposure import ExposureSettings, get_exposure_settings
 from config.scenario import ScenarioSettings, get_scenario_settings
 from models.transport.screening import Atmosphere, Stack
-from tools.assessment.helpers.scenarios.factors import factor
+from tools.assessment.helpers.scenarios.factors import banded, factor
 from tools.assessment.helpers.scenarios.receptors import Ranked, Weather, rank_tracts, stack_of
 from tools.schemas import FacilityAssessment, ScenarioFactor, StackExposure, WorstCaseScenario
 
@@ -113,11 +112,6 @@ def _receptors(item: FacilityAssessment, result: StackExposure) -> Ranked:
     return rank_tracts(population.get("tracts", []), rate, stack, weather, air, limits)
 
 
-def _benchmark(quantity: Quantity) -> float:
-    screening = get_assessment_settings().screening
-    return screening.hq if quantity == "hq" else screening.cancer_risk
-
-
 def _factors(item: FacilityAssessment, result: StackExposure) -> list[ScenarioFactor]:
     model = _model(get_exposure_settings())
     return [*_source(result), *_release(item), *_conditions(result), *model]
@@ -129,17 +123,17 @@ def _scenario(
     settings: ScenarioSettings,
 ) -> WorstCaseScenario | None:
     result = _top(item, quantity)
-    value = None if result is None else result[quantity]
-    if result is None or value is None:
+    if result is None or (value := result[quantity]) is None:
         return None
-    ranked, benchmark = _receptors(item, result), _benchmark(quantity)
+    ranked = _receptors(item, result)
+    tier, benchmark = banded(quantity, value)
     return WorstCaseScenario(
         pathway_key=PATHWAY,
         pathway=settings.pathways[PATHWAY],
         quantity=quantity,
         quantity_label=settings.quantities[quantity],
         value=value,
-        tier="at or above threshold" if value >= benchmark else "below threshold",
+        tier=tier,
         benchmark=benchmark,
         factors=_factors(item, result),
         receptors=ranked.listed,

@@ -15,6 +15,7 @@ from api.services.projectors.payloads import (
     decode_json,
     validate,
 )
+from api.services.projectors.worker_only import note_left_out, place_all
 
 
 def _rejected(item: object) -> str:
@@ -32,6 +33,15 @@ def _inventory_items(exchange: ToolExchange) -> object:
     return cast(Mapping[str, object], value).get("facilities") if isinstance(value, dict) else value
 
 
+def _worker_only(exchange: ToolExchange, ledger: Ledger, cas: str | None) -> None:
+    """The fugitive-only facilities the model was told about, and how many were left out."""
+    value = decode_json(exchange.content)
+    if isinstance(value, dict):
+        body = cast(Mapping[str, object], value)
+        place_all(body.get("worker_only"), ledger, cas)
+        note_left_out(body, ledger)
+
+
 def project_inventory(exchange: ToolExchange, ledger: Ledger) -> None:
     """One facility per FRS ID; a later result replaces an earlier record of the same facility."""
     items = _inventory_items(exchange)
@@ -40,6 +50,7 @@ def project_inventory(exchange: ToolExchange, ledger: Ledger) -> None:
         return
     ledger.note_cas(exchange)
     cas = text(exchange.args, "cas_number")
+    _worker_only(exchange, ledger, cas)
     for item in cast(list[object], items):
         record = validate(EmissionPayload, item)
         if record is None:

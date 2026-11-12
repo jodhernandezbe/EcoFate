@@ -1,0 +1,559 @@
+imis_code,cas,substance,source
+0010,75-07-0,ACETALDEHYDE,https://www.osha.gov/chemicaldata/570
+0020,64-19-7,ACETIC ACID,https://www.osha.gov/chemicaldata/469
+0030,108-24-7,ACETIC ANHYDRIDE,https://www.osha.gov/chemicaldata/80
+0040,67-64-1,ACETONE,https://www.osha.gov/chemicaldata/476
+0060,75-05-8,ACETONITRILE,https://www.osha.gov/chemicaldata/569
+0080,79-27-6,"ACETYLENE TETRABROMIDE (1,1,2,2-TETRABROMOETHANE)",https://www.osha.gov/chemicaldata/691
+0110,107-02-8,ACROLEIN,https://www.osha.gov/chemicaldata/51
+0115,79-06-1,ACRYLAMIDE,https://www.osha.gov/chemicaldata/686
+0117,79-10-7,ACRYLIC ACID,https://www.osha.gov/chemicaldata/688
+0120,107-13-1,ACRYLONITRILE (VINYL CYANIDE),https://www.osha.gov/chemicaldata/57
+0123,116-06-3,ALDICARB,https://www.osha.gov/chemicaldata/833
+0125,309-00-2,ALDRIN,https://www.osha.gov/chemicaldata/349
+0130,107-18-6,ALLYL ALCOHOL,https://www.osha.gov/chemicaldata/60
+0140,107-05-1,ALLYL CHLORIDE,https://www.osha.gov/chemicaldata/53
+0145,106-92-3,ALLYL GLYCIDYL ETHER (AGE),https://www.osha.gov/chemicaldata/47
+0150,2179-59-1,ALLYL PROPYL DISULFIDE,https://www.osha.gov/chemicaldata/313
+0162,92-67-1,4-AMINODIPHENYL,https://www.osha.gov/chemicaldata/741
+0165,504-29-0,2-AMINOPYRIDINE,https://www.osha.gov/chemicaldata/381
+0170,7664-41-7,AMMONIA,https://www.osha.gov/chemicaldata/623
+0175,12125-02-9,AMMONIUM CHLORIDE FUME,https://www.osha.gov/chemicaldata/164
+0190,628-63-7,N-AMYL ACETATE (PENTYL ACETATE),https://www.osha.gov/chemicaldata/460
+0191,626-38-0,SEC-AMYL ACETATE,https://www.osha.gov/chemicaldata/455
+0220,62-53-3,ANILINE,https://www.osha.gov/chemicaldata/452
+0227,120-12-7,ANTHRACENE,https://www.osha.gov/chemicaldata/835
+0230,7440-36-0,ANTIMONY & COMPOUNDS (as Sb),https://www.osha.gov/chemicaldata/526
+0260,1303-00-0,GALLIUM ARSENIDE,https://www.osha.gov/chemicaldata/196
+0270,7784-42-1,ARSINE,https://www.osha.gov/chemicaldata/660
+0290,8052-42-4,ASPHALT FUMES (PETROLEUM),https://www.osha.gov/chemicaldata/710
+0300,86-50-0,AZINPHOS-METHYL (GUTHION),https://www.osha.gov/chemicaldata/722
+0310,7440-39-3,"BARIUM, SOLUBLE COMPOUNDS (EXCEPT BARIUM SULFATE)",https://www.osha.gov/chemicaldata/530
+0318,114-26-1,PROPOXUR,https://www.osha.gov/chemicaldata/137
+0320,71-43-2,BENZENE,https://www.osha.gov/chemicaldata/491
+0335,94-36-0,BENZOYL PEROXIDE,https://www.osha.gov/chemicaldata/748
+0337,100-51-6,BENZYL ALCOHOL,https://www.osha.gov/chemicaldata/36
+0340,100-44-7,BENZYL CHLORIDE,https://www.osha.gov/chemicaldata/15
+0350,56-55-3,BENZ[A]ANTHRACENE,https://www.osha.gov/chemicaldata/414
+0372,80-05-7,BISPHENOL A,https://www.osha.gov/chemicaldata/841
+0374,1330-43-4,"SODIUM TETRABORATE, ANHYDROUS",https://www.osha.gov/chemicaldata/229
+0375,1303-96-4,SODIUM TETRABORATE DECAHYDRATE,https://www.osha.gov/chemicaldata/199
+0376,12179-04-3,SODIUM TETRABORATE PENTAHYDRATE,https://www.osha.gov/chemicaldata/170
+0382,7637-07-2,BORON TRIFLUORIDE,https://www.osha.gov/chemicaldata/615
+0390,7726-95-6,BROMINE,https://www.osha.gov/chemicaldata/633
+0395,151-67-7,HALOTHANE,https://www.osha.gov/chemicaldata/285
+0400,75-25-2,BROMOFORM,https://www.osha.gov/chemicaldata/576
+0410,106-99-0,"BUTADIENE (1,3-BUTADIENE)",https://www.osha.gov/chemicaldata/50
+0420,106-97-8,BUTANE,https://www.osha.gov/chemicaldata/49
+0430,78-93-3,2-BUTANONE (METHYL ETHYL KETONE; MEK),https://www.osha.gov/chemicaldata/680
+0435,111-76-2,2-BUTOXYETHANOL,https://www.osha.gov/chemicaldata/130
+0440,123-86-4,N-BUTYL ACETATE,https://www.osha.gov/chemicaldata/178
+0441,105-46-4,SEC-BUTYL ACETATE,https://www.osha.gov/chemicaldata/33
+0442,540-88-5,TERT-BUTYL ACETATE,https://www.osha.gov/chemicaldata/395
+0450,141-32-2,BUTYL ACRYLATE,https://www.osha.gov/chemicaldata/260
+0460,71-36-3,N-BUTYL ALCOHOL (N-BUTANOL),https://www.osha.gov/chemicaldata/490
+0461,78-92-2,SEC-BUTYL ALCOHOL (SEC-BUTANOL),https://www.osha.gov/chemicaldata/679
+0462,75-65-0,TERT-BUTYL ALCOHOL (TERT-BUTANOL),https://www.osha.gov/chemicaldata/593
+0470,109-73-9,BUTYLAMINE,https://www.osha.gov/chemicaldata/99
+0471,112-34-5,DIETHYLENE GLYCOL MONOBUTYL ETHER (BUTYL CARBITOL),https://www.osha.gov/chemicaldata/812
+0472,112-07-2,2-BUTOXYETHYL ACETATE (BUTYL CELLOSOLVE ACETATE),https://www.osha.gov/chemicaldata/134
+0477,2426-08-6,N-BUTYL GLYCIDYL ETHER (BGE),https://www.osha.gov/chemicaldata/320
+0478,138-22-7,N-BUTYL LACTATE (BUTYL LACTATE),https://www.osha.gov/chemicaldata/255
+0480,109-79-5,BUTYL MERCAPTAN (BUTANETHIOL),https://www.osha.gov/chemicaldata/102
+0485,98-51-1,P-TERT-BUTYLTOLUENE,https://www.osha.gov/chemicaldata/774
+0522,76-22-2,CAMPHOR,https://www.osha.gov/chemicaldata/612
+0525,63-25-2,CARBARYL,https://www.osha.gov/chemicaldata/464
+0526,1563-66-2,CARBOFURAN,https://www.osha.gov/chemicaldata/287
+0527,1333-86-4,CARBON BLACK,https://www.osha.gov/chemicaldata/236
+0529,133-06-2,CAPTAN,https://www.osha.gov/chemicaldata/230
+0530,124-38-9,CARBON DIOXIDE,https://www.osha.gov/chemicaldata/183
+0540,75-15-0,CARBON DISULFIDE,https://www.osha.gov/chemicaldata/574
+0560,630-08-0,CARBON MONOXIDE,https://www.osha.gov/chemicaldata/462
+0570,56-23-5,CARBON TETRACHLORIDE (TETRACHLOROMETHANE),https://www.osha.gov/chemicaldata/844
+0571,120-80-9,CATECHOL,https://www.osha.gov/chemicaldata/160
+0590,109-86-4,2-METHOXYETHANOL (METHYL CELLOSOLVE),https://www.osha.gov/chemicaldata/103
+0611,57-74-9,CHLORDANE,https://www.osha.gov/chemicaldata/422
+0612,8001-35-2,CHLORINATED CAMPHENE (TOXAPHENE),https://www.osha.gov/chemicaldata/698
+0614,10049-04-4,CHLORINE DIOXIDE,https://www.osha.gov/chemicaldata/16
+0615,7790-91-2,CHLORINE TRIFLUORIDE,https://www.osha.gov/chemicaldata/664
+0617,107-20-0,CHLOROACETALDEHYDE (2-CHLOROETHANAL),https://www.osha.gov/chemicaldata/62
+0618,532-27-4,α-CHLOROACETOPHENONE (PHENACYL CHLORIDE; 2-CHLOROACETOPHENONE),https://www.osha.gov/chemicaldata/389
+0620,108-90-7,CHLOROBENZENE,https://www.osha.gov/chemicaldata/90
+0623,2698-41-1,O-CHLOROBENZYLIDENE MALONONITRILE,https://www.osha.gov/chemicaldata/333
+0627,74-97-5,CHLOROBROMOMETHANE,https://www.osha.gov/chemicaldata/562
+0630,53469-21-9,"CHLORODIPHENYL, 42% CHLORINE (PCB)",https://www.osha.gov/chemicaldata/392
+0631,11097-69-1,"CHLORODIPHENYL, 54% CHLORINE (PCB)",https://www.osha.gov/chemicaldata/121
+0640,7782-50-5,CHLORINE,https://www.osha.gov/chemicaldata/650
+0645,106-89-8,"EPICHLOROHYDRIN (1-CHLORO-2,3-EPOXYPROPANE)",https://www.osha.gov/chemicaldata/46
+0660,600-25-9,1-CHLORO-1-NITROPROPANE,https://www.osha.gov/chemicaldata/435
+0670,67-66-3,CHLOROFORM (TRICHLOROMETHANE),https://www.osha.gov/chemicaldata/477
+0675,76-06-2,CHLOROPICRIN (NITROTRICHLOROMETHANE),https://www.osha.gov/chemicaldata/604
+0680,126-99-8,"β-CHLOROPRENE (2-CHLORO-1,3-BUTADIENE)",https://www.osha.gov/chemicaldata/188
+0681,2921-88-2,CHLORPYRIFOS,https://www.osha.gov/chemicaldata/339
+0682,2039-87-4,O-CHLOROSTYRENE,https://www.osha.gov/chemicaldata/305
+0685,7440-47-3,"CHROMIUM, METAL & INSOLUBLE SALTS (as Cr)",https://www.osha.gov/chemicaldata/534
+0689,1189-85-1,TERT-BUTYL CHROMATE,https://www.osha.gov/chemicaldata/148
+0692,218-01-9,CHRYSENE,https://www.osha.gov/chemicaldata/314
+0700,65996-93-2,"COAL TAR PITCH VOLATILES (BENZENE-SOLUBLE FRACTION), (PYRENE, PHENANTHRENE, ACRIDINE, CHRYSENE, ANTHRACENE AND BENZO(A)PYRENE)",https://www.osha.gov/chemicaldata/472
+0710,8030-30-6,NAPHTHA (COAL TAR),https://www.osha.gov/chemicaldata/706
+0726,50-32-8,BENZO[A]PYRENE,https://www.osha.gov/chemicaldata/380
+0736,56-72-4,COUMAPHOS (CO-RAL),https://www.osha.gov/chemicaldata/136
+0770,4170-30-3,CROTONALDEHYDE,https://www.osha.gov/chemicaldata/370
+0776,299-86-5,CRUFOMATE,https://www.osha.gov/chemicaldata/345
+0780,98-82-8,CUMENE,https://www.osha.gov/chemicaldata/775
+0800,460-19-5,CYANOGEN,https://www.osha.gov/chemicaldata/372
+0810,110-82-7,CYCLOHEXANE,https://www.osha.gov/chemicaldata/117
+0820,108-93-0,CYCLOHEXANOL,https://www.osha.gov/chemicaldata/92
+0830,108-94-1,CYCLOHEXANONE,https://www.osha.gov/chemicaldata/93
+0840,110-83-8,CYCLOHEXENE,https://www.osha.gov/chemicaldata/118
+0842,108-91-8,CYCLOHEXYLAMINE,https://www.osha.gov/chemicaldata/91
+0845,542-92-7,CYCLOPENTADIENE,https://www.osha.gov/chemicaldata/401
+0846,94-75-7,"2,4-DICHLOROPHENOXYACETIC ACID (2,4-D)",https://www.osha.gov/chemicaldata/750
+0848,81-88-9,D & C Red #19,https://www.osha.gov/chemicaldata/1010
+0850,62-73-7,DICHLORVOS (DDVP),https://www.osha.gov/chemicaldata/457
+0860,123-42-2,DIACETONE ALCOHOL (4-HYDROXY-4-METHYL-2-PENTANONE),https://www.osha.gov/chemicaldata/176
+0861,334-88-3,DIAZOMETHANE,https://www.osha.gov/chemicaldata/357
+0862,19287-45-7,DIBORANE,https://www.osha.gov/chemicaldata/302
+0863,107-66-4,DIBUTYL PHOSPHATE,https://www.osha.gov/chemicaldata/69
+0864,84-74-2,DIBUTYL PHTHALATE,https://www.osha.gov/chemicaldata/720
+0865,7572-29-4,DICHLOROACETYLENE,https://www.osha.gov/chemicaldata/596
+0866,102-81-8,2-N-DIBUTYLAMINOETHANOL (DIBUTYLAMINOETHANOL),https://www.osha.gov/chemicaldata/30
+0867,95-50-1,O-DICHLOROBENZENE,https://www.osha.gov/chemicaldata/755
+0868,106-46-7,P-DICHLOROBENZENE,https://www.osha.gov/chemicaldata/40
+0869,91-94-1,"3,3'-DICHLOROBENZIDINE (and its salts)",https://www.osha.gov/chemicaldata/738
+0870,540-59-0,"1,2-DICHLOROETHYLENE, MIXED ISOMERS (ACETYLENE DICHLORIDE)",https://www.osha.gov/chemicaldata/394
+0871,75-71-8,DICHLORODIFLUOROMETHANE,https://www.osha.gov/chemicaldata/595
+0873,119-90-4,O-DIANISIDINE,https://www.osha.gov/chemicaldata/149
+0874,107-06-2,"ETHYLENE DICHLORIDE (1,2-DICHLOROETHANE)",https://www.osha.gov/chemicaldata/54
+0880,111-44-4,DICHLOROETHYL ETHER,https://www.osha.gov/chemicaldata/127
+0887,75-43-4,DICHLOROMONOFLUOROMETHANE,https://www.osha.gov/chemicaldata/582
+0890,594-72-9,"1,1-DICHLORO-1-NITROETHANE",https://www.osha.gov/chemicaldata/433
+0902,141-66-2,DICROTOPHOS,https://www.osha.gov/chemicaldata/262
+0903,77-73-6,DICYCLOPENTADIENE,https://www.osha.gov/chemicaldata/642
+0907,1116-54-7,N-NITROSODIETHANOLAMINE,https://www.osha.gov/chemicaldata/858
+0910,109-89-7,DIETHYLAMINE,https://www.osha.gov/chemicaldata/105
+0920,100-37-8,DIETHYLAMINOETHANOL (2-DIETHYLAMINOETHANOL),https://www.osha.gov/chemicaldata/11
+0921,111-40-0,DIETHYLENETRIAMINE,https://www.osha.gov/chemicaldata/125
+0922,75-61-6,DIFLUORODIBROMOMETHANE,https://www.osha.gov/chemicaldata/591
+0924,108-83-8,"DIISOBUTYL KETONE (2,6-DIMETHYL-4-HEPTANONE)",https://www.osha.gov/chemicaldata/86
+0925,108-18-9,DIISOPROPYLAMINE,https://www.osha.gov/chemicaldata/77
+0926,122-39-4,DIPHENYLAMINE,https://www.osha.gov/chemicaldata/172
+0927,127-19-5,DIMETHYLACETAMIDE,https://www.osha.gov/chemicaldata/191
+0928,124-40-3,DIMETHYLAMINE (ANHYDROUS),https://www.osha.gov/chemicaldata/184
+0930,68-12-2,DIMETHYLFORMAMIDE,https://www.osha.gov/chemicaldata/481
+0931,121-69-7,"N,N-DIMETHYLANILINE",https://www.osha.gov/chemicaldata/167
+0933,84-66-2,DIETHYL PHTHALATE,https://www.osha.gov/chemicaldata/719
+0940,57-14-7,"1,1-DIMETHYLHYDRAZINE",https://www.osha.gov/chemicaldata/418
+0950,131-11-3,DIMETHYLPHTHALATE,https://www.osha.gov/chemicaldata/212
+0960,77-78-1,DIMETHYL SULFATE,https://www.osha.gov/chemicaldata/644
+1000,117-84-0,DI-N-OCTYL PHTHALATE,https://www.osha.gov/chemicaldata/286
+1010,123-91-1,"DIOXANE (DIETHYLENE DIOXIDE) (1,4-DIOXANE)",https://www.osha.gov/chemicaldata/179
+1011,92-52-4,DIPHENYL (BIPHENYL),https://www.osha.gov/chemicaldata/740
+1014,34590-94-8,DIPROPYLENE GLYCOL METHYL ETHER ((2-METHOXYMETHYLETHOXY)PROPANOL),https://www.osha.gov/chemicaldata/359
+1015,117-81-7,DI-SEC OCTYL PHTHALATE (DI(2-ETHYLHEXYL) PHTHALATE),https://www.osha.gov/chemicaldata/144
+1017,72-20-8,ENDRIN,https://www.osha.gov/chemicaldata/493
+1029,10102-43-9,NITRIC OXIDE (NO),https://www.osha.gov/chemicaldata/1029
+1030,141-43-5,ETHANOLAMINE (2-AMINOETHANOL),https://www.osha.gov/chemicaldata/261
+1033,110-80-5,2-ETHOXYETHANOL (CELLOSOLVE; GLYCOL MONOETHYL ETHER),https://www.osha.gov/chemicaldata/116
+1037,111-15-9,2-ETHOXYETHYL ACETATE (CELLOSOLVE ACETATE),https://www.osha.gov/chemicaldata/122
+1038,13838-16-9,ENFLURANE,https://www.osha.gov/chemicaldata/256
+1040,141-78-6,ETHYL ACETATE,https://www.osha.gov/chemicaldata/263
+1050,140-88-5,ETHYL ACRYLATE,https://www.osha.gov/chemicaldata/259
+1055,103-11-7,2-ETHYLHEXYL ACRYLATE,https://www.osha.gov/chemicaldata/826
+1060,64-17-5,ETHYL ALCOHOL (ETHANOL),https://www.osha.gov/chemicaldata/1034
+1070,75-04-7,ETHYLAMINE,https://www.osha.gov/chemicaldata/568
+1073,101-68-8,"METHYLENE BISPHENYL ISOCYANATE (MDI; 4,4-DIPHENYLMETHANE DIISOCYANATE)",https://www.osha.gov/chemicaldata/23
+1080,100-41-4,ETHYL BENZENE,https://www.osha.gov/chemicaldata/13
+1090,74-96-4,ETHYL BROMIDE,https://www.osha.gov/chemicaldata/561
+1100,106-35-4,ETHYL BUTYL KETONE (3-HEPTANONE),https://www.osha.gov/chemicaldata/37
+1110,75-00-3,ETHYL CHLORIDE,https://www.osha.gov/chemicaldata/565
+1120,107-07-3,ETHYLENE CHLOROHYDRIN (2-CHLOROETHANOL),https://www.osha.gov/chemicaldata/55
+1130,107-15-3,"ETHYLENEDIAMINE (1,2-DIAMINOETHANE)",https://www.osha.gov/chemicaldata/58
+1140,106-93-4,"ETHYLENE DIBROMIDE (1,2-DIBROMOETHANE)",https://www.osha.gov/chemicaldata/48
+1155,109-94-4,ETHYL FORMATE,https://www.osha.gov/chemicaldata/106
+1159,96-45-7,ETHYLENE THIOUREA,https://www.osha.gov/chemicaldata/768
+1160,75-34-3,"1,1-DICHLOROETHANE (ETHYLIDENE CHLORIDE)",https://www.osha.gov/chemicaldata/579
+1170,110-49-6,2-METHOXYETHYL ACETATE (METHYL CELLOSOLVE ACETATE; ETHYLENE GLYCOL METHYL ACETATE),https://www.osha.gov/chemicaldata/111
+1175,151-56-4,ETHYLENEIMINE,https://www.osha.gov/chemicaldata/284
+1190,75-21-8,ETHYLENE OXIDE,https://www.osha.gov/chemicaldata/575
+1210,60-29-7,ETHYL ETHER (DIETHYL ETHER),https://www.osha.gov/chemicaldata/437
+1220,75-08-1,ETHYL MERCAPTAN (ETHANETHIOL),https://www.osha.gov/chemicaldata/571
+1230,78-10-4,ETHYL SILICATE,https://www.osha.gov/chemicaldata/670
+1270,7782-41-4,FLUORINE,https://www.osha.gov/chemicaldata/648
+1280,16984-48-8,FLUORIDES (as F),https://www.osha.gov/chemicaldata/806
+1285,75-69-4,FLUOROTRICHLOROMETHANE (TRICHLOROFLUOROMETHANE),https://www.osha.gov/chemicaldata/594
+1290,50-00-0,FORMALDEHYDE,https://www.osha.gov/chemicaldata/377
+1292,75-12-7,FORMAMIDE,https://www.osha.gov/chemicaldata/573
+1310,64-18-6,FORMIC ACID,https://www.osha.gov/chemicaldata/468
+1325,98-01-1,FURFURAL,https://www.osha.gov/chemicaldata/772
+1330,98-00-0,FURFURYL ALCOHOL,https://www.osha.gov/chemicaldata/771
+1361,111-30-8,GLUTARALDEHYDE,https://www.osha.gov/chemicaldata/123
+1365,556-52-5,"GLYCIDOL(2,3-EPOXY-1-PROPANOL)",https://www.osha.gov/chemicaldata/407
+1368,7440-58-6,HAFNIUM & COMPOUNDS,https://www.osha.gov/chemicaldata/542
+1369,76-44-8,HEPTACHLOR,https://www.osha.gov/chemicaldata/618
+1371,142-82-5,HEPTANE,https://www.osha.gov/chemicaldata/266
+1372,67-72-1,HEXACHLOROETHANE,https://www.osha.gov/chemicaldata/478
+1374,77-47-4,HEXACHLOROCYCLOPENTADIENE,https://www.osha.gov/chemicaldata/637
+1377,822-06-0,HEXAMETHYLENE DIISOCYANATE,https://www.osha.gov/chemicaldata/715
+1380,110-54-3,HEXANE (N-HEXANE),https://www.osha.gov/chemicaldata/112
+1385,108-10-1,HEXONE (METHYL ISOBUTYL KETONE; MIBK),https://www.osha.gov/chemicaldata/75
+1387,108-84-9,SEC-HEXYL ACETATE,https://www.osha.gov/chemicaldata/87
+1389,107-41-5,HEXYLENE GLYCOL,https://www.osha.gov/chemicaldata/67
+1390,302-01-2,HYDRAZINE,https://www.osha.gov/chemicaldata/347
+1420,10035-10-6,HYDROGEN BROMIDE,https://www.osha.gov/chemicaldata/10
+1430,7647-01-0,HYDROGEN CHLORIDE,https://www.osha.gov/chemicaldata/620
+1440,74-90-8,HYDROGEN CYANIDE,https://www.osha.gov/chemicaldata/559
+1460,7664-39-3,HYDROGEN FLUORIDE,https://www.osha.gov/chemicaldata/622
+1470,7722-84-1,HYDROGEN PEROXIDE,https://www.osha.gov/chemicaldata/630
+1475,7783-07-5,HYDROGEN SELENIDE,https://www.osha.gov/chemicaldata/653
+1480,7783-06-4,HYDROGEN SULFIDE,https://www.osha.gov/chemicaldata/652
+1490,123-31-9,HYDROQUINONE (DIHYDROXYBENZENE),https://www.osha.gov/chemicaldata/175
+1503,7580-67-8,LITHIUM HYDRIDE,https://www.osha.gov/chemicaldata/598
+1510,7440-74-6,INDIUM COMPOUNDS (as In),https://www.osha.gov/chemicaldata/548
+1515,7553-56-2,IODINE,https://www.osha.gov/chemicaldata/588
+1522,7439-89-6,"IRON SALTS, SOLUBLE (as Fe)",https://www.osha.gov/chemicaldata/499
+1530,123-92-2,ISOAMYL ACETATE (ISOPENTYL ACETATE),https://www.osha.gov/chemicaldata/180
+1532,123-51-3,ISOAMYL ALCOHOL,https://www.osha.gov/chemicaldata/177
+1534,110-19-0,ISOBUTYL ACETATE,https://www.osha.gov/chemicaldata/109
+1536,78-83-1,ISOBUTYL ALCOHOL (ISOBUTANOL),https://www.osha.gov/chemicaldata/676
+1537,97-85-8,ISOBUTYL ISOBUTYRATE,https://www.osha.gov/chemicaldata/849
+1538,78-59-1,ISOPHORONE,https://www.osha.gov/chemicaldata/673
+1539,4098-71-9,ISOPHORONE DIISOCYANATE,https://www.osha.gov/chemicaldata/369
+1540,108-21-4,ISOPROPYL ACETATE,https://www.osha.gov/chemicaldata/79
+1560,67-63-0,ISOPROPYL ALCOHOL (2-PROPANOL),https://www.osha.gov/chemicaldata/475
+1562,75-31-0,ISOPROPYLAMINE,https://www.osha.gov/chemicaldata/578
+1565,108-20-3,ISOPROPYL ETHER,https://www.osha.gov/chemicaldata/78
+1567,4016-14-2,ISOPROPYL GLYCIDYL ETHER (IGE),https://www.osha.gov/chemicaldata/366
+1580,15972-60-8,ALACHLOR,https://www.osha.gov/chemicaldata/899
+1591,7439-92-1,"LEAD, INORGANIC (as Pb)",https://www.osha.gov/chemicaldata/500
+1595,58-89-9,LINDANE,https://www.osha.gov/chemicaldata/426
+1616,121-75-5,MALATHION,https://www.osha.gov/chemicaldata/169
+1618,108-31-6,MALEIC ANHYDRIDE,https://www.osha.gov/chemicaldata/81
+1620,7439-96-5,"MANGANESE, COMPOUNDS & FUME (as Mn)",https://www.osha.gov/chemicaldata/501
+1631,7439-97-6,MERCURY (VAPOR),https://www.osha.gov/chemicaldata/505
+1635,141-79-7,MESITYL OXIDE,https://www.osha.gov/chemicaldata/264
+1643,74-93-1,METHYL MERCAPTAN (METHANETHIOL),https://www.osha.gov/chemicaldata/560
+1644,16752-77-5,METHOMYL,https://www.osha.gov/chemicaldata/293
+1646,72-43-5,METHOXYCHLOR,https://www.osha.gov/chemicaldata/494
+1650,79-20-9,METHYL ACETATE,https://www.osha.gov/chemicaldata/689
+1652,59355-75-8,METHYL ACETYLENE-PROPADIENE MIXTURE (MAPP),https://www.osha.gov/chemicaldata/430
+1653,96-33-3,METHYL ACRYLATE,https://www.osha.gov/chemicaldata/767
+1655,109-87-5,METHYLAL (DIMETHOXY-METHANE) (DIMETHOXYMETHANE),https://www.osha.gov/chemicaldata/104
+1660,67-56-1,METHYL ALCOHOL (METHANOL),https://www.osha.gov/chemicaldata/474
+1665,74-89-5,METHYLAMINE,https://www.osha.gov/chemicaldata/558
+1670,108-11-2,METHYL ISOBUTYL CARBINOL (METHYL AMYL ALCOHOL),https://www.osha.gov/chemicaldata/76
+1675,110-43-0,METHYL (N-AMYL) KETONE,https://www.osha.gov/chemicaldata/110
+1680,74-83-9,METHYL BROMIDE,https://www.osha.gov/chemicaldata/552
+1690,591-78-6,2-HEXANONE (METHYL N-BUTYL KETONE; METHYL BUTYL KETONE),https://www.osha.gov/chemicaldata/427
+1710,74-87-3,METHYL CHLORIDE,https://www.osha.gov/chemicaldata/556
+1720,71-55-6,"METHYL CHLOROFORM (1,1,1-TRICHLOROETHANE)",https://www.osha.gov/chemicaldata/492
+1730,75-09-2,METHYLENE CHLORIDE (DICHLOROMETHANE),https://www.osha.gov/chemicaldata/572
+1732,101-77-9,METHYLENEDIANILINE (4-4'-METHYLENEDIANILINE; MDA),https://www.osha.gov/chemicaldata/24
+1735,137-05-3,METHYL 2-CYANOACRYLATE,https://www.osha.gov/chemicaldata/252
+1740,108-87-2,METHYLCYCLOHEXANE,https://www.osha.gov/chemicaldata/88
+1750,1338-23-4,METHYL ETHYL KETONE PEROXIDE,https://www.osha.gov/chemicaldata/239
+1760,25639-42-3,METHYLCYCLOHEXANOL,https://www.osha.gov/chemicaldata/328
+1765,583-60-8,O-METHYLCYCLOHEXANONE,https://www.osha.gov/chemicaldata/424
+1770,107-31-3,METHYL FORMATE,https://www.osha.gov/chemicaldata/66
+1772,74-88-4,METHYL IODIDE,https://www.osha.gov/chemicaldata/557
+1773,624-83-9,METHYL ISOCYANATE,https://www.osha.gov/chemicaldata/450
+1774,80-62-6,METHYL METHACRYLATE,https://www.osha.gov/chemicaldata/712
+1775,298-00-0,METHYL PARATHION,https://www.osha.gov/chemicaldata/341
+1776,110-12-3,METHYL ISOAMYL KETONE,https://www.osha.gov/chemicaldata/108
+1782,98-83-9,α-METHYL STYRENE,https://www.osha.gov/chemicaldata/776
+1790,7439-98-7,"MOLYBDENUM, DUST & INSOLUBLE COMPOUNDS (as Mo)",https://www.osha.gov/chemicaldata/506
+1791,7439-98-7,"MOLYBDENUM, SOLUBLE COMPOUNDS",https://www.osha.gov/chemicaldata/507
+1794,60-34-4,METHYL HYDRAZINE (MONOMETHYL HYDRAZINE),https://www.osha.gov/chemicaldata/439
+1797,110-91-8,MORPHOLINE,https://www.osha.gov/chemicaldata/120
+1810,91-20-3,NAPHTHALENE,https://www.osha.gov/chemicaldata/736
+1840,7440-02-0,"NICKEL, METAL & INSOLUBLE COMPOUNDS (as Ni)",https://www.osha.gov/chemicaldata/509
+1842,7440-02-0,"NICKEL, SOLUBLE COMPOUNDS",https://www.osha.gov/chemicaldata/511
+1855,54-11-5,NICOTINE,https://www.osha.gov/chemicaldata/396
+1860,7697-37-2,NITRIC ACID,https://www.osha.gov/chemicaldata/627
+1865,100-01-6,P-NITROANILINE,https://www.osha.gov/chemicaldata/2
+1870,98-95-3,NITROBENZENE,https://www.osha.gov/chemicaldata/779
+1872,100-00-5,P-NITROCHLOROBENZENE,https://www.osha.gov/chemicaldata/1
+1875,92-93-3,4-NITRODIPHENYL (4-NITROBIPHENYL),https://www.osha.gov/chemicaldata/744
+1880,79-24-3,NITROETHANE,https://www.osha.gov/chemicaldata/690
+1890,10102-43-9,NITRIC OXIDE,https://www.osha.gov/chemicaldata/20
+1903,10102-44-0,NITROGEN DIOXIDE,https://www.osha.gov/chemicaldata/21
+1907,7783-54-2,NITROGEN TRIFLUORIDE,https://www.osha.gov/chemicaldata/655
+1910,628-96-6,ETHYLENE GLYCOL DINITRATE,https://www.osha.gov/chemicaldata/461
+1911,107-21-1,ETHYLENE GLYCOL,https://www.osha.gov/chemicaldata/63
+1912,55-63-0,NITROGLYCERIN,https://www.osha.gov/chemicaldata/406
+1920,75-52-5,NITROMETHANE,https://www.osha.gov/chemicaldata/587
+1940,108-03-2,1-NITROPROPANE,https://www.osha.gov/chemicaldata/73
+1941,79-46-9,2-NITROPROPANE,https://www.osha.gov/chemicaldata/697
+1942,62-75-9,N-NITROSODIMETHYLAMINE,https://www.osha.gov/chemicaldata/459
+1943,59-89-2,N-NITROSOMORPHOLINE,https://www.osha.gov/chemicaldata/854
+1944,924-16-3,N-NITROSODIBUTYLAMINE,https://www.osha.gov/chemicaldata/852
+1947,55-18-5,N-NITROSODIETHYLAMINE,https://www.osha.gov/chemicaldata/859
+1948,621-64-7,N-NITROSODIPROPYLAMINE,https://www.osha.gov/chemicaldata/853
+1949,100-75-4,N-NITROSOPIPERIDINE,https://www.osha.gov/chemicaldata/855
+1950,930-55-2,N-NITROSOPYRROLIDINE,https://www.osha.gov/chemicaldata/856
+1953,10024-97-2,NITROUS OXIDE,https://www.osha.gov/chemicaldata/4
+1957,111-65-9,OCTANE,https://www.osha.gov/chemicaldata/128
+1970,144-62-7,OXALIC ACID,https://www.osha.gov/chemicaldata/270
+1972,100-61-8,MONOMETHYL ANILINE (N-METHYLANILINE),https://www.osha.gov/chemicaldata/17
+1980,10028-15-6,OZONE,https://www.osha.gov/chemicaldata/9
+1984,56-38-2,PARATHION,https://www.osha.gov/chemicaldata/413
+1989,87-86-5,PENTACHLOROPHENOL,https://www.osha.gov/chemicaldata/726
+1990,109-66-0,PENTANE,https://www.osha.gov/chemicaldata/98
+2000,8002-74-2,PARAFFIN WAX (FUME),https://www.osha.gov/chemicaldata/699
+2010,107-87-9,2-PENTANONE (METHYL PROPYL KETONE),https://www.osha.gov/chemicaldata/71
+2020,127-18-4,PERCHLOROETHYLENE (TETRACHLOROETHYLENE),https://www.osha.gov/chemicaldata/190
+2038,85-01-8,PHENANTHRENE,https://www.osha.gov/chemicaldata/878
+2040,108-95-2,PHENOL,https://www.osha.gov/chemicaldata/94
+2041,92-84-2,PHENOTHIAZINE,https://www.osha.gov/chemicaldata/742
+2042,106-50-3,P-PHENYLENEDIAMINE,https://www.osha.gov/chemicaldata/43
+2047,101-84-8,PHENYL ETHER (VAPOR),https://www.osha.gov/chemicaldata/25
+2057,122-60-1,PHENYL GLYCIDYL ETHER (PGE),https://www.osha.gov/chemicaldata/173
+2060,100-63-0,PHENYLHYDRAZINE,https://www.osha.gov/chemicaldata/18
+2070,75-44-5,PHOSGENE (CARBONYL CHLORIDE),https://www.osha.gov/chemicaldata/583
+2080,7803-51-2,PHOSPHINE,https://www.osha.gov/chemicaldata/667
+2085,7664-38-2,PHOSPHORIC ACID,https://www.osha.gov/chemicaldata/621
+2092,1314-80-3,PHOSPHORUS PENTASULFIDE,https://www.osha.gov/chemicaldata/218
+2093,7719-12-2,PHOSPHORUS TRICHLORIDE,https://www.osha.gov/chemicaldata/629
+2110,85-44-9,PHTHALIC ANHYDRIDE,https://www.osha.gov/chemicaldata/721
+2130,7440-06-4,PLATINUM SOLUBLE SALTS,https://www.osha.gov/chemicaldata/513
+2132,103-71-9,PHENYL ISOCYANATE,https://www.osha.gov/chemicaldata/1027
+2135,9002-84-0,POLYTETRAFLUOROETHYLENE DECOMPOSITION PRODUCTS (TEFLON),https://www.osha.gov/chemicaldata/1018
+2140,1310-58-3,POTASSIUM HYDROXIDE,https://www.osha.gov/chemicaldata/210
+2150,74-98-6,PROPANE,https://www.osha.gov/chemicaldata/563
+2167,107-19-7,PROPARGYL ALCOHOL,https://www.osha.gov/chemicaldata/61
+2168,79-09-4,PROPIONIC ACID,https://www.osha.gov/chemicaldata/687
+2170,71-23-8,N-PROPYL ALCOHOL (N-PROPANOL),https://www.osha.gov/chemicaldata/489
+2180,109-60-4,N-PROPYL ACETATE,https://www.osha.gov/chemicaldata/97
+2210,107-98-2,1-METHOXY-2-PROPANOL,https://www.osha.gov/chemicaldata/72
+2215,75-56-9,"PROPYLENE OXIDE (1,2-EPOXYPROPANE)",https://www.osha.gov/chemicaldata/590
+2216,8003-34-7,PYRETHRUM,https://www.osha.gov/chemicaldata/700
+2217,129-00-0,PYRENE,https://www.osha.gov/chemicaldata/867
+2220,110-86-1,PYRIDINE,https://www.osha.gov/chemicaldata/119
+2221,108-46-3,RESORCINOL,https://www.osha.gov/chemicaldata/85
+2224,121-82-4,CYCLONITE (RDX),https://www.osha.gov/chemicaldata/171
+2226,299-84-3,RONNEL,https://www.osha.gov/chemicaldata/344
+2228,83-79-4,ROTENONE,https://www.osha.gov/chemicaldata/718
+2230,7782-49-2,SELENIUM & COMPOUNDS,https://www.osha.gov/chemicaldata/649
+2233,10453-86-8,RESMETHRIN,https://www.osha.gov/chemicaldata/884
+2240,7440-22-4,"SILVER, METAL & SOLUBLE COMPOUNDS (as Ag)",https://www.osha.gov/chemicaldata/519
+2243,7782-79-8,HYDRAZOIC ACID,https://www.osha.gov/chemicaldata/795
+2260,1310-73-2,SODIUM HYDROXIDE,https://www.osha.gov/chemicaldata/211
+2267,7803-52-3,STIBINE (ANTIMONY HYDRIDE),https://www.osha.gov/chemicaldata/668
+2270,8052-41-3,STODDARD SOLVENT,https://www.osha.gov/chemicaldata/709
+2275,57-24-9,STRYCHNINE,https://www.osha.gov/chemicaldata/419
+2280,100-42-5,STYRENE (VINYL BENZENE; PHENYLETHYLENE),https://www.osha.gov/chemicaldata/14
+2290,7446-09-5,SULFUR DIOXIDE,https://www.osha.gov/chemicaldata/549
+2310,7664-93-9,SULFURIC ACID,https://www.osha.gov/chemicaldata/624
+2322,7783-60-0,SULFUR TETRAFLUORIDE,https://www.osha.gov/chemicaldata/656
+2323,2699-79-8,SULFURYL FLUORIDE,https://www.osha.gov/chemicaldata/334
+2324,93-76-5,"2,4,5-TRICHLOROPHENOXYACETIC ACID (2,4,5-T)",https://www.osha.gov/chemicaldata/747
+2330,13494-80-9,TELLURIUM METAL & COMPOUNDS,https://www.osha.gov/chemicaldata/248
+2337,76-11-9,"1,1,1,2-TETRACHLORO-2,2-DIFLUOROETHANE",https://www.osha.gov/chemicaldata/605
+2339,76-12-0,"1,1,2,2-TETRACHLORO-1,2-DIFLUOROETHANE",https://www.osha.gov/chemicaldata/606
+2340,79-34-5,"1,1,2,2-TETRACHLOROETHANE",https://www.osha.gov/chemicaldata/1035
+2355,25167-83-3,TETRACHLOROPHENOL,https://www.osha.gov/chemicaldata/1012
+2360,78-00-2,TETRAETHYL LEAD (as Pb),https://www.osha.gov/chemicaldata/666
+2370,75-74-1,TETRAMETHYL LEAD (as Pb),https://www.osha.gov/chemicaldata/597
+2390,109-99-9,TETRAHYDROFURAN,https://www.osha.gov/chemicaldata/107
+2395,509-14-8,TETRANITROMETHANE,https://www.osha.gov/chemicaldata/385
+2420,7440-28-0,"THALLIUM, SOLUBLE COMPOUNDS",https://www.osha.gov/chemicaldata/521
+2425,115-29-7,ENDOSULFAN,https://www.osha.gov/chemicaldata/139
+2427,137-26-8,THIRAM,https://www.osha.gov/chemicaldata/253
+2430,7440-31-5,"TIN, INORGANIC COMPOUNDS (EXCEPT OXIDES) (as Sn)",https://www.osha.gov/chemicaldata/522
+2432,21651-19-4,TIN OXIDE,https://www.osha.gov/chemicaldata/925
+2450,119-93-7,O-TOLIDINE,https://www.osha.gov/chemicaldata/151
+2460,108-88-3,TOLUENE,https://www.osha.gov/chemicaldata/89
+2465,95-80-7,"TOLUENE-2,4-DIAMINE",https://www.osha.gov/chemicaldata/760
+2470,584-84-9,"2,4-TOLUENE-DIISOCYANATE",https://www.osha.gov/chemicaldata/425
+2475,95-53-4,O-TOLUIDINE,https://www.osha.gov/chemicaldata/757
+2477,126-73-8,TRIBUTYL PHOSPHATE,https://www.osha.gov/chemicaldata/186
+2480,121-44-8,TRIETHYLAMINE,https://www.osha.gov/chemicaldata/165
+2481,120-82-1,"1,2,4-TRICHLOROBENZENE",https://www.osha.gov/chemicaldata/161
+2485,76-13-1,"1,1,2-TRICHLORO-1,2,2-TRIFLUOROETHANE (FREON 113)",https://www.osha.gov/chemicaldata/607
+2490,79-01-6,TRICHLOROETHYLENE,https://www.osha.gov/chemicaldata/684
+2495,79-00-5,"1,1,2-TRICHLOROETHANE",https://www.osha.gov/chemicaldata/683
+2497,112-24-3,TRIETHYLENETETRAMINE,https://www.osha.gov/chemicaldata/891
+2500,75-63-8,TRIFLUOROBROMOMETHANE,https://www.osha.gov/chemicaldata/592
+2502,552-30-7,TRIMELLITIC ANHYDRIDE,https://www.osha.gov/chemicaldata/404
+2505,25551-13-7,"TRIMETHYLBENZENE, MIXED ISOMERS",https://www.osha.gov/chemicaldata/326
+2510,96-18-4,"1,2,3-TRICHLOROPROPANE",https://www.osha.gov/chemicaldata/765
+2520,13121-70-5,CYHEXATIN,https://www.osha.gov/chemicaldata/213
+2530,118-96-7,"2,4,6-TRINITROTOLUENE",https://www.osha.gov/chemicaldata/147
+2532,78-30-8,TRIORTHOCRESYL PHOSPHATE,https://www.osha.gov/chemicaldata/671
+2535,115-86-6,TRIPHENYL PHOSPHATE,https://www.osha.gov/chemicaldata/141
+2536,7440-33-7,"TUNGSTEN, METAL & INSOLUBLE COMPOUNDS (as W)",https://www.osha.gov/chemicaldata/524
+2537,7440-33-7,"TUNGSTEN, SOLUBLE COMPOUNDS",https://www.osha.gov/chemicaldata/525
+2571,1314-62-1,"VANADIUM, RESPIRABLE DUST & FUME (as V₂O₅)",https://www.osha.gov/chemicaldata/217
+2572,108-05-4,VINYL ACETATE,https://www.osha.gov/chemicaldata/74
+2577,593-60-2,VINYL BROMIDE,https://www.osha.gov/chemicaldata/431
+2580,75-01-4,VINYL CHLORIDE (CHLOROETHYLENE),https://www.osha.gov/chemicaldata/566
+2581,106-87-6,VINYL CYCLOHEXENE DIOXIDE,https://www.osha.gov/chemicaldata/45
+2582,25013-15-4,VINYL TOLUENE,https://www.osha.gov/chemicaldata/322
+2583,75-35-4,VINYLIDENE CHLORIDE,https://www.osha.gov/chemicaldata/580
+2586,81-81-2,WARFARIN,https://www.osha.gov/chemicaldata/714
+2590,1330-20-7,"XYLENE, ALL ISOMERS (DIMETHYLBENZENE)",https://www.osha.gov/chemicaldata/228
+2592,1477-55-0,"M-XYLENE-⍺,⍺'-DIAMINE",https://www.osha.gov/chemicaldata/274
+2600,1300-73-8,"XYLIDINE, ALL ISOMERS (DIMETHYLAMINOBENZENE)",https://www.osha.gov/chemicaldata/194
+2602,7440-65-5,YTTRIUM,https://www.osha.gov/chemicaldata/546
+2610,1314-13-2,"ZINC OXIDE, DUST & FUME",https://www.osha.gov/chemicaldata/215
+2611,7646-85-7,ZINC CHLORIDE FUME,https://www.osha.gov/chemicaldata/619
+2620,7440-67-7,ZIRCONIUM COMPOUNDS (as Zr),https://www.osha.gov/chemicaldata/547
+2630,542-88-1,BIS(CHLOROMETHYL) ETHER,https://www.osha.gov/chemicaldata/400
+2640,107-30-2,CHLOROMETHYL METHYL ETHER,https://www.osha.gov/chemicaldata/65
+2650,101-14-4,"4,4'-METHYLENE BIS(2-CHLOROANILINE)",https://www.osha.gov/chemicaldata/22
+2651,5124-30-1,METHYLENE BIS(4-CYCLOHEXYLISOCYANATE),https://www.osha.gov/chemicaldata/386
+2680,298-04-4,DISULFOTON,https://www.osha.gov/chemicaldata/343
+2683,128-37-0,"2,6-DI-TERT-BUTYL-P-CRESOL",https://www.osha.gov/chemicaldata/192
+2684,330-54-1,DIURON,https://www.osha.gov/chemicaldata/354
+2685,944-22-9,FONOFOS,https://www.osha.gov/chemicaldata/749
+2690,6923-22-4,MONOCROTOPHOS,https://www.osha.gov/chemicaldata/487
+2720,333-41-5,DIAZINON®,https://www.osha.gov/chemicaldata/356
+A120,111-41-1,AMINOETHYLETHANOLAMINE,https://www.osha.gov/chemicaldata/834
+A169,98-86-2,ACETOPHENONE,https://www.osha.gov/chemicaldata/777
+A173,504-24-5,4-AMINOPYRIDINE,https://www.osha.gov/chemicaldata/830
+A175,21087-64-9,METRIBUZIN,https://www.osha.gov/chemicaldata/310
+A176,61-82-5,AMITROLE,https://www.osha.gov/chemicaldata/446
+A178,123-54-6,"ACETYLACETONE (2,4-PENTANEDIONE)",https://www.osha.gov/chemicaldata/1023
+A202,7440-38-2,"ARSENIC, ORGANIC COMPOUNDS",https://www.osha.gov/chemicaldata/529
+A506,260-94-6,ACRIDINE,https://www.osha.gov/chemicaldata/410
+A606,78-96-6,1-AMINO-2-PROPANOL,https://www.osha.gov/chemicaldata/819
+A615,124-68-5,2-AMINO-2-METHYLPROPANOL,https://www.osha.gov/chemicaldata/823
+A624,513-86-0,ACETOIN,https://www.osha.gov/chemicaldata/811
+A625,60-35-5,ACETAMIDE,https://www.osha.gov/chemicaldata/831
+A635,26952-21-6,ISOOCTYL ALCOHOL,https://www.osha.gov/chemicaldata/332
+A636,768-52-5,N-ISOPROPYLANILINE,https://www.osha.gov/chemicaldata/626
+A706,57837-19-1,APRON,https://www.osha.gov/chemicaldata/836
+B109,98-54-4,P-TERT-BUTYLPHENOL,https://www.osha.gov/chemicaldata/1011
+B200,205-99-2,BENZO(B)FLUORANTHENE,https://www.osha.gov/chemicaldata/1007
+B505,119-61-9,BENZOPHENONE,https://www.osha.gov/chemicaldata/1009
+B508,140-11-4,BENZYL ACETATE,https://www.osha.gov/chemicaldata/258
+B595,25167-67-3,BUTENES (ALL ISOMERS),https://www.osha.gov/chemicaldata/1022
+B705,89-72-5,O-SEC-BUTYLPHENOL,https://www.osha.gov/chemicaldata/731
+C105,353-50-4,CARBONYL FLUORIDE,https://www.osha.gov/chemicaldata/360
+C128,112-15-2,DIETHYLENE GLYCOL MONOETHYL ETHER ACETATE (CARBITOL ACETATE),https://www.osha.gov/chemicaldata/843
+C138,106-47-8,P-CHLOROANILINE,https://www.osha.gov/chemicaldata/41
+C146,506-77-4,CYANOGEN CHLORIDE,https://www.osha.gov/chemicaldata/383
+C229,81777-89-1,COMMAND,https://www.osha.gov/chemicaldata/1008
+C619,287-92-3,CYCLOPENTANE,https://www.osha.gov/chemicaldata/336
+C628,52315-07-8,CYPERMETHRIN,https://www.osha.gov/chemicaldata/152
+C637,122-34-9,SIMAZINE,https://www.osha.gov/chemicaldata/1028
+D129,111-42-2,DIETHANOLAMINE,https://www.osha.gov/chemicaldata/126
+D176,75-99-0,"2,2-DICHLOROPROPIONIC ACID",https://www.osha.gov/chemicaldata/601
+D177,542-75-6,"1,3-DICHLOROPROPENE",https://www.osha.gov/chemicaldata/399
+D238,1717-00-6,"1,1-DICHLORO-1-FLUOROETHANE",https://www.osha.gov/chemicaldata/814
+D347,23564-05-8,THIOPHANATE-METHYL,https://www.osha.gov/chemicaldata/890
+D615,111-90-0,DIETHYLENE GLYCOL MONOETHYL ETHER (CARBITOL),https://www.osha.gov/chemicaldata/910
+D617,60-51-5,DIMETHOATE,https://www.osha.gov/chemicaldata/510
+D626,629-19-6,DIPROPYL DISULFIDE,https://www.osha.gov/chemicaldata/518
+D636,1119-40-0,DIMETHYL GLUTARATE,https://www.osha.gov/chemicaldata/538
+D649,627-93-0,DIMETHYL ADIPATE,https://www.osha.gov/chemicaldata/514
+D650,75-18-3,DIMETHYL SULFIDE,https://www.osha.gov/chemicaldata/912
+D668,4035-89-6,HEXAMETHYLENE DIISOCYANATE BIURET,https://www.osha.gov/chemicaldata/788
+D700,84-75-3,DI-N-HEXYL PHTHALATE,https://www.osha.gov/chemicaldata/232
+D707,96-22-0,DIETHYL KETONE,https://www.osha.gov/chemicaldata/766
+D709,1675-54-3,DIGLYCIDYL ETHER OF BISPHENOL A,https://www.osha.gov/chemicaldata/365
+D736,2179-57-9,DIALLYL DISULFIDE,https://www.osha.gov/chemicaldata/312
+D740,431-03-8,DIACETYL,https://www.osha.gov/chemicaldata/802
+D917,106-65-0,DIMETHYL SUCCINATE,https://www.osha.gov/chemicaldata/634
+D945,7328-17-8,DI(ETHYLENE GLYCOL) ETHYL ETHER ACRYLATE,https://www.osha.gov/chemicaldata/299
+E105,763-69-9,ETHYL-3-ETHOXYPROPIONATE,https://www.osha.gov/chemicaldata/978
+E108,7085-85-0,ETHYL 2-CYANOACRYLATE,https://www.osha.gov/chemicaldata/488
+E115,97-63-2,ETHYL METHACRYLATE,https://www.osha.gov/chemicaldata/848
+E119,103-09-3,ETHYL HEXYL ACETATE,https://www.osha.gov/chemicaldata/977
+E227,97-64-3,ETHYL LACTATE,https://www.osha.gov/chemicaldata/752
+E228,28106-30-1,ETHYL VINYL BENZENE,https://www.osha.gov/chemicaldata/937
+E319,50-28-2,ESTRADIOL,https://www.osha.gov/chemicaldata/837
+E320,53-16-7,ESTRONE,https://www.osha.gov/chemicaldata/643
+E321,50-27-1,ESTRIOL,https://www.osha.gov/chemicaldata/847
+F108,22781-23-3,BENDIOCARB (FICAM),https://www.osha.gov/chemicaldata/781
+F118,26675-46-7,ISOFLURANE,https://www.osha.gov/chemicaldata/850
+H106,85-42-7,"HEXAHYDROPHTHALIC ANHYDRIDE, ALL ISOMERS",https://www.osha.gov/chemicaldata/1026
+H109,87-68-3,HEXACHLOROBUTADIENE,https://www.osha.gov/chemicaldata/725
+H128,13048-33-4,"1,6-HEXANEDIOL DIACRYLATE",https://www.osha.gov/chemicaldata/817
+H130,28182-81-2,"1,6-HEXAMETHYLENE DIISOCYANATE HOMOPOLYMER",https://www.osha.gov/chemicaldata/808
+H147,2691-41-0,HMX (OCTOGEN),https://www.osha.gov/chemicaldata/792
+H156,999-61-1,2-HYDROXYPROPYL ACRYLATE,https://www.osha.gov/chemicaldata/327
+K107,8008-20-6,KEROSENE (JET FUELS),https://www.osha.gov/chemicaldata/703
+L129,138-86-3,LIMONENE,https://www.osha.gov/chemicaldata/797
+M105,950-37-8,METHIDATHION,https://www.osha.gov/chemicaldata/873
+M106,59-05-2,METHOTREXATE,https://www.osha.gov/chemicaldata/874
+M111,7439-97-6,MERCURY (ARYL & INORGANIC COMPOUNDS),https://www.osha.gov/chemicaldata/504
+M127,107-83-5,2-METHYLPENTANE,https://www.osha.gov/chemicaldata/70
+M139,872-50-4,N-METHYL-2-PYRROLIDINONE,https://www.osha.gov/chemicaldata/875
+M145,79-11-8,MONOCHLOROACETIC ACID,https://www.osha.gov/chemicaldata/952
+M155,90-12-0,1-METHYLNAPHTHALENE,https://www.osha.gov/chemicaldata/1013
+M169,150-19-6,3-METHOXYPHENOL,https://www.osha.gov/chemicaldata/829
+M177,12427-38-2,MANEB,https://www.osha.gov/chemicaldata/871
+M215,70657-70-4,2-METHOXY-1-PROPYL ACETATE,https://www.osha.gov/chemicaldata/827
+M216,1589-47-5,2-METHOXY-1-PROPANOL,https://www.osha.gov/chemicaldata/825
+M305,72-33-3,MESTRANOL,https://www.osha.gov/chemicaldata/872
+M316,124-17-4,DIETHYLENE GLYCOL MONOBUTYL ETHER ACETATE,https://www.osha.gov/chemicaldata/935
+M328,111-77-3,DIETHYLENE GLYCOL MONOMETHYL ETHER,https://www.osha.gov/chemicaldata/1025
+M329,150-76-5,4-METHOXYPHENOL,https://www.osha.gov/chemicaldata/282
+M337,96-14-0,3-METHYLPENTANE,https://www.osha.gov/chemicaldata/764
+M339,79-41-4,METHACRYLIC ACID,https://www.osha.gov/chemicaldata/694
+M350,58-18-4,17-α-METHYL TESTOSTERONE,https://www.osha.gov/chemicaldata/818
+N109,86-30-6,N-NITROSODIPHENYLAMINE,https://www.osha.gov/chemicaldata/861
+N119,3173-72-6,"1,5-NAPHTHENE DIISOCYANATE",https://www.osha.gov/chemicaldata/352
+N606,135-88-6,N-PHENYL-β-NAPHTHYLAMINE,https://www.osha.gov/chemicaldata/250
+N608,68-22-4,NORETHINDRONE,https://www.osha.gov/chemicaldata/877
+N705,13256-06-9,N-NITROSODIAMYLAMINE,https://www.osha.gov/chemicaldata/857
+N706,601-77-4,N-NITROSODIISOPROPYLAMINE,https://www.osha.gov/chemicaldata/860
+N707,4549-44-4,N-NITROSOETHYL-N-BUTYLAMINE,https://www.osha.gov/chemicaldata/862
+N708,7068-83-9,N-NITROSOMETHYL-N-BUTYLAMINE,https://www.osha.gov/chemicaldata/864
+N709,10595-95-6,N-NITROSOMETHYLETHYLAMINE,https://www.osha.gov/chemicaldata/863
+N805,25413-64-3,N-NITROSO-N-PROPYL-N-BUTYLAMINE,https://www.osha.gov/chemicaldata/865
+N807,111-84-2,NONANE,https://www.osha.gov/chemicaldata/131
+N905,59-87-0,5-NITRO-2-FURALDEHYDE SEMICARBAZONE,https://www.osha.gov/chemicaldata/934
+P105,108-98-5,PHENYL MERCAPTAN,https://www.osha.gov/chemicaldata/95
+P108,57-55-6,PROPYLENE GLYCOL,https://www.osha.gov/chemicaldata/882
+P110,600-14-6,"2,3-PENTANEDIONE",https://www.osha.gov/chemicaldata/822
+P125,9016-87-9,"POLYMERIC 4,4’-METHYLENEDIPHENYL DIISOCYANATE (PAPI; polymeric MDI)",https://www.osha.gov/chemicaldata/809
+P127,80-56-8,α-PINENE,https://www.osha.gov/chemicaldata/711
+P129,123-38-6,PROPIONALDEHYDE,https://www.osha.gov/chemicaldata/922
+P148,127-91-3,β-PINENE,https://www.osha.gov/chemicaldata/1021
+P198,88-99-3,PHTHALIC ACID,https://www.osha.gov/chemicaldata/996
+P209,51-03-6,PIPERONYL BUTOXIDE,https://www.osha.gov/chemicaldata/879
+P211,7440-06-4,PLATINUM METAL,https://www.osha.gov/chemicaldata/512
+P218,108-65-6,1-METHOXY-2-PROPYL ACETATE,https://www.osha.gov/chemicaldata/820
+P230,79-21-0,PERACETIC ACID,https://www.osha.gov/chemicaldata/866
+P236,108-45-2,"M-PHENYLENEDIAMINE (1,3-PHENYLENEDIAMINE)",https://www.osha.gov/chemicaldata/84
+P245,95-54-5,O-PHENYLENEDIAMINE,https://www.osha.gov/chemicaldata/758
+P309,29232-93-7,PIRIMIPHOS METHYL,https://www.osha.gov/chemicaldata/880
+P446,57-83-0,PROGESTERONE,https://www.osha.gov/chemicaldata/881
+R100,10043-92-2,RADON,https://www.osha.gov/chemicaldata/883
+R106,38641-94-0,GLYPHOSATE ISOPROPYLAMINE SALT,https://www.osha.gov/chemicaldata/915
+R206,404-86-4,CAPSAICIN,https://www.osha.gov/chemicaldata/1014
+R218,57041-67-5,DESFLURANE,https://www.osha.gov/chemicaldata/214
+R220,463-58-1,CARBONYL SULFIDE,https://www.osha.gov/chemicaldata/1024
+R221,539-48-0,"P-XYLENE-⍺,⍺'-DIAMINE",https://www.osha.gov/chemicaldata/38
+R228,78-78-4,2-METHYLBUTANE (ISOPENTANE),https://www.osha.gov/chemicaldata/674
+R232,7775-27-1,SODIUM PERSULFATE,https://www.osha.gov/chemicaldata/1019
+R242,12122-67-7,ZINEB,https://www.osha.gov/chemicaldata/892
+R266,13466-78-9,3-CARENE (δ-3-CARENE),https://www.osha.gov/chemicaldata/247
+R268,597-64-8,TETRAETHYL TIN,https://www.osha.gov/chemicaldata/888
+R270,19408-84-5,DIHYDROCAPSAICIN,https://www.osha.gov/chemicaldata/936
+R289,75-26-3,2-BROMOPROPANE,https://www.osha.gov/chemicaldata/824
+R290,106-94-5,1-BROMOPROPANE,https://www.osha.gov/chemicaldata/803
+S050,7631-90-5,SODIUM BISULFITE,https://www.osha.gov/chemicaldata/614
+S113,26628-22-8,SODIUM AZIDE,https://www.osha.gov/chemicaldata/331
+S115,57-11-4,STEARIC ACID,https://www.osha.gov/chemicaldata/1020
+S129,35400-43-2,SULPROFOS,https://www.osha.gov/chemicaldata/361
+S150,6106-46-3,SCOPOLAMINE METHYL NITRATE,https://www.osha.gov/chemicaldata/886
+S229,31218-83-4,SAFROTIN,https://www.osha.gov/chemicaldata/885
+SLT1,109-21-7,BUTYL BUTYRATE,https://www.osha.gov/chemicaldata/842
+T105,106-49-0,P-TOLUIDINE,https://www.osha.gov/chemicaldata/42
+T109,62-56-6,THIOUREA,https://www.osha.gov/chemicaldata/453
+T127,75-50-3,TRIMETHYLAMINE,https://www.osha.gov/chemicaldata/586
+T177,91-08-7,"2,6-TOLUENE-DIISOCYANATE (TDI)",https://www.osha.gov/chemicaldata/735
+T185,102-71-6,TRIETHANOLAMINE,https://www.osha.gov/chemicaldata/29
+T197,823-40-5,"TOLUENE-2,6-DIAMINE",https://www.osha.gov/chemicaldata/939
+T210,6683-19-8,"TETRAKIS (METHYLENE(3,5-DI-TERT-BUTYL-4-HYDROXYHYDROCINNAMATE)) METHANE & ITS SALTS",https://www.osha.gov/chemicaldata/1017
+T337,76-03-9,TRICHLOROACETIC ACID,https://www.osha.gov/chemicaldata/603
+T339,108-44-1,M-TOLUIDINE,https://www.osha.gov/chemicaldata/83
+T350,6846-50-0,"2,2,4-TRIMETHYL-1,3-PENTANEDIOL DIISOBUTYRATE",https://www.osha.gov/chemicaldata/821
+T405,2451-62-9,"1,3,5-TRIGLYCIDYL-S-TRIAZINETRIONE",https://www.osha.gov/chemicaldata/321
+T413,58-22-0,TESTOSTERONE,https://www.osha.gov/chemicaldata/887
+T420,2399-48-6,TETRAHYDROFURFURYL ACRYLATE,https://www.osha.gov/chemicaldata/889
+V108,110-62-3,N-VALERALDEHYDE,https://www.osha.gov/chemicaldata/114
+V119,1321-74-0,DIVINYL BENZENE,https://www.osha.gov/chemicaldata/226

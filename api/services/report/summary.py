@@ -16,7 +16,7 @@ _RISKS: tuple[tuple[str, Callable[[RiskSummary], Extremum | None]], ...] = (
     ("Representative hazard quotient", lambda risk: risk.hq_representative),
     ("Representative lifetime cancer risk", lambda risk: risk.cancer_risk_representative),
 )
-STATUS_LABELS = {"below": "Below", "near": "Near", "above": "Above"}
+STATUS_LABELS = {"low": "Low", "moderate": "Moderate", "high": "High"}
 
 
 def _row(
@@ -56,13 +56,23 @@ def _uses(state: WorkspaceState, ctx: ReportContext) -> str:
     )
 
 
+def _stack_count(state: WorkspaceState) -> int:
+    """The facilities with a community result (the worker-only ones are counted apart)."""
+    return sum(1 for f in state.facilities if not f.worker_only)
+
+
+def _worker_only_count(state: WorkspaceState) -> str:
+    count = len(state.facilities) - _stack_count(state)
+    return f" Worker-only facilities (no stack release): {count}." if count else ""
+
+
 def write_summary(doc: Document, state: WorkspaceState, ctx: ReportContext) -> None:
     """The chemical, the number of facilities, their life cycle stages and conditions of use,
     and the highest HQ and cancer risk."""
     paragraph(
         doc,
         f"Chemical: {chemical_label(state.chemical, ctx)}. "
-        f"Facilities in this assessment: {len(state.facilities)}.",
+        f"Facilities in this assessment: {_stack_count(state)}.{_worker_only_count(state)}",
     )
     if state.facilities:
         paragraph(doc, _uses(state, ctx))

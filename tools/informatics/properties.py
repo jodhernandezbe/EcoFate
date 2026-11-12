@@ -325,9 +325,9 @@ _ASKED = {
     "rfc": "the inhalation risk: the hazard quotient for this chemical",
     "iur": "the inhalation risk: the cancer risk for this chemical",
     "oel_twa": "the worker screening: comparing workplace air with an 8-hour occupational limit",
-    "molecular_weight": "the worker screening: converting an occupational limit in ppm to mg/m3",
-    "vapor_pressure": "context for how plausible a fugitive release into workplace air is "
-    "(not used in an equation)",
+    "molecular_weight": "the worker screening: the vapor generation of workplace activities and "
+    "converting a limit or measured value in ppm to mg/m3",
+    "vapor_pressure": "the worker screening: the vapor generation of workplace activities",
     "density": "the chemical's properties (not used in an equation)",
 }
 USER_PROVIDED = "user-provided"

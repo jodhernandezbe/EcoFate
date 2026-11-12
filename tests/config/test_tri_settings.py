@@ -24,6 +24,7 @@ page_size = 50
 recent_years = 7
 publication_lag_years = 1
 max_listed = 5
+max_worker_only = 4
 max_pages = 3
 east_longitude_states = ["GU"]
 facility_id_fields = ["reg", "frs"]
@@ -62,6 +63,7 @@ def test_tri_explicit_values(tmp_path: Path) -> None:
     assert settings.release_path == "/r/{casrn}/{medium}/{after_year}/{start}:{end}"
     assert settings.recent_years == 7
     assert settings.max_listed == 5
+    assert settings.max_worker_only == 4
     assert settings.fields["doc_ctrl_num"] == "dc"
     assert settings.media == ("AIR STACK", "WATER")
     assert settings.fugitive_medium == "AIR FUG"
@@ -82,6 +84,7 @@ def test_tri_default_file_loads() -> None:
     assert settings.recent_years == 2
     assert settings.publication_lag_years == 1
     assert settings.max_listed == 25
+    assert settings.max_worker_only == 25
     for slot in ("{casrn}", "{medium}", "{after_year}", "{start}", "{end}"):
         assert slot in settings.release_path
 
@@ -110,6 +113,9 @@ def test_tri_path_needs_each_placeholder(tmp_path: Path, slot: str) -> None:
         ("max_listed = 5", "max_listed = 0", "max_listed"),
         ("max_listed = 5", "max_listed = true", "max_listed"),
         ("max_listed = 5", "", "max_listed"),
+        ("max_worker_only = 4", "max_worker_only = 0", "max_worker_only"),
+        ("max_worker_only = 4", "max_worker_only = true", "max_worker_only"),
+        ("max_worker_only = 4", "", "max_worker_only"),
         ("page_size = 50", "page_size = 0", "page_size"),
         ("page_size = 50", "page_size = 1.5", "page_size"),
         ("page_size = 50", "page_size = true", "page_size"),

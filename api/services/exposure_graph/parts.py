@@ -71,8 +71,7 @@ def edge(lane: str, source: str, target: str, carried: GraphQuantity | None = No
     )
 
 
-def unavailable(text: GraphText, lane: str) -> LaneParts:
-    """A lane drawn empty, with the configured reason."""
-    return LaneParts(
-        lane=GraphLane(id=lane, label=text.lanes[lane], available=False, reason=text.reasons[lane]),
-    )
+def unavailable(text: GraphText, lane: str, reason: str | None = None) -> LaneParts:
+    """A lane drawn empty, with the configured reason (``reason`` names another configured one)."""
+    why = text.reasons[reason or lane]
+    return LaneParts(lane=GraphLane(id=lane, label=text.lanes[lane], available=False, reason=why))

@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { page, userEvent } from "vitest/browser";
 
 import { facility, workspace } from "../../test/fixtures";
-import { COMMUNITY_ONLY_GRAPH, FULL_GRAPH } from "../../test/graphs";
+import { COMMUNITY_ONLY_GRAPH, FULL_GRAPH, MONITORING_GRAPH } from "../../test/graphs";
 import type { ExposureGraph } from "../../types/api";
 import { ExposureChainTab } from "./ExposureChainTab";
 
@@ -62,13 +62,25 @@ describe("exposure chain, in a real browser", () => {
     await expect.element(frame()).toMatchScreenshot(shot("both-lanes-narrow"));
   });
 
+  it("draws a worker lane resting on OSHA monitoring in the high band", async () => {
+    draw(MONITORING_GRAPH);
+    await settle();
+    await expect.element(frame()).toMatchScreenshot(shot("worker-monitoring-high-wide"));
+  });
+
+  it("fits the monitoring lane in a narrow panel", async () => {
+    draw(MONITORING_GRAPH, 600);
+    await settle();
+    await expect.element(frame()).toMatchScreenshot(shot("worker-monitoring-high-narrow"));
+  });
+
   it("shows an unavailable lane's reason", async () => {
     draw(COMMUNITY_ONLY_GRAPH);
     await settle();
     await expect.element(frame()).toMatchScreenshot(shot("community-only"));
   });
 
-  it("opens the worker endpoint with its exceedance, both tiers and absent reasons", async () => {
+  it("opens the worker endpoint with its band, both tiers and absent reasons", async () => {
     draw();
     await settle();
     await userEvent.click(page.getByRole("button", { name: /Endpoint: Ratio to the occupational limit/ }));
@@ -79,7 +91,7 @@ describe("exposure chain, in a real browser", () => {
   it("isolates one pathway", async () => {
     draw();
     await settle();
-    await userEvent.click(page.getByRole("button", { name: "Worker, indoor air", exact: true }));
+    await userEvent.click(page.getByRole("button", { name: "Worker, workplace air", exact: true }));
     await settle();
     await expect.element(frame()).toMatchScreenshot(shot("worker-lane-only"));
   });

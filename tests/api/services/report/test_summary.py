@@ -13,9 +13,9 @@ def test_highest_risks_with_facility_stack_and_status() -> None:
     write_summary(doc, assessed(), context())
     text = lines(doc)
     assert "Facilities in this assessment: 1." in text[0]
-    assert "Worst-case hazard quotient | 0.375 | Near | Plant A (FRS 110000000001) | 1" in text
+    assert "Worst-case hazard quotient | 0.375 | Moderate | Plant A (FRS 110000000001) | 1" in text
     assert (
-        "Worst-case lifetime cancer risk | 2.5 × 10⁻⁵ | Near | Plant A (FRS 110000000001) | 1"
+        "Worst-case lifetime cancer risk | 2.5 × 10⁻⁵ | Moderate | Plant A (FRS 110000000001) | 1"
         in text
     )
 

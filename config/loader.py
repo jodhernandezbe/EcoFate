@@ -188,12 +188,14 @@ class TriSettings:
             ``{medium}``, ``{after_year}``, ``{start}`` and ``{end}`` (inclusive row range).
         media: Environmental media to keep, e.g. ``("AIR STACK",)``; one query per medium.
         fugitive_medium: The medium of fugitive air releases, read in one more query per chemical;
-            its release is folded into the records of ``media`` and never listed as a facility.
+            its release is put on the records of ``media``; a facility with only that release is
+            worker-only.
         page_size: Rows requested per page.
         max_pages: Most pages fetched per medium.
         recent_years: Reporting years that count, ending with the newest that can be published.
         publication_lag_years: Years TRI lags the calendar (year N is released in N + 1).
         max_listed: Most facilities the inventory tool lists to the model, largest rate first.
+        max_worker_only: Most fugitive-only (worker-only) facilities kept, largest release first.
         east_longitude_states: State codes whose longitudes are east of Greenwich.
         facility_id_fields: TRI columns holding the FRS ID, first one set wins.
         fields: Result key (see ``TRI_FIELD_KEYS``) -> TRI column name.
@@ -207,6 +209,7 @@ class TriSettings:
     recent_years: int
     publication_lag_years: int
     max_listed: int
+    max_worker_only: int
     east_longitude_states: tuple[str, ...]
     facility_id_fields: tuple[str, ...]
     fields: Mapping[str, str]
@@ -475,6 +478,7 @@ def load_tri_settings(path: Path | None = None) -> TriSettings:
         recent_years=_require_int(section, "recent_years", minimum=1, name="tri"),
         publication_lag_years=_require_int(section, "publication_lag_years", minimum=0, name="tri"),
         max_listed=_require_int(section, "max_listed", minimum=1, name="tri"),
+        max_worker_only=_require_int(section, "max_worker_only", minimum=1, name="tri"),
         east_longitude_states=_names(section, "east_longitude_states", "tri", allow_empty=True),
         facility_id_fields=_names(section, "facility_id_fields", "tri", allow_empty=False),
         fields=_parse_tri_fields(section),

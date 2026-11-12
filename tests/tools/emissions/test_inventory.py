@@ -13,8 +13,9 @@ from langchain_core.messages import ToolMessage
 
 from config.efservice import get_efservice_settings
 from config.plant_hours import get_plant_hours_settings
-from tests.tools.emissions.records import emission_record
+from tests.tools.emissions.records import emission_record, worker_only_facility
 from tools.emissions import inventory
+from tools.emissions.helpers.inventory.fugitive import Folded
 from tools.emissions.helpers.inventory.plant_hours import get_baseline
 from tools.emissions.helpers.inventory.rate import OperatingHours
 from tools.emissions.inventory import clear_inventory_cache, query_emissions_inventory
@@ -246,14 +247,20 @@ def test_description_tells_the_model_the_list_is_the_largest_and_partial() -> No
         assert phrase in text
 
 
-def _list_at_most(monkeypatch: pytest.MonkeyPatch, count: int) -> None:
+def _list_at_most(
+    monkeypatch: pytest.MonkeyPatch,
+    count: int,
+    workers: int = 25,
+    worker_only: int = 0,
+) -> None:
     """List at most ``count`` facilities to the model, from a result of six facilities."""
-    settings = replace(inventory.get_tri_settings(), max_listed=count)
+    settings = replace(inventory.get_tri_settings(), max_listed=count, max_worker_only=workers)
     monkeypatch.setattr(inventory, "get_tri_settings", lambda: settings)
     many = [emission_record(f"F{i}", float(i), "TX" if i % 2 else "LA") for i in range(6)]
+    only = [worker_only_facility(f"W{i}", float(i)) for i in range(worker_only)]
 
-    def fake_lookup(*args: object, **kwargs: object) -> list[EmissionRecord]:
-        return many
+    def fake_lookup(*args: object, **kwargs: object) -> Folded:
+        return Folded(many, only)
 
     monkeypatch.setattr(inventory, "lookup_emissions", fake_lookup)
 
@@ -376,3 +383,34 @@ def test_unreadable_tri_is_never_reported_as_no_releases(monkeypatch: pytest.Mon
     note = view["note"] or ""
     assert "TRI could not be read" in note
     assert "not evidence that there are no releases" in note
+
+
+def test_worker_only_facilities_are_listed_apart_and_the_stack_list_is_unchanged(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _list_at_most(monkeypatch, 2, worker_only=0)
+    plain, plain_all = _view({"cas_number": "50-00-0"}), _all({"cas_number": "50-00-0"})
+    clear_inventory_cache()
+    _list_at_most(monkeypatch, 2, worker_only=3)
+    view, every = _view({"cas_number": "50-00-0"}), _all({"cas_number": "50-00-0"})
+    assert every == plain_all
+    for key in ("total_found", "matching", "shown", "facilities"):
+        assert view[key] == plain[key]  # type: ignore[literal-required]
+    assert [w["frs_id"] for w in view["worker_only"]] == ["W2", "W1", "W0"]
+    assert "emission_rate" not in view["worker_only"][0]
+    assert not {f["frs_id"] for f in view["facilities"]} & {"W0", "W1", "W2"}
+
+
+def test_worker_only_facilities_beyond_the_cap_are_counted_as_left_out(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _list_at_most(monkeypatch, 6, workers=2, worker_only=5)
+    view = _view({"cas_number": "50-00-0"})
+    assert [w["frs_id"] for w in view["worker_only"]] == ["W4", "W3"]
+    assert view["worker_only_left_out"] == 3
+
+
+def test_description_says_worker_only_facilities_have_no_stack_release() -> None:
+    text = " ".join(query_emissions_inventory.description.split())
+    for phrase in ("`worker_only`", "worker_only_left_out", "no stack release", "worker result"):
+        assert phrase in text

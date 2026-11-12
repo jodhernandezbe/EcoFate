@@ -11,10 +11,10 @@ from config.cdr_sector import get_cdr_sector_settings
 from config.plant_hours import get_plant_hours_settings
 from tools.emissions.helpers.inventory.profile import build_profile
 from tools.emissions.helpers.inventory.sector import get_sector_table
-from tools.schemas import EmissionRecord, OperationalProfile
+from tools.schemas import FacilityRecord, OperationalProfile
 
 
-def operational_profile(record: EmissionRecord) -> OperationalProfile:
+def operational_profile(record: FacilityRecord) -> OperationalProfile:
     """The operational profile of an inventory record, from the shipped settings and tables.
 
     Args:

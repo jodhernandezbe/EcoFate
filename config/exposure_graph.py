@@ -21,8 +21,9 @@ NODES = (
     "age_band",
     "residents",
     "community_endpoint",
-    "fugitive_release",
-    "indoor_air",
+    "worker_activity",
+    "monitoring_evidence",
+    "workplace_air",
     "worker_inhalation",
     "shift_worker",
     "worker_endpoint",
@@ -44,6 +45,14 @@ FACTS = (
     "schedule_source",
     "assumptions",
     "tier",
+    "activity",
+    "setting",
+    "saturation",
+    "volatility",
+    "evidence",
+    "monitoring_level",
+    "monitoring_source",
+    "fugitive_statement",
 )
 QUANTITIES = (
     "total_release",
@@ -73,10 +82,26 @@ QUANTITIES = (
     "operating_days",
     "hours_per_day",
     "vapor_pressure",
+    "molecular_weight",
+    "generation_rate",
+    "room_volume",
+    "air_exchanges",
+    "activity_hours",
+    "monitoring_samples",
+    "monitoring_nondetect",
+    "monitoring_median",
+    "monitoring_p95",
+    "monitoring_first_year",
+    "monitoring_last_year",
 )
-TIERS = ("acceptable", "elevated", "exceedance")
+SETTINGS = ("indoor", "outdoor")
+ESTIMATORS = ("mass_balance", "two_zone", "ecetoc_tra", "monitoring")
+VOLATILITIES = ("below", "within", "above")
+EVIDENCES = ("monitoring", "activity_model")
+FLAGS = ("capped", "not_capped")
+TIERS = ("low", "moderate", "high")
 VARIANTS = ("worst_case", "baseline")
-REASONS = ("community", "worker", "missing")
+REASONS = ("community", "worker", "worker_only", "missing")
 _PLACEHOLDERS = {"stack": "{number}", "age_band": "{band}"}
 
 
@@ -99,8 +124,14 @@ class GraphText:
         facts: Fact key -> label of a text value (a source, a class, a list).
         quantities: Quantity key -> label and unit.
         tiers: Worker risk tier -> its word.
-        variants: Ventilation tier -> words appended to the worker quantities.
-        reasons: Why a lane is unavailable (by lane id) or a value is absent (``missing``).
+        settings: Workplace setting ("indoor", "outdoor") -> its word.
+        estimators: What gave the 8-hour average -> its words.
+        volatilities: Vapor pressure against ChemSTEER's range -> its words.
+        evidences: What the worker headline rests on -> its words.
+        flags: Whether the saturation concentration capped the air concentration -> its words.
+        variants: Worker case -> words appended to the worker quantities.
+        reasons: Why a lane is unavailable (by lane id, or ``worker_only`` for the community lane of
+            a facility with no stack release) or a value is absent (``missing``).
     """
 
     source: str
@@ -109,6 +140,11 @@ class GraphText:
     facts: Mapping[str, str]
     quantities: Mapping[str, QuantityText]
     tiers: Mapping[str, str]
+    settings: Mapping[str, str]
+    estimators: Mapping[str, str]
+    volatilities: Mapping[str, str]
+    evidences: Mapping[str, str]
+    flags: Mapping[str, str]
     variants: Mapping[str, str]
     reasons: Mapping[str, str]
 
@@ -163,6 +199,11 @@ def parse_exposure_graph(ui_table: dict[str, object]) -> GraphText:
         facts=_strings(table, "facts", FACTS),
         quantities=_quantities(table),
         tiers=_strings(table, "tiers", TIERS),
+        settings=_strings(table, "settings", SETTINGS),
+        estimators=_strings(table, "estimators", ESTIMATORS),
+        volatilities=_strings(table, "volatilities", VOLATILITIES),
+        evidences=_strings(table, "evidences", EVIDENCES),
+        flags=_strings(table, "flags", FLAGS),
         variants=_strings(table, "variants", VARIANTS),
         reasons=_strings(table, "reasons", REASONS),
     )

@@ -109,6 +109,7 @@ export interface EntryAnswer {
  * via the `definition` "ClientConfig".
  */
 export interface ClientConfig {
+  bands: BandBoundaries;
   layout: LayoutConfig;
   map: MapConfig;
   /**
@@ -118,8 +119,23 @@ export interface ClientConfig {
   narrow_breakpoint_px: number;
   significant_digits: number;
   suggestions: string[];
-  thresholds: Thresholds;
-  worker_thresholds: WorkerThresholds;
+}
+/**
+ * Boundaries of the screening bands, the same for community and worker results.
+ *
+ * A value from `*_lower` is "moderate", from `*_upper` "high"; a value on a boundary goes to
+ * the higher band. Hazard quotient and limit ratio are unitless; cancer risk is a probability.
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "BandBoundaries".
+ */
+export interface BandBoundaries {
+  cancer_risk_lower: number;
+  cancer_risk_upper: number;
+  hq_lower: number;
+  hq_upper: number;
+  oel_ratio_lower: number;
+  oel_ratio_upper: number;
 }
 /**
  * Workspace layout limits from the configuration.
@@ -187,33 +203,6 @@ export interface InitialView {
   north: number;
   south: number;
   west: number;
-}
-/**
- * Status thresholds (unitless HQ and lifetime cancer risk).
- *
- * This interface was referenced by `ApiContract`'s JSON-Schema
- * via the `definition` "Thresholds".
- */
-export interface Thresholds {
-  cancer_lower: number;
-  cancer_upper: number;
-  hq_concern: number;
-  hq_near_lower: number;
-}
-/**
- * Tier boundaries of the worker screening: above `*_exceedance` is "exceedance", above
- * `*_elevated` is "elevated" (unitless; cancer risk is a probability).
- *
- * This interface was referenced by `ApiContract`'s JSON-Schema
- * via the `definition` "WorkerThresholds".
- */
-export interface WorkerThresholds {
-  cancer_elevated: number;
-  cancer_exceedance: number;
-  hq_elevated: number;
-  hq_exceedance: number;
-  ratio_elevated: number;
-  ratio_exceedance: number;
 }
 /**
  * ``POST /api/v1/account/delete``: the account's password confirms it.
@@ -658,8 +647,12 @@ export interface ReadAcross {
  *
  * Attributes:
  *     doc_ctrl_num: TRI document control number (the inventory has no TRI facility ID).
- *     total_release: Annual quantity in ``release_unit``, as reported.
- *     emission_rate_g_s: Total release averaged over ``operating_hours_per_year``.
+ *     medium, total_release, release_unit, emission_rate_g_s: The stack release (annual quantity
+ *         in ``release_unit``, as reported; the rate is that quantity averaged over
+ *         ``operating_hours_per_year``); None for a worker-only facility, which has none.
+ *     worker_only: True for a facility with a fugitive air release and no stack release: it has
+ *         a worker result and no community one (its community values are absent, never zero).
+ *     community_reason: Why a worker-only facility has no community result; None otherwise.
  *     operating_hours_source: Where those hours came from (industry survey or default); None
  *         when the record predates the field.
  *     fugitive_release_kg_per_year: TRI fugitive air release, kg/yr; None when TRI has none.
@@ -690,11 +683,12 @@ export interface Facility {
   buffer: Polygon | null;
   cas_number: string | null;
   city: string | null;
+  community_reason: string | null;
   conditions_note: string | null;
   conditions_of_use: ConditionOfUse[];
   county: string | null;
   doc_ctrl_num: string | null;
-  emission_rate_g_s: number;
+  emission_rate_g_s: number | null;
   exposure: ExposureRanges | null;
   exposure_graph: ExposureGraph | null;
   frs_id: string;
@@ -704,7 +698,7 @@ export interface Facility {
   latitude: number;
   lifecycle_stages: string[];
   longitude: number;
-  medium: string;
+  medium: string | null;
   meteorology: Meteorology | null;
   naics_subsector: string | null;
   naics_subsector_title: string | null;
@@ -714,15 +708,16 @@ export interface Facility {
   operating_hours_source: string | null;
   operational_profile: OperationalProfile | null;
   receptors: Receptors | null;
-  release_unit: string;
+  release_unit: string | null;
   reporting_year: number;
   scenarios: WorstCaseScenario[];
   screening: Screening | null;
   sector: Polygon | null;
   stacks: Stack[];
   state: string | null;
-  status: ("below" | "near" | "above") | null;
-  total_release: number;
+  status: ("high" | "moderate" | "low") | null;
+  total_release: number | null;
+  worker_only: boolean;
   zip_code: string | null;
 }
 /**
@@ -849,7 +844,7 @@ export interface GraphLane {
   id: string;
   label: string;
   reason: string | null;
-  status: ("below" | "near" | "above") | null;
+  status: ("high" | "moderate" | "low") | null;
   status_label: string | null;
 }
 /**
@@ -870,7 +865,7 @@ export interface GraphNode {
   kind: "source" | "release" | "pathway" | "route" | "receptor" | "endpoint";
   lane: string | null;
   quantities: GraphQuantity[];
-  status: ("below" | "near" | "above") | null;
+  status: ("high" | "moderate" | "low") | null;
   status_label: string | null;
   title: string;
   warnings: string[];
@@ -935,70 +930,219 @@ export interface Meteorology {
   wind_toward_deg: number;
 }
 /**
- * Worker screening of a facility: EPA ChemSTEER box model and RAGS Part F dosimetry.
+ * Worker screening of a facility: OSHA measured samples, else EPA ChemSTEER activity models.
  *
- * A screening that assumes generic ventilation, not an OSHA compliance determination.
+ * A screening, not an OSHA compliance determination. The TRI fugitive release is context only.
  *
  * Attributes:
+ *     evidence: What the headline rests on; None when nothing could be computed.
+ *     molecular_weight: g/mol, with ``molecular_weight_source``.
+ *     vapor_pressure_mmhg: mmHg at about 25 °C, with ``vapor_pressure_source``.
+ *     volatility: Against ChemSTEER's preferred vapor pressure range.
  *     fugitive_release_kg_per_year: TRI fugitive air release, kg/yr (year in
- *         ``fugitive_reporting_year``).
+ *         ``fugitive_reporting_year``); ``fugitive_statement`` says it enters no value.
  *     operating_days_per_year: Days a year the plant runs, d/yr.
  *     hours_per_day: Hours a day it runs, h/day.
  *     oel_twa_mg_m3: The 8-hour occupational limit used, mg/m³, with ``oel_source``.
  *     rfc: Reference concentration used, mg/m³.
  *     iur: Inhalation unit risk used, (µg/m³)⁻¹.
- *     vapor_pressure_mmhg: Context only; never enters an equation. Its source is in
- *         ``vapor_pressure_source``.
- *     baseline: The baseline manufacturing ventilation tier.
- *     worst_case: The enclosed-zone tier.
- *     risk_tier: The baseline tier.
+ *     driving_activity: The activity with the highest worst-case average.
+ *     activities: Every modelled activity, highest worst case first (``activity_reason``
+ *         says why there are none).
+ *     routes: How each life cycle stage's activities were chosen.
+ *     monitoring: OSHA's measured samples (``monitoring_reason`` says why there are none).
+ *     baseline: The typical case.
+ *     worst_case: The worst case.
+ *     risk_tier: The baseline band.
  *
  * This interface was referenced by `ApiContract`'s JSON-Schema
  * via the `definition` "OccupationalExposure".
  */
 export interface OccupationalExposure {
+  activities: WorkerActivity[];
+  activity_reason: string | null;
   assumptions: string[];
-  baseline: VentilationTier;
+  baseline: WorkerCase;
+  driving_activity: DrivingActivity | null;
+  evidence: ("monitoring" | "activity_model") | null;
   fugitive_release_kg_per_year: number | null;
   fugitive_reporting_year: number | null;
+  fugitive_statement: string | null;
   hours_per_day: number | null;
   iur: number | null;
+  molecular_weight: number | null;
+  molecular_weight_source: string | null;
+  monitoring: MonitoringSummary | null;
+  monitoring_reason: string | null;
   oel_source: string | null;
   oel_twa_mg_m3: number | null;
   operating_days_per_year: number | null;
   rfc: number | null;
-  risk_tier: ("exceedance" | "elevated" | "acceptable") | null;
+  risk_tier: ("high" | "moderate" | "low") | null;
+  routes: StageRoute[];
   vapor_pressure_mmhg: number | null;
   vapor_pressure_source: string | null;
+  volatility: ("below" | "within" | "above") | null;
   warnings: string[];
-  worst_case: VentilationTier;
+  worst_case: WorkerCase;
 }
 /**
- * The worker screening for one ventilation tier of the box model; None = not computed.
+ * A modelled worker activity with its typical and worst-case outputs.
  *
  * Attributes:
- *     ventilation_m3_per_s: Room ventilation rate, m³/s.
+ *     key: Activity key, e.g. "drum_loading".
+ *     model: "ap42_loading", "penetration" or "mass_transfer".
+ *     setting: "indoor" or "outdoor".
+ *     hours: Hours a day the activity is performed, h/day.
+ *     statement: The band estimate's statement, when it gave the values.
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "WorkerActivity".
+ */
+export interface WorkerActivity {
+  hours: number;
+  key: string;
+  label: string;
+  model: string;
+  setting: string;
+  statement: string | null;
+  typical: ActivityCase;
+  warnings: string[];
+  worst_case: ActivityCase;
+}
+/**
+ * One output (typical or worst case) of a modelled worker activity.
+ *
+ * Attributes:
+ *     estimator: What gave the 8-hour average.
+ *     airflow_m3_per_s: Ventilation Q of the mass balance, m³/s.
+ *     mixing_factor: Mixing factor k of the mass balance, unitless.
+ *     room_m3: Far-field room volume of the two-zone model, m³.
+ *     air_exchange_per_h: Far-field air changes of the two-zone model, 1/h.
+ *     generation_g_per_s: Vapor generation rate, g/s; None for a band estimate.
+ *     concentration_mg_m3: Concentration during the activity, mg/m³.
+ *     capped: Whether the saturation concentration set the concentration.
+ *     twa_mg_m3: 8-hour time-weighted average, mg/m³.
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "ActivityCase".
+ */
+export interface ActivityCase {
+  air_exchange_per_h: number | null;
+  airflow_m3_per_s: number | null;
+  capped: boolean;
+  concentration_mg_m3: number | null;
+  estimator: "mass_balance" | "two_zone" | "ecetoc_tra" | "monitoring";
+  generation_g_per_s: number | null;
+  mixing_factor: number | null;
+  room_m3: number | null;
+  twa_mg_m3: number;
+}
+/**
+ * The worker screening for a baseline or worst case; None = not computed.
+ *
+ * Attributes:
+ *     setting: "indoor" or "outdoor" (the driving activity).
+ *     estimator: What gave the 8-hour average.
+ *     airflow_m3_per_s: Ventilation rate of the mass balance, m³/s.
  *     mixing_factor: Mixing factor k, unitless.
- *     workplace_concentration_mg_m3: Concentration while the plant runs, mg/m³.
+ *     room_m3: Far-field room volume of the two-zone model, m³.
+ *     air_exchange_per_h: Far-field air changes of the two-zone model, 1/h.
+ *     generation_g_per_s: Vapor generation rate, g/s.
+ *     workplace_concentration_mg_m3: Concentration during the driving activity, mg/m³.
+ *     capped: Whether the saturation concentration set the concentration.
  *     twa_mg_m3: 8-hour time-weighted average, mg/m³.
  *     oel_ratio: The average over the occupational limit (unitless); above 1 exceeds it.
  *     hq: Worker hazard quotient (unitless).
  *     cancer_risk: Worker lifetime excess cancer risk (unitless).
- *     risk_tier: "exceedance", "elevated" or "acceptable"; None when nothing could be compared.
+ *     risk_tier: "high", "moderate" or "low"; None when nothing could be compared.
  *
  * This interface was referenced by `ApiContract`'s JSON-Schema
- * via the `definition` "VentilationTier".
+ * via the `definition` "WorkerCase".
  */
-export interface VentilationTier {
+export interface WorkerCase {
+  air_exchange_per_h: number | null;
+  airflow_m3_per_s: number | null;
   cancer_risk: number | null;
+  capped: boolean | null;
+  estimator: ("mass_balance" | "two_zone" | "ecetoc_tra" | "monitoring") | null;
+  generation_g_per_s: number | null;
   hq: number | null;
-  label: string;
-  mixing_factor: number;
+  mixing_factor: number | null;
   oel_ratio: number | null;
-  risk_tier: ("exceedance" | "elevated" | "acceptable") | null;
+  risk_tier: ("high" | "moderate" | "low") | null;
+  room_m3: number | null;
+  setting: string | null;
   twa_mg_m3: number | null;
-  ventilation_m3_per_s: number;
   workplace_concentration_mg_m3: number | null;
+}
+/**
+ * The activity with the highest worst-case 8-hour average (hours in h/day).
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "DrivingActivity".
+ */
+export interface DrivingActivity {
+  estimator: "mass_balance" | "two_zone" | "ecetoc_tra" | "monitoring";
+  hours: number;
+  key: string;
+  label: string;
+  model: string;
+  setting: string;
+  statement: string | null;
+}
+/**
+ * What OSHA's measured air samples say about the chemical in the facility's industry.
+ *
+ * Attributes:
+ *     n_values: Samples; ``n_nondetect`` of them below detection.
+ *     median_mg_m3: Median, mg/m³; None when it is below detection (see ``reason``).
+ *     p95_mg_m3: 95th percentile, mg/m³.
+ *     first_year: First year of the samples; ``last_year`` the last.
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "MonitoringSummary".
+ */
+export interface MonitoringSummary {
+  first_year: number | null;
+  imis_code: string | null;
+  last_year: number | null;
+  level_note: string | null;
+  median_mg_m3: number | null;
+  n_nondetect: number | null;
+  n_values: number | null;
+  naics_level: string | null;
+  original_unit: string | null;
+  p95_mg_m3: number | null;
+  reason: string | null;
+  source: string;
+  statements: string[];
+  unit_note: string | null;
+}
+/**
+ * How the activities of one life cycle stage were chosen (``note``: why no document).
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "StageRoute".
+ */
+export interface StageRoute {
+  generic_operation: string[];
+  note: string | null;
+  scenarios: ScenarioRoute[];
+  stage: string;
+}
+/**
+ * A generic scenario or emission scenario document that applied to a stage.
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "ScenarioRoute".
+ */
+export interface ScenarioRoute {
+  activities: string[];
+  category: string;
+  pages: string;
+  source: string;
+  title: string;
 }
 /**
  * How a facility operates and where it sits in the TSCA framework.
@@ -1246,7 +1390,7 @@ export interface Extremum {
   facility_name: string | null;
   frs_id: string;
   stack_number: number;
-  status: "below" | "near" | "above";
+  status: "high" | "moderate" | "low";
   value: number;
 }
 /**
@@ -1277,7 +1421,7 @@ export interface Unattributed {
   tool: string;
 }
 /**
- * The worker screening across facilities, for both ventilation tiers; ``reason`` if none.
+ * The worker screening across facilities, per case; ``reason`` when there is none.
  *
  * This interface was referenced by `ApiContract`'s JSON-Schema
  * via the `definition` "WorkerRiskSummary".
@@ -1304,15 +1448,18 @@ export interface WorkerTierSummary {
 /**
  * The highest value of one worker quantity over the assessed facilities.
  *
- * ``risk_tier`` is the tier the tool gave that facility (baseline ventilation).
+ * ``risk_tier`` is the band the tool gave that facility's case; ``evidence`` and
+ * ``driving_activity`` (its label) say what the value rests on.
  *
  * This interface was referenced by `ApiContract`'s JSON-Schema
  * via the `definition` "WorkerExtremum".
  */
 export interface WorkerExtremum {
+  driving_activity: string | null;
+  evidence: ("monitoring" | "activity_model") | null;
   facility_name: string | null;
   frs_id: string;
-  risk_tier: ("exceedance" | "elevated" | "acceptable") | null;
+  risk_tier: ("high" | "moderate" | "low") | null;
   value: number;
 }
 /**

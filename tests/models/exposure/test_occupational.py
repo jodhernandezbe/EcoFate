@@ -8,48 +8,45 @@ import pytest
 
 from models.exposure import occupational as occ
 
-EXCEED = (1.0, 1.0, 1e-4)
-ELEVATED = (0.1, 0.1, 1e-6)
-
-
-def _tier(
-    ratio: float | None = None,
-    hq: float | None = None,
-    risk: float | None = None,
-) -> str | None:
-    return occ.risk_tier(ratio, hq, risk, exceedance=EXCEED, elevated=ELEVATED)
-
-
-def test_generation_rate_worked_example() -> None:
-    assert occ.generation_rate(1000.0, 250.0, 16.0) == pytest.approx(1000e6 / (250 * 16 * 3600))
+INF = math.inf
 
 
 def test_concentration_worked_example() -> None:
-    g = occ.generation_rate(1000.0, 250.0, 16.0)
-    assert occ.workplace_concentration(g, 1.416, 0.5) == pytest.approx(g / 0.708)
+    result = occ.workplace_concentration(10.0, 1.416, 0.5, INF)
+    assert result.concentration_mg_per_m3 == pytest.approx(10.0 / 0.708) and not result.capped
 
 
-def test_doubled_release_doubles_concentration() -> None:
-    one = occ.workplace_concentration(occ.generation_rate(10.0, 250, 8), 1.0, 0.5)
-    two = occ.workplace_concentration(occ.generation_rate(20.0, 250, 8), 1.0, 0.5)
-    assert two == pytest.approx(2 * one)
+def test_concentration_is_capped_at_saturation() -> None:
+    result = occ.workplace_concentration(5.0, 1.0, 0.5, 4.0)
+    assert result.concentration_mg_per_m3 == 4.0 and result.capped
+
+
+def test_a_mass_balance_equal_to_saturation_is_not_capped() -> None:
+    result = occ.workplace_concentration(5.0, 1.0, 0.5, 10.0)
+    assert result.concentration_mg_per_m3 == 10.0 and not result.capped
+
+
+def test_doubled_generation_doubles_concentration() -> None:
+    one = occ.workplace_concentration(10.0, 1.0, 0.5, INF)
+    two = occ.workplace_concentration(20.0, 1.0, 0.5, INF)
+    assert two.concentration_mg_per_m3 == pytest.approx(2 * one.concentration_mg_per_m3)
 
 
 def test_less_ventilation_or_mixing_raises_concentration() -> None:
-    base = occ.workplace_concentration(5.0, 1.0, 0.5)
-    assert occ.workplace_concentration(5.0, 0.5, 0.5) > base
-    assert occ.workplace_concentration(5.0, 1.0, 0.1) > base
+    base = occ.workplace_concentration(5.0, 1.0, 0.5, INF).concentration_mg_per_m3
+    assert occ.workplace_concentration(5.0, 0.5, 0.5, INF).concentration_mg_per_m3 > base
+    assert occ.workplace_concentration(5.0, 1.0, 0.1, INF).concentration_mg_per_m3 > base
 
 
 @pytest.mark.parametrize(
     "call",
     [
-        lambda: occ.generation_rate(1.0, 250.0, 0.0),
-        lambda: occ.generation_rate(math.nan, 250.0, 8.0),
-        lambda: occ.generation_rate(-1.0, 250.0, 8.0),
-        lambda: occ.generation_rate(True, 250.0, 8.0),
-        lambda: occ.workplace_concentration(1.0, 1.0, 1.5),
-        lambda: occ.workplace_concentration(1.0, 0.0, 0.5),
+        lambda: occ.workplace_concentration(math.nan, 1.0, 0.5, INF),
+        lambda: occ.workplace_concentration(-1.0, 1.0, 0.5, INF),
+        lambda: occ.workplace_concentration(1.0, 1.0, 1.5, INF),
+        lambda: occ.workplace_concentration(1.0, 0.0, 0.5, INF),
+        lambda: occ.workplace_concentration(1.0, 1.0, 0.5, -1.0),
+        lambda: occ.workplace_concentration(1.0, 1.0, 0.5, math.nan),
     ],
 )
 def test_invalid_box_inputs_raise(call: object) -> None:
@@ -100,20 +97,15 @@ def test_hazard_quotient_and_rejections() -> None:
         occ.worker_cancer_risk(0.5, -1.0)
 
 
-def test_tier_exceedance_elevated_acceptable() -> None:
-    assert _tier(ratio=1.2, hq=0.0, risk=0.0) == "exceedance"
-    assert _tier(ratio=0.0, hq=1.5) == "exceedance"
-    assert _tier(risk=2e-4) == "exceedance"
-    assert _tier(ratio=0.01, hq=0.01, risk=5e-6) == "elevated"
-    assert _tier(ratio=0.5) == "elevated"
-    assert _tier(ratio=0.01, hq=0.01, risk=1e-8) == "acceptable"
+@pytest.mark.parametrize(("speed", "expected"), [(440.0, 132_000.0), (792.0, 237_600.0)])
+def test_outdoor_ventilation_table_b2a(speed: float, expected: float) -> None:
+    assert occ.outdoor_ventilation_ft3_per_min(26_400.0, speed) == pytest.approx(expected)
 
 
-def test_tier_boundaries_are_strict() -> None:
-    assert _tier(ratio=1.0) == "elevated"
-    assert _tier(ratio=0.1) == "acceptable"
-
-
-def test_tier_ignores_null_and_is_null_when_nothing_to_compare() -> None:
-    assert _tier(ratio=None, hq=2.0, risk=None) == "exceedance"
-    assert _tier() is None
+@pytest.mark.parametrize(
+    ("coefficient", "speed"),
+    [(0.0, 440.0), (26_400.0, 0.0), (-1.0, 440.0), (26_400.0, math.nan), (True, 440.0)],
+)
+def test_outdoor_ventilation_rejects_invalid_inputs(coefficient: float, speed: float) -> None:
+    with pytest.raises(ValueError):
+        occ.outdoor_ventilation_ft3_per_min(coefficient, speed)

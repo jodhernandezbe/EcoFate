@@ -1,4 +1,4 @@
-"""Pathway: indoor air, inhalation, worker (fugitive release in the workplace, ChemSTEER box)."""
+"""Pathway: indoor air, inhalation, worker (the activity model or OSHA's measured samples)."""
 
 from __future__ import annotations
 
@@ -6,39 +6,92 @@ from typing import Literal
 
 from config.occupational import get_occupational_settings
 from config.scenario import ScenarioSettings, get_scenario_settings
-from tools.assessment.helpers.scenarios.factors import factor
+from tools.assessment.helpers.scenarios.factors import banded, factor
 from tools.schemas import (
     FacilityAssessment,
+    MonitoringSummary,
     OccupationalExposure,
     ScenarioFactor,
     ScenarioReceptor,
-    VentilationTier,
+    WorkerCase,
     WorstCaseScenario,
 )
 
 PATHWAY = "worker_inhalation"
 Quantity = Literal["oel_ratio", "hq", "cancer_risk"]
 QUANTITIES: tuple[Quantity, ...] = ("oel_ratio", "hq", "cancer_risk")
+MODEL_NAMES = {
+    "ap42_loading": "AP-42 loading model",
+    "penetration": "Penetration model",
+    "mass_transfer": "Mass transfer coefficient model",
+}
+BAND_ESTIMATE = "the ECETOC TRA band estimate gives the 8-hour average directly"
 
 
-def _release(item: FacilityAssessment) -> list[ScenarioFactor]:
-    work = item["occupational_exposure"]
-    schedule = item["operational_profile"]["schedule_source"]
-    year = work["fugitive_reporting_year"]
+def _cap(case: WorkerCase) -> str | None:
+    if case["capped"] is None:
+        return None
+    return "applied" if case["capped"] else "not applied"
+
+
+def _vapor(work: OccupationalExposure, case: WorkerCase) -> list[ScenarioFactor]:
+    skipped = BAND_ESTIMATE if case["estimator"] == "ecetoc_tra" else None
     return [
-        factor("fugitive_release", work["fugitive_release_kg_per_year"], source=f"TRI {year}"),
-        factor("worker_operating_days", work["operating_days_per_year"], source=schedule),
-        factor("shift_hours", work["hours_per_day"], source=schedule),
+        factor("generation_rate", case["generation_g_per_s"], reason=skipped),
+        factor("vapor_pressure", work["vapor_pressure_mmhg"], source=work["vapor_pressure_source"]),
+        factor(
+            "molecular_weight",
+            work["molecular_weight"],
+            source=work["molecular_weight_source"],
+        ),
     ]
 
 
-def _conditions(tier: VentilationTier) -> list[ScenarioFactor]:
-    label = tier["label"]
+def _activity(work: OccupationalExposure, case: WorkerCase) -> list[ScenarioFactor]:
+    driving = work["driving_activity"]
+    if driving is None:
+        return [factor("worker_activity", None, reason=work["activity_reason"])]
     return [
-        factor("ventilation", tier["ventilation_m3_per_s"], source=label),
-        factor("mixing_factor", tier["mixing_factor"], source=label),
-        factor("workplace_concentration", tier["workplace_concentration_mg_m3"]),
-        factor("twa_concentration", tier["twa_mg_m3"]),
+        factor("worker_evidence", "Activity model"),
+        factor("worker_activity", driving["label"], source=case["estimator"]),
+        factor("activity_hours", driving["hours"]),
+        factor("generation_model", MODEL_NAMES.get(driving["model"], driving["model"])),
+        *_vapor(work, case),
+    ]
+
+
+def _ventilation(case: WorkerCase) -> list[ScenarioFactor]:
+    return [
+        factor("ventilation", case["airflow_m3_per_s"], reason="the two-zone model has no airflow"),
+        factor("mixing_factor", case["mixing_factor"]),
+        factor("room_volume", case["room_m3"]),
+        factor("air_exchange", case["air_exchange_per_h"]),
+        factor("saturation_cap", _cap(case)),
+    ]
+
+
+def _conditions(case: WorkerCase) -> list[ScenarioFactor]:
+    return [
+        *_ventilation(case),
+        factor("workplace_concentration", case["workplace_concentration_mg_m3"]),
+        factor("twa_concentration", case["twa_mg_m3"]),
+    ]
+
+
+def _years(found: MonitoringSummary) -> str:
+    return f"{found['first_year']} to {found['last_year']}"
+
+
+def _measured(found: MonitoringSummary, case: WorkerCase) -> list[ScenarioFactor]:
+    source = found["source"]
+    return [
+        factor("worker_evidence", "OSHA monitoring data", source=source),
+        factor("monitoring_level", found["level_note"] or found["naics_level"], source=source),
+        factor("monitoring_samples", found["n_values"], source=source),
+        factor("monitoring_nondetects", found["n_nondetect"], source=source),
+        factor("monitoring_years", _years(found), source=source),
+        factor("monitoring_p95", found["p95_mg_m3"], source=source),
+        factor("twa_concentration", case["twa_mg_m3"], source=source),
     ]
 
 
@@ -55,9 +108,23 @@ def _model(work: OccupationalExposure) -> list[ScenarioFactor]:
     ]
 
 
-def _workers(work: OccupationalExposure) -> ScenarioReceptor:
+def _factors(work: OccupationalExposure) -> list[ScenarioFactor]:
+    case, found = work["worst_case"], work["monitoring"]
+    if work["evidence"] == "monitoring" and found is not None:
+        return [*_measured(found, case), *_model(work)]
+    return [*_activity(work, case), *_conditions(case), *_model(work)]
+
+
+def _schedule_note(work: OccupationalExposure) -> str:
     days, tenure = _worked_days(work), get_occupational_settings().tenure_years
-    note = f"{work['hours_per_day']} h/day, {days} days/yr, {tenure:g} years of work"
+    driving = work["driving_activity"]
+    if work["evidence"] == "monitoring" or driving is None:
+        return f"workers sampled in the industry, {days} days/yr, {tenure:g} years of work"
+    task = f"{driving['label']}, {driving['hours']:g} h/day"
+    return f"{task}, {days} days/yr, {tenure:g} years of work"
+
+
+def _workers(work: OccupationalExposure) -> ScenarioReceptor:
     return ScenarioReceptor(
         kind="workers",
         label="Workers",
@@ -69,17 +136,8 @@ def _workers(work: OccupationalExposure) -> ScenarioReceptor:
         longitude=None,
         concentration=work["worst_case"]["twa_mg_m3"],
         fraction_of_maximum=None,
-        note=note,
+        note=_schedule_note(work),
     )
-
-
-def _benchmark(quantity: Quantity) -> float:
-    limits = get_occupational_settings().thresholds
-    return {
-        "oel_ratio": limits.exceedance_ratio,
-        "hq": limits.exceedance_hq,
-        "cancer_risk": limits.exceedance_cancer_risk,
-    }[quantity]
 
 
 def _scenario(
@@ -88,19 +146,18 @@ def _scenario(
     settings: ScenarioSettings,
 ) -> WorstCaseScenario | None:
     work = item["occupational_exposure"]
-    tier = work["worst_case"]
-    value = tier[quantity]
-    if value is None:
+    if (value := work["worst_case"][quantity]) is None:
         return None
+    band, benchmark = banded(quantity, value)
     return WorstCaseScenario(
         pathway_key=PATHWAY,
         pathway=settings.pathways[PATHWAY],
         quantity=quantity,
         quantity_label=settings.quantities[quantity],
         value=value,
-        tier=tier["risk_tier"],
-        benchmark=_benchmark(quantity),
-        factors=[*_release(item), *_conditions(tier), *_model(work)],
+        tier=band,
+        benchmark=benchmark,
+        factors=_factors(work),
         receptors=[_workers(work)],
         receptors_note=None,
         notes=list(work["warnings"]),
@@ -108,7 +165,7 @@ def _scenario(
 
 
 def worker_inhalation(item: FacilityAssessment) -> list[WorstCaseScenario]:
-    """The worst-case scenarios of the worker screening, at the worst-case ventilation tier."""
+    """The worst-case scenarios of the worker screening, for the worst case of the headline."""
     settings = get_scenario_settings()
     built = [_scenario(item, quantity, settings) for quantity in QUANTITIES]
     return [scenario for scenario in built if scenario is not None]

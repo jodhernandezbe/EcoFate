@@ -50,8 +50,8 @@ def test_a_new_pathway_reaches_the_output_in_the_same_shape(
 
 
 def test_the_driver_is_the_facility_with_the_highest_value_per_pathway_and_quantity() -> None:
-    weak = with_scenarios(assessed("F1", stacks=[HIGH], kg=10.0))
-    strong = with_scenarios(assessed("F2", stacks=[LOW], kg=10_000.0))
+    weak = with_scenarios(assessed("F1", stacks=[HIGH], vapor_pressure=1.0))
+    strong = with_scenarios(assessed("F2", stacks=[LOW], vapor_pressure=10.0))
     by_key = {(d["pathway_key"], d["quantity"]): d for d in drivers_of([weak, strong])}
     assert by_key[("community_inhalation", "hq")]["frs_id"] == "F2"
     assert by_key[("worker_inhalation", "oel_ratio")]["frs_id"] == "F2"
@@ -60,8 +60,8 @@ def test_the_driver_is_the_facility_with_the_highest_value_per_pathway_and_quant
 
 
 def test_drivers_can_differ_between_quantities() -> None:
-    community = with_scenarios(assessed("C", stacks=[LOW], kg=1.0))
-    workplace = with_scenarios(assessed("W", stacks=[HIGH], kg=10_000.0))
+    community = with_scenarios(assessed("C", stacks=[LOW], vapor_pressure=1.0))
+    workplace = with_scenarios(assessed("W", stacks=[HIGH], vapor_pressure=10.0))
     by_key = {
         (d["pathway_key"], d["quantity"]): d["frs_id"] for d in drivers_of([community, workplace])
     }

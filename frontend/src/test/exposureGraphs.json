@@ -7,16 +7,16 @@
     "label": "Community, outdoor air",
     "available": true,
     "reason": null,
-    "status": "above",
+    "status": "high",
     "status_label": null
    },
    {
     "id": "worker",
-    "label": "Worker, indoor air",
+    "label": "Worker, workplace air",
     "available": true,
     "reason": null,
-    "status": "above",
-    "status_label": "Exceedance"
+    "status": "high",
+    "status_label": "High"
    }
   ],
   "nodes": [
@@ -411,7 +411,7 @@
      }
     ],
     "facts": [],
-    "status": "above",
+    "status": "high",
     "status_label": null,
     "warnings": []
    },
@@ -419,34 +419,71 @@
     "id": "worker:release",
     "kind": "release",
     "lane": "worker",
-    "title": "Fugitive release",
-    "headline": "fugitive_release",
+    "title": "Driving worker activity",
+    "headline": "generation_rate:worst_case",
     "quantities": [
      {
+      "key": "generation_rate:worst_case",
+      "label": "Vapor generation rate (worst case)",
+      "value": 0.25,
+      "unit": "g/s",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "generation_rate:baseline",
+      "label": "Vapor generation rate (typical case)",
+      "value": 0.25,
+      "unit": "g/s",
+      "source": null,
+      "reason": null
+     },
+     {
       "key": "fugitive_release",
-      "label": "Fugitive release",
-      "value": 100.0,
+      "label": "Fugitive release (context, not used)",
+      "value": 1000.0,
       "unit": "kg/yr",
       "source": null,
       "reason": null
      }
     ],
-    "facts": [],
+    "facts": [
+     {
+      "key": "activity",
+      "label": "Activity",
+      "text": "Drum loading",
+      "reason": null
+     },
+     {
+      "key": "evidence",
+      "label": "Evidence",
+      "text": "ChemSTEER activity model",
+      "reason": null
+     },
+     {
+      "key": "fugitive_statement",
+      "label": "Fugitive release (context)",
+      "text": "context only; no worker value uses it",
+      "reason": null
+     }
+    ],
     "status": null,
     "status_label": null,
-    "warnings": []
+    "warnings": [
+     "a synthetic activity warning"
+    ]
    },
    {
     "id": "worker:air",
     "kind": "pathway",
     "lane": "worker",
-    "title": "Indoor workplace air",
+    "title": "Workplace air",
     "headline": "workplace_concentration:worst_case",
     "quantities": [
      {
       "key": "workplace_concentration:worst_case",
       "label": "Workplace concentration (worst case)",
-      "value": 2.0,
+      "value": 4.0,
       "unit": "mg/m³",
       "source": null,
       "reason": null
@@ -454,30 +491,46 @@
      {
       "key": "ventilation_rate:worst_case",
       "label": "Ventilation rate (worst case)",
-      "value": 1.0,
+      "value": null,
       "unit": "m³/s",
       "source": null,
-      "reason": null
+      "reason": "not reported by the tool"
      },
      {
       "key": "mixing_factor:worst_case",
       "label": "Mixing factor (worst case)",
-      "value": 0.5,
+      "value": null,
       "unit": "",
+      "source": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "room_volume:worst_case",
+      "label": "Room volume (worst case)",
+      "value": 50.0,
+      "unit": "m³",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "air_exchanges:worst_case",
+      "label": "Air changes (worst case)",
+      "value": 4.0,
+      "unit": "1/h",
       "source": null,
       "reason": null
      },
      {
       "key": "workplace_concentration:baseline",
-      "label": "Workplace concentration (baseline ventilation)",
-      "value": 2.0,
+      "label": "Workplace concentration (typical case)",
+      "value": 4.0,
       "unit": "mg/m³",
       "source": null,
       "reason": null
      },
      {
       "key": "ventilation_rate:baseline",
-      "label": "Ventilation rate (baseline ventilation)",
+      "label": "Ventilation rate (typical case)",
       "value": 1.0,
       "unit": "m³/s",
       "source": null,
@@ -485,26 +538,62 @@
      },
      {
       "key": "mixing_factor:baseline",
-      "label": "Mixing factor (baseline ventilation)",
+      "label": "Mixing factor (typical case)",
       "value": 0.5,
       "unit": "",
       "source": null,
       "reason": null
      },
      {
-      "key": "vapor_pressure",
-      "label": "Vapor pressure",
+      "key": "room_volume:baseline",
+      "label": "Room volume (typical case)",
       "value": null,
-      "unit": "mmHg",
+      "unit": "m³",
       "source": null,
       "reason": "not reported by the tool"
+     },
+     {
+      "key": "air_exchanges:baseline",
+      "label": "Air changes (typical case)",
+      "value": null,
+      "unit": "1/h",
+      "source": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "vapor_pressure",
+      "label": "Vapor pressure",
+      "value": 10.0,
+      "unit": "mmHg",
+      "source": "synthetic pressure",
+      "reason": null
+     },
+     {
+      "key": "molecular_weight",
+      "label": "Molecular weight",
+      "value": 100.0,
+      "unit": "g/mol",
+      "source": "synthetic source",
+      "reason": null
      }
     ],
     "facts": [
      {
+      "key": "setting",
+      "label": "Workplace setting",
+      "text": "Indoor",
+      "reason": null
+     },
+     {
       "key": "ventilation",
       "label": "Ventilation scenario",
-      "text": "Worst, Baseline",
+      "text": "worst case: two-zone room, not capped by saturation; typical case: well-mixed room (mass balance), not capped by saturation",
+      "reason": null
+     },
+     {
+      "key": "volatility",
+      "label": "Volatility (against ChemSTEER's range)",
+      "text": "within the range",
       "reason": null
      }
     ],
@@ -540,6 +629,14 @@
       "reason": null
      },
      {
+      "key": "activity_hours",
+      "label": "Hours on the activity",
+      "value": 2.0,
+      "unit": "h/day",
+      "source": null,
+      "reason": null
+     },
+     {
       "key": "operating_days",
       "label": "Operating days",
       "value": 250.0,
@@ -550,7 +647,7 @@
      {
       "key": "hours_per_day",
       "label": "Hours per day",
-      "value": 8.0,
+      "value": 16.0,
       "unit": "h/day",
       "source": null,
       "reason": null
@@ -574,7 +671,7 @@
      {
       "key": "assumptions",
       "label": "Assumptions",
-      "text": "well mixed",
+      "text": "a well-mixed zone",
       "reason": null
      }
     ],
@@ -594,7 +691,7 @@
       "label": "Occupational limit",
       "value": 5.0,
       "unit": "mg/m³",
-      "source": "synthetic limit",
+      "source": "OSHA PEL-TWA (PubChem)",
       "reason": null
      },
      {
@@ -631,7 +728,7 @@
      },
      {
       "key": "oel_ratio:baseline",
-      "label": "Ratio to the limit (baseline ventilation)",
+      "label": "Ratio to the limit (typical case)",
       "value": 0.1,
       "unit": "",
       "source": null,
@@ -639,15 +736,15 @@
      },
      {
       "key": "twa:baseline",
-      "label": "8-hour TWA (baseline ventilation)",
-      "value": 3.0,
+      "label": "8-hour TWA (typical case)",
+      "value": 2.0,
       "unit": "mg/m³",
       "source": null,
       "reason": null
      },
      {
       "key": "hq:baseline",
-      "label": "Hazard quotient (baseline ventilation)",
+      "label": "Hazard quotient (typical case)",
       "value": 0.2,
       "unit": "",
       "source": null,
@@ -655,7 +752,7 @@
      },
      {
       "key": "cancer_risk:baseline",
-      "label": "Lifetime cancer risk (baseline ventilation)",
+      "label": "Lifetime cancer risk (typical case)",
       "value": null,
       "unit": "",
       "source": null,
@@ -666,18 +763,18 @@
      {
       "key": "benchmark",
       "label": "Occupational limit source",
-      "text": "synthetic limit",
+      "text": "OSHA PEL-TWA (PubChem)",
       "reason": null
      },
      {
       "key": "tier",
-      "label": "Risk tier",
-      "text": "Exceedance",
+      "label": "Screening band",
+      "text": "High",
       "reason": null
      }
     ],
-    "status": "above",
-    "status_label": "Exceedance",
+    "status": "high",
+    "status_label": "High",
     "warnings": []
    }
   ],
@@ -788,7 +885,7 @@
     "quantity": {
      "key": "workplace_concentration:worst_case",
      "label": "Workplace concentration (worst case)",
-     "value": 2.0,
+     "value": 4.0,
      "unit": "mg/m³",
      "source": null,
      "reason": null
@@ -838,12 +935,12 @@
     "label": "Community, outdoor air",
     "available": true,
     "reason": null,
-    "status": "above",
+    "status": "high",
     "status_label": null
    },
    {
     "id": "worker",
-    "label": "Worker, indoor air",
+    "label": "Worker, workplace air",
     "available": false,
     "reason": "no occupational result yet",
     "status": null,
@@ -1168,7 +1265,7 @@
      }
     ],
     "facts": [],
-    "status": "above",
+    "status": "high",
     "status_label": null,
     "warnings": []
    }
@@ -1243,6 +1340,966 @@
     "target": "community:endpoint",
     "lane": "community",
     "quantity": null
+   }
+  ]
+ },
+ "monitoring": {
+  "lanes": [
+   {
+    "id": "community",
+    "label": "Community, outdoor air",
+    "available": true,
+    "reason": null,
+    "status": "high",
+    "status_label": null
+   },
+   {
+    "id": "worker",
+    "label": "Worker, workplace air",
+    "available": true,
+    "reason": null,
+    "status": "high",
+    "status_label": "High"
+   }
+  ],
+  "nodes": [
+   {
+    "id": "source",
+    "kind": "source",
+    "lane": null,
+    "title": "Plant F1",
+    "headline": "total_release",
+    "quantities": [
+     {
+      "key": "total_release",
+      "label": "Annual release",
+      "value": 100.0,
+      "unit": "Pounds",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "emission_rate",
+      "label": "Emission rate",
+      "value": 1.0,
+      "unit": "g/s",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "operating_hours",
+      "label": "Operating hours",
+      "value": 8760.0,
+      "unit": "h/yr",
+      "source": null,
+      "reason": null
+     }
+    ],
+    "facts": [
+     {
+      "key": "cas_number",
+      "label": "CAS number",
+      "text": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "location",
+      "label": "Location",
+      "text": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "industry",
+      "label": "Industry",
+      "text": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "condition_of_use",
+      "label": "Condition of use",
+      "text": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "life_cycle_stage",
+      "label": "Life cycle stage",
+      "text": null,
+      "reason": "not reported by the tool"
+     }
+    ],
+    "status": null,
+    "status_label": null,
+    "warnings": []
+   },
+   {
+    "id": "community:stack:1",
+    "kind": "release",
+    "lane": "community",
+    "title": "Stack 1",
+    "headline": "stack_peak",
+    "quantities": [
+     {
+      "key": "stack_peak",
+      "label": "Peak concentration",
+      "value": 3.0,
+      "unit": "µg/m³",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "peak_distance",
+      "label": "Distance of the peak",
+      "value": 100.0,
+      "unit": "m",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "stack_height",
+      "label": "Stack height",
+      "value": 10.0,
+      "unit": "m",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "stack_diameter",
+      "label": "Stack diameter",
+      "value": null,
+      "unit": "m",
+      "source": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "exit_velocity",
+      "label": "Exit velocity",
+      "value": null,
+      "unit": "m/s",
+      "source": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "exit_temperature",
+      "label": "Exit temperature",
+      "value": null,
+      "unit": "K",
+      "source": null,
+      "reason": "not reported by the tool"
+     }
+    ],
+    "facts": [
+     {
+      "key": "stack_tier",
+      "label": "Stack parameters",
+      "text": "Tier 3",
+      "reason": null
+     },
+     {
+      "key": "process",
+      "label": "Process (SCC)",
+      "text": null,
+      "reason": "not reported by the tool"
+     }
+    ],
+    "status": null,
+    "status_label": null,
+    "warnings": []
+   },
+   {
+    "id": "community:stack:2",
+    "kind": "release",
+    "lane": "community",
+    "title": "Stack 2",
+    "headline": "stack_peak",
+    "quantities": [
+     {
+      "key": "stack_peak",
+      "label": "Peak concentration",
+      "value": 4.0,
+      "unit": "µg/m³",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "peak_distance",
+      "label": "Distance of the peak",
+      "value": 200.0,
+      "unit": "m",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "stack_height",
+      "label": "Stack height",
+      "value": 10.0,
+      "unit": "m",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "stack_diameter",
+      "label": "Stack diameter",
+      "value": null,
+      "unit": "m",
+      "source": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "exit_velocity",
+      "label": "Exit velocity",
+      "value": null,
+      "unit": "m/s",
+      "source": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "exit_temperature",
+      "label": "Exit temperature",
+      "value": null,
+      "unit": "K",
+      "source": null,
+      "reason": "not reported by the tool"
+     }
+    ],
+    "facts": [
+     {
+      "key": "stack_tier",
+      "label": "Stack parameters",
+      "text": "Tier 3",
+      "reason": null
+     },
+     {
+      "key": "process",
+      "label": "Process (SCC)",
+      "text": null,
+      "reason": "not reported by the tool"
+     }
+    ],
+    "status": null,
+    "status_label": null,
+    "warnings": []
+   },
+   {
+    "id": "community:air",
+    "kind": "pathway",
+    "lane": "community",
+    "title": "Outdoor ambient air",
+    "headline": "peak_concentration",
+    "quantities": [
+     {
+      "key": "peak_concentration",
+      "label": "Peak concentration",
+      "value": 4.0,
+      "unit": "µg/m³",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "peak_distance",
+      "label": "Distance of the peak",
+      "value": 200.0,
+      "unit": "m",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "wind_speed",
+      "label": "Wind speed",
+      "value": null,
+      "unit": "m/s",
+      "source": null,
+      "reason": "not reported by the tool"
+     }
+    ],
+    "facts": [
+     {
+      "key": "stability_class",
+      "label": "Atmospheric stability class",
+      "text": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "weather_source",
+      "label": "Weather",
+      "text": null,
+      "reason": "not reported by the tool"
+     }
+    ],
+    "status": null,
+    "status_label": null,
+    "warnings": []
+   },
+   {
+    "id": "community:inhale",
+    "kind": "route",
+    "lane": "community",
+    "title": "Inhalation of outdoor air",
+    "headline": null,
+    "quantities": [],
+    "facts": [],
+    "status": null,
+    "status_label": null,
+    "warnings": []
+   },
+   {
+    "id": "community:band:0-4",
+    "kind": "receptor",
+    "lane": "community",
+    "title": "Residents aged 0-4",
+    "headline": "band_dose",
+    "quantities": [
+     {
+      "key": "band_dose",
+      "label": "Inhalation dose",
+      "value": 0.3,
+      "unit": "mg/(kg·day)",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "band_share",
+      "label": "Share of residents",
+      "value": 10.0,
+      "unit": "%",
+      "source": null,
+      "reason": null
+     }
+    ],
+    "facts": [
+     {
+      "key": "population_source",
+      "label": "Population",
+      "text": "synthetic census",
+      "reason": null
+     }
+    ],
+    "status": null,
+    "status_label": null,
+    "warnings": []
+   },
+   {
+    "id": "community:band:18-64",
+    "kind": "receptor",
+    "lane": "community",
+    "title": "Residents aged 18-64",
+    "headline": "band_dose",
+    "quantities": [
+     {
+      "key": "band_dose",
+      "label": "Inhalation dose",
+      "value": 0.1,
+      "unit": "mg/(kg·day)",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "band_share",
+      "label": "Share of residents",
+      "value": 90.0,
+      "unit": "%",
+      "source": null,
+      "reason": null
+     }
+    ],
+    "facts": [
+     {
+      "key": "population_source",
+      "label": "Population",
+      "text": "synthetic census",
+      "reason": null
+     }
+    ],
+    "status": null,
+    "status_label": null,
+    "warnings": []
+   },
+   {
+    "id": "community:endpoint",
+    "kind": "endpoint",
+    "lane": "community",
+    "title": "Hazard quotient and cancer risk",
+    "headline": "hq",
+    "quantities": [
+     {
+      "key": "hq",
+      "label": "Hazard quotient",
+      "value": 2.0,
+      "unit": "",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "cancer_risk",
+      "label": "Lifetime cancer risk",
+      "value": null,
+      "unit": "",
+      "source": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "residents",
+      "label": "Residents",
+      "value": 1000.0,
+      "unit": "",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "radius",
+      "label": "Radius",
+      "value": 2.0,
+      "unit": "km",
+      "source": null,
+      "reason": null
+     }
+    ],
+    "facts": [],
+    "status": "high",
+    "status_label": null,
+    "warnings": []
+   },
+   {
+    "id": "worker:release",
+    "kind": "release",
+    "lane": "worker",
+    "title": "OSHA monitoring evidence",
+    "headline": "monitoring_samples",
+    "quantities": [
+     {
+      "key": "monitoring_samples",
+      "label": "Samples",
+      "value": 40.0,
+      "unit": "",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "monitoring_nondetect",
+      "label": "Samples below detection",
+      "value": 5.0,
+      "unit": "",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "monitoring_median",
+      "label": "Median of the samples",
+      "value": 1.5,
+      "unit": "mg/m³",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "monitoring_p95",
+      "label": "95th percentile of the samples",
+      "value": 6.0,
+      "unit": "mg/m³",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "monitoring_first_year",
+      "label": "First year sampled",
+      "value": 2005.0,
+      "unit": "",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "monitoring_last_year",
+      "label": "Last year sampled",
+      "value": 2020.0,
+      "unit": "",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "fugitive_release",
+      "label": "Fugitive release (context, not used)",
+      "value": 1000.0,
+      "unit": "kg/yr",
+      "source": null,
+      "reason": null
+     }
+    ],
+    "facts": [
+     {
+      "key": "monitoring_level",
+      "label": "Industry level of the samples",
+      "text": "4-digit NAICS",
+      "reason": null
+     },
+     {
+      "key": "monitoring_source",
+      "label": "Monitoring source",
+      "text": "OSHA CEHD (synthetic)",
+      "reason": null
+     },
+     {
+      "key": "fugitive_statement",
+      "label": "Fugitive release (context)",
+      "text": "context only; no worker value uses it",
+      "reason": null
+     }
+    ],
+    "status": null,
+    "status_label": null,
+    "warnings": [
+     "a synthetic monitoring statement"
+    ]
+   },
+   {
+    "id": "worker:air",
+    "kind": "pathway",
+    "lane": "worker",
+    "title": "Workplace air",
+    "headline": "workplace_concentration:worst_case",
+    "quantities": [
+     {
+      "key": "workplace_concentration:worst_case",
+      "label": "Workplace concentration (worst case)",
+      "value": null,
+      "unit": "mg/m³",
+      "source": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "ventilation_rate:worst_case",
+      "label": "Ventilation rate (worst case)",
+      "value": null,
+      "unit": "m³/s",
+      "source": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "mixing_factor:worst_case",
+      "label": "Mixing factor (worst case)",
+      "value": null,
+      "unit": "",
+      "source": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "room_volume:worst_case",
+      "label": "Room volume (worst case)",
+      "value": null,
+      "unit": "m³",
+      "source": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "air_exchanges:worst_case",
+      "label": "Air changes (worst case)",
+      "value": null,
+      "unit": "1/h",
+      "source": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "workplace_concentration:baseline",
+      "label": "Workplace concentration (typical case)",
+      "value": null,
+      "unit": "mg/m³",
+      "source": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "ventilation_rate:baseline",
+      "label": "Ventilation rate (typical case)",
+      "value": null,
+      "unit": "m³/s",
+      "source": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "mixing_factor:baseline",
+      "label": "Mixing factor (typical case)",
+      "value": null,
+      "unit": "",
+      "source": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "room_volume:baseline",
+      "label": "Room volume (typical case)",
+      "value": null,
+      "unit": "m³",
+      "source": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "air_exchanges:baseline",
+      "label": "Air changes (typical case)",
+      "value": null,
+      "unit": "1/h",
+      "source": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "vapor_pressure",
+      "label": "Vapor pressure",
+      "value": 10.0,
+      "unit": "mmHg",
+      "source": "synthetic pressure",
+      "reason": null
+     },
+     {
+      "key": "molecular_weight",
+      "label": "Molecular weight",
+      "value": 100.0,
+      "unit": "g/mol",
+      "source": "synthetic source",
+      "reason": null
+     }
+    ],
+    "facts": [
+     {
+      "key": "setting",
+      "label": "Workplace setting",
+      "text": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "ventilation",
+      "label": "Ventilation scenario",
+      "text": "worst case: OSHA measured samples; typical case: OSHA measured samples",
+      "reason": null
+     },
+     {
+      "key": "volatility",
+      "label": "Volatility (against ChemSTEER's range)",
+      "text": "within the range",
+      "reason": null
+     }
+    ],
+    "status": null,
+    "status_label": null,
+    "warnings": []
+   },
+   {
+    "id": "worker:inhale",
+    "kind": "route",
+    "lane": "worker",
+    "title": "Inhalation of breathing-zone air",
+    "headline": null,
+    "quantities": [],
+    "facts": [],
+    "status": null,
+    "status_label": null,
+    "warnings": []
+   },
+   {
+    "id": "worker:receptor",
+    "kind": "receptor",
+    "lane": "worker",
+    "title": "Shift worker, 8-hour average",
+    "headline": "twa:worst_case",
+    "quantities": [
+     {
+      "key": "twa:worst_case",
+      "label": "8-hour TWA (worst case)",
+      "value": 6.0,
+      "unit": "mg/m³",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "activity_hours",
+      "label": "Hours on the activity",
+      "value": null,
+      "unit": "h/day",
+      "source": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "operating_days",
+      "label": "Operating days",
+      "value": 250.0,
+      "unit": "days/yr",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "hours_per_day",
+      "label": "Hours per day",
+      "value": 16.0,
+      "unit": "h/day",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "operating_hours",
+      "label": "Operating hours",
+      "value": null,
+      "unit": "h/yr",
+      "source": null,
+      "reason": "not reported by the tool"
+     }
+    ],
+    "facts": [
+     {
+      "key": "schedule_source",
+      "label": "Operating schedule",
+      "text": null,
+      "reason": "not reported by the tool"
+     },
+     {
+      "key": "assumptions",
+      "label": "Assumptions",
+      "text": "a well-mixed zone",
+      "reason": null
+     }
+    ],
+    "status": null,
+    "status_label": null,
+    "warnings": []
+   },
+   {
+    "id": "worker:endpoint",
+    "kind": "endpoint",
+    "lane": "worker",
+    "title": "Ratio to the occupational limit",
+    "headline": "oel_ratio:worst_case",
+    "quantities": [
+     {
+      "key": "oel",
+      "label": "Occupational limit",
+      "value": 5.0,
+      "unit": "mg/m³",
+      "source": "OSHA PEL-TWA (PubChem)",
+      "reason": null
+     },
+     {
+      "key": "oel_ratio:worst_case",
+      "label": "Ratio to the limit (worst case)",
+      "value": 1.2,
+      "unit": "",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "twa:worst_case",
+      "label": "8-hour TWA (worst case)",
+      "value": 6.0,
+      "unit": "mg/m³",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "hq:worst_case",
+      "label": "Hazard quotient (worst case)",
+      "value": 0.2,
+      "unit": "",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "cancer_risk:worst_case",
+      "label": "Lifetime cancer risk (worst case)",
+      "value": 3e-06,
+      "unit": "",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "oel_ratio:baseline",
+      "label": "Ratio to the limit (typical case)",
+      "value": 0.4,
+      "unit": "",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "twa:baseline",
+      "label": "8-hour TWA (typical case)",
+      "value": 2.0,
+      "unit": "mg/m³",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "hq:baseline",
+      "label": "Hazard quotient (typical case)",
+      "value": 0.2,
+      "unit": "",
+      "source": null,
+      "reason": null
+     },
+     {
+      "key": "cancer_risk:baseline",
+      "label": "Lifetime cancer risk (typical case)",
+      "value": 3e-06,
+      "unit": "",
+      "source": null,
+      "reason": null
+     }
+    ],
+    "facts": [
+     {
+      "key": "benchmark",
+      "label": "Occupational limit source",
+      "text": "OSHA PEL-TWA (PubChem)",
+      "reason": null
+     },
+     {
+      "key": "tier",
+      "label": "Screening band",
+      "text": "High",
+      "reason": null
+     }
+    ],
+    "status": "high",
+    "status_label": "High",
+    "warnings": []
+   }
+  ],
+  "edges": [
+   {
+    "id": "source->community:stack:1",
+    "source": "source",
+    "target": "community:stack:1",
+    "lane": "community",
+    "quantity": null
+   },
+   {
+    "id": "source->community:stack:2",
+    "source": "source",
+    "target": "community:stack:2",
+    "lane": "community",
+    "quantity": null
+   },
+   {
+    "id": "community:stack:1->community:air",
+    "source": "community:stack:1",
+    "target": "community:air",
+    "lane": "community",
+    "quantity": {
+     "key": "stack_peak",
+     "label": "Peak concentration",
+     "value": 3.0,
+     "unit": "µg/m³",
+     "source": null,
+     "reason": null
+    }
+   },
+   {
+    "id": "community:stack:2->community:air",
+    "source": "community:stack:2",
+    "target": "community:air",
+    "lane": "community",
+    "quantity": {
+     "key": "stack_peak",
+     "label": "Peak concentration",
+     "value": 4.0,
+     "unit": "µg/m³",
+     "source": null,
+     "reason": null
+    }
+   },
+   {
+    "id": "community:air->community:inhale",
+    "source": "community:air",
+    "target": "community:inhale",
+    "lane": "community",
+    "quantity": null
+   },
+   {
+    "id": "community:inhale->community:band:0-4",
+    "source": "community:inhale",
+    "target": "community:band:0-4",
+    "lane": "community",
+    "quantity": {
+     "key": "band_dose",
+     "label": "Inhalation dose",
+     "value": 0.3,
+     "unit": "mg/(kg·day)",
+     "source": null,
+     "reason": null
+    }
+   },
+   {
+    "id": "community:inhale->community:band:18-64",
+    "source": "community:inhale",
+    "target": "community:band:18-64",
+    "lane": "community",
+    "quantity": {
+     "key": "band_dose",
+     "label": "Inhalation dose",
+     "value": 0.1,
+     "unit": "mg/(kg·day)",
+     "source": null,
+     "reason": null
+    }
+   },
+   {
+    "id": "community:band:0-4->community:endpoint",
+    "source": "community:band:0-4",
+    "target": "community:endpoint",
+    "lane": "community",
+    "quantity": null
+   },
+   {
+    "id": "community:band:18-64->community:endpoint",
+    "source": "community:band:18-64",
+    "target": "community:endpoint",
+    "lane": "community",
+    "quantity": null
+   },
+   {
+    "id": "source->worker:release",
+    "source": "source",
+    "target": "worker:release",
+    "lane": "worker",
+    "quantity": null
+   },
+   {
+    "id": "worker:release->worker:air",
+    "source": "worker:release",
+    "target": "worker:air",
+    "lane": "worker",
+    "quantity": {
+     "key": "workplace_concentration:worst_case",
+     "label": "Workplace concentration (worst case)",
+     "value": null,
+     "unit": "mg/m³",
+     "source": null,
+     "reason": "not reported by the tool"
+    }
+   },
+   {
+    "id": "worker:air->worker:inhale",
+    "source": "worker:air",
+    "target": "worker:inhale",
+    "lane": "worker",
+    "quantity": null
+   },
+   {
+    "id": "worker:inhale->worker:receptor",
+    "source": "worker:inhale",
+    "target": "worker:receptor",
+    "lane": "worker",
+    "quantity": {
+     "key": "twa:worst_case",
+     "label": "8-hour TWA (worst case)",
+     "value": 6.0,
+     "unit": "mg/m³",
+     "source": null,
+     "reason": null
+    }
+   },
+   {
+    "id": "worker:receptor->worker:endpoint",
+    "source": "worker:receptor",
+    "target": "worker:endpoint",
+    "lane": "worker",
+    "quantity": {
+     "key": "oel_ratio:worst_case",
+     "label": "Ratio to the limit (worst case)",
+     "value": 1.2,
+     "unit": "",
+     "source": null,
+     "reason": null
+    }
    }
   ]
  }

@@ -197,8 +197,8 @@ release_path = "/tri_reporting_form/tri_chem_info/tri_facility/tri_release_qty/t
 # Media to keep as facilities; one query per medium.
 media = ["AIR STACK"]
 # Fugitive air releases evaporate inside or beside the plant and mainly expose its workers. They are
-# read in one more query and folded into the stack record of the same facility (never listed as a
-# facility of their own); the worker screening uses them.
+# read in one more query and put on the stack record of the same facility; a facility with only a
+# fugitive release is a worker-only facility (see `max_worker_only`), never a stack source.
 fugitive_medium = "AIR FUG"
 # A request is ~11 s for 1000 rows (~5 MB); per-request overhead dominates, so pages are large.
 page_size = 1000
@@ -216,6 +216,10 @@ publication_lag_years = 1
 # first (a widely reported chemical has over a thousand, far too many for the model to rank by
 # eye); the complete result goes to the interface, and the model is told how many were left out.
 max_listed = 25
+# Facilities with a fugitive air release and no stack release are worker-only: they get a worker
+# result and no community one. At most this many are kept (largest fugitive release first); the
+# result says how many were left out. The stack facilities are not affected by it.
+max_worker_only = 25
 # TRI sends longitudes as positive numbers for the western hemisphere; these states and
 # territories lie east of Greenwich, so their longitudes stay positive.
 east_longitude_states = ["GU", "MP"]
@@ -1195,17 +1199,6 @@ south = 24.5
 east = -66.9
 north = 49.5
 
-# Status thresholds for the summary ribbon and markers.
-# HQ: `hq_concern` 1.0 is EPA's non-cancer threshold of concern (exposure equals the RfC);
-# `hq_near_lower` is a display choice for the amber "near" band, not a regulatory value.
-# Cancer risk: EPA's acceptable lifetime-risk range is 1e-6 to 1e-4; below it is "below",
-# inside it "near", above it "above".
-[ui.thresholds]
-hq_concern = 1.0
-hq_near_lower = 0.5
-cancer_lower = 1e-6
-cancer_upper = 1e-4
-
 # Display: significant digits for metrics, the viewport width (px) below which the two panes
 # stack, and the onboarding suggestion chips.
 [ui.display]
@@ -1270,7 +1263,7 @@ source = "Source facility"
 
 [ui.exposure_graph.lanes]
 community = "Community, outdoor air"
-worker = "Worker, indoor air"
+worker = "Worker, workplace air"
 
 [ui.exposure_graph.nodes]
 stack = "Stack {number}"
@@ -1280,8 +1273,9 @@ outdoor_inhalation = "Inhalation of outdoor air"
 age_band = "Residents aged {band}"
 residents = "Residents"
 community_endpoint = "Hazard quotient and cancer risk"
-fugitive_release = "Fugitive release"
-indoor_air = "Indoor workplace air"
+worker_activity = "Driving worker activity"
+monitoring_evidence = "OSHA monitoring evidence"
+workplace_air = "Workplace air"
 worker_inhalation = "Inhalation of breathing-zone air"
 shift_worker = "Shift worker, 8-hour average"
 worker_endpoint = "Ratio to the occupational limit"
@@ -1302,20 +1296,52 @@ ventilation = "Ventilation scenario"
 benchmark = "Occupational limit source"
 schedule_source = "Operating schedule"
 assumptions = "Assumptions"
-tier = "Risk tier"
+tier = "Screening band"
+activity = "Activity"
+setting = "Workplace setting"
+saturation = "Saturation cap"
+volatility = "Volatility (against ChemSTEER's range)"
+evidence = "Evidence"
+monitoring_level = "Industry level of the samples"
+monitoring_source = "Monitoring source"
+fugitive_statement = "Fugitive release (context)"
 
 [ui.exposure_graph.tiers]
-acceptable = "Acceptable"
-elevated = "Elevated"
-exceedance = "Exceedance"
+low = "Low"
+moderate = "Moderate"
+high = "High"
+
+[ui.exposure_graph.settings]
+indoor = "Indoor"
+outdoor = "Outdoor"
+
+[ui.exposure_graph.estimators]
+mass_balance = "well-mixed room (mass balance)"
+two_zone = "two-zone room"
+ecetoc_tra = "ECETOC TRA band"
+monitoring = "OSHA measured samples"
+
+[ui.exposure_graph.volatilities]
+below = "below the range"
+within = "within the range"
+above = "above the range"
+
+[ui.exposure_graph.evidences]
+monitoring = "OSHA measured air samples"
+activity_model = "ChemSTEER activity model"
+
+[ui.exposure_graph.flags]
+capped = "capped at the saturation concentration"
+not_capped = "not capped by saturation"
 
 [ui.exposure_graph.variants]
 worst_case = "worst case"
-baseline = "baseline ventilation"
+baseline = "typical case"
 
 [ui.exposure_graph.reasons]
 community = "no community result yet"
 worker = "no occupational result yet"
+worker_only = "the facility reports no stack release"
 missing = "not reported by the tool"
 
 # label and unit of each quantity; an empty unit means unitless, and the annual release takes its
@@ -1338,7 +1364,7 @@ band_share = { label = "Share of residents", unit = "%" }
 band_dose = { label = "Inhalation dose", unit = "mg/(kg·day)" }
 hq = { label = "Hazard quotient", unit = "" }
 cancer_risk = { label = "Lifetime cancer risk", unit = "" }
-fugitive_release = { label = "Fugitive release", unit = "kg/yr" }
+fugitive_release = { label = "Fugitive release (context, not used)", unit = "kg/yr" }
 ventilation_rate = { label = "Ventilation rate", unit = "m³/s" }
 mixing_factor = { label = "Mixing factor", unit = "" }
 workplace_concentration = { label = "Workplace concentration", unit = "mg/m³" }
@@ -1348,6 +1374,17 @@ oel_ratio = { label = "Ratio to the limit", unit = "" }
 operating_days = { label = "Operating days", unit = "days/yr" }
 hours_per_day = { label = "Hours per day", unit = "h/day" }
 vapor_pressure = { label = "Vapor pressure", unit = "mmHg" }
+molecular_weight = { label = "Molecular weight", unit = "g/mol" }
+generation_rate = { label = "Vapor generation rate", unit = "g/s" }
+room_volume = { label = "Room volume", unit = "m³" }
+air_exchanges = { label = "Air changes", unit = "1/h" }
+activity_hours = { label = "Hours on the activity", unit = "h/day" }
+monitoring_samples = { label = "Samples", unit = "" }
+monitoring_nondetect = { label = "Samples below detection", unit = "" }
+monitoring_median = { label = "Median of the samples", unit = "mg/m³" }
+monitoring_p95 = { label = "95th percentile of the samples", unit = "mg/m³" }
+monitoring_first_year = { label = "First year sampled", unit = "" }
+monitoring_last_year = { label = "Last year sampled", unit = "" }
 
 # Token prices per chat model, USD per million tokens, with the date and page they were taken
 # from. A model without an entry is shown as "unpriced"; never fill these from memory.
@@ -1482,6 +1519,19 @@ rfc = [1e-8, 1000.0]
 sf = [1e-6, 1000.0]
 iur = [1e-9, 1000.0]
 
+# Screening bands, one set of boundaries for both pathways (community and worker): "moderate" from
+# the lower boundary, "high" from the upper one; a value on a boundary goes to the higher band.
+# HQ and OEL ratio are unitless (1.0 is the reference level, 0.1 a tenth of it); cancer risk is a
+# lifetime probability (1e-6 to 1e-4 is EPA's risk range). The bands are screening priority for
+# follow-up, not a finding that a limit is exceeded or that exposure is acceptable.
+[risk_bands]
+hq_lower = 0.1
+hq_upper = 1.0
+cancer_risk_lower = 1e-6
+cancer_risk_upper = 1e-4
+oel_ratio_lower = 0.1
+oel_ratio_upper = 1.0
+
 # Worker (occupational) screening: the EPA ChemSTEER mass-balance box model and RAGS Part F style
 # worker dosimetry (models/exposure/occupational.py). Ventilation is a screening default for a
 # manufacturing room, not the plant's; the worst case is an enclosed zone. A worker breathes
@@ -1493,28 +1543,189 @@ worker_days_per_year = 250.0
 tenure_years = 40.0
 lifetime_years = 78.0
 twa_hours = 8.0
-# Vapor pressure at or below which a large fugitive release into workplace air is less
-# plausible; used only for a warning, never in an equation.
-low_volatility_mmhg = 0.001
 
-# Risk tiers: "exceedance" above `exceedance_*`, otherwise "elevated" above `elevated_*`.
-[occupational.thresholds]
-exceedance_ratio = 1.0
-elevated_ratio = 0.1
-exceedance_hq = 1.0
-elevated_hq = 0.1
-exceedance_cancer_risk = 1e-4
-elevated_cancer_risk = 1e-6
+# Conditions of the vapor models (EPA ChemSTEER User Guide, May 2015): air at 25 degC and 1 atm, the
+# pure chemical (vapor pressure correction factor X = 1, since TRI does not report the chemical's
+# fraction in the material handled), and the molar volume for ppm <-> mg/m^3 and for saturation.
+temperature_k = 298.0
+pressure_atm = 1.0
+molar_volume_l_per_mol = 24.45
+correction_factor = 1.0
 
-[occupational.ventilation.baseline]
-label = "Baseline manufacturing ventilation"
+# ChemSTEER's preferred range of vapor pressure for its vapor models ("AVPlow" 0.001 torr and
+# "AVPhigh" 35 torr). Below it no vapor estimate is made (particulate is not modelled); above it a
+# loading activity is computed as usual and an evaporation activity takes the ECETOC TRA estimate
+# when one exists, else the capped model value with a warning.
+[occupational.volatility]
+low_torr = 0.001
+high_torr = 35.0
+
+# Mass-balance ventilation (EPA/OPPT Mass Balance Inhalation Model, Table B-2a). Indoor: Q 3,000 and
+# 500 ft^3/min with k 0.5 and 0.1. Outdoor (AP-42 loading of tank trucks and rail cars, and the mass
+# transfer coefficient model): Q = 26,400 x (60 x vz / 5,280) ft^3/min with k 0.5 and 0.1, vz in
+# ft/min; the baseline uses the average wind of 792 ft/min (9 mph, Q 237,600) and the worst case
+# the activity's own air speed, or 440 ft/min when its model has none.
+[occupational.ventilation.indoor.baseline]
+label = "Indoor, typical ventilation (ChemSTEER)"
 rate_ft3_per_min = 3000.0
 mixing_factor = 0.5
 
-[occupational.ventilation.worst_case]
-label = "Worst case, enclosed zone"
+[occupational.ventilation.indoor.worst_case]
+label = "Indoor, worst-case ventilation (ChemSTEER)"
 rate_ft3_per_min = 500.0
 mixing_factor = 0.1
+
+[occupational.ventilation.outdoor]
+coefficient_ft3_per_min = 26400.0
+baseline_air_speed_ft_per_min = 792.0
+default_air_speed_ft_per_min = 440.0
+baseline_mixing_factor = 0.5
+worst_case_mixing_factor = 0.1
+
+# Two-zone (near-field/far-field) model of indoor evaporation activities (EPA/OPPT Near-Field/Far-
+# Field Inhalation Exposure Model, Tables B-11a to B-11c). The worker is in the near field. The
+# baseline is the high-end room (2,000 m^3, 15 air changes/h), the worst case the low-end room
+# (300 m^3, 2/h).
+[occupational.two_zone]
+near_field_length_m = 3.05
+near_field_width_m = 3.05
+near_field_height_m = 1.83
+near_field_air_speed_m_per_h = 360.0
+
+[occupational.two_zone.baseline]
+volume_m3 = 2000.0
+air_exchange_per_h = 15.0
+
+[occupational.two_zone.worst_case]
+volume_m3 = 300.0
+air_exchange_per_h = 2.0
+
+# Worker activities (EPA ChemSTEER User Guide defaults). `model`: "ap42_loading" (Table A-2/A-2a),
+# "penetration" (Table A-4/A-4b, air speed <= 100 ft/min) or "mass_transfer" (Table A-3/A-3b,
+# > 100 ft/min). `setting`: "indoor" (mass balance, or the two-zone model for an evaporation model)
+# or "outdoor". A container activity's hours depend on a throughput TRI does not report, so it is
+# taken as the full shift (8 h), stated as an assumption. Unloading uses the parameters of the
+# matching loading (ChemSTEER: as one container unloads, another is being loaded). Values given as
+# [typical, worst case]. `proc` names the ECETOC TRA process category, only where its published
+# description covers the activity (TR 114: PROC 8a covers sampling and cleaning of equipment).
+[occupational.activities.drum_loading]
+label = "Filling drums (55 gal)"
+model = "ap42_loading"
+setting = "indoor"
+hours = 8.0
+container_gallons = 55.0
+fill_rate_per_hour = 20.0
+saturation_factor = [0.5, 1.0]
+
+[occupational.activities.drum_unloading]
+label = "Emptying drums (55 gal) into process equipment"
+model = "ap42_loading"
+setting = "indoor"
+hours = 8.0
+container_gallons = 55.0
+fill_rate_per_hour = 20.0
+saturation_factor = [0.5, 1.0]
+
+[occupational.activities.tank_truck_loading]
+label = "Loading tank trucks (5,000 gal)"
+model = "ap42_loading"
+setting = "outdoor"
+hours = 8.0
+container_gallons = 5000.0
+fill_rate_per_hour = 2.0
+saturation_factor = [1.0, 1.0]
+
+[occupational.activities.tank_truck_unloading]
+label = "Unloading tank trucks (5,000 gal)"
+model = "ap42_loading"
+setting = "outdoor"
+hours = 8.0
+container_gallons = 5000.0
+fill_rate_per_hour = 2.0
+saturation_factor = [1.0, 1.0]
+
+[occupational.activities.rail_car_loading]
+label = "Loading rail cars (20,000 gal)"
+model = "ap42_loading"
+setting = "outdoor"
+hours = 8.0
+container_gallons = 20000.0
+fill_rate_per_hour = 1.0
+saturation_factor = [1.0, 1.0]
+
+[occupational.activities.rail_car_unloading]
+label = "Unloading rail cars (20,000 gal)"
+model = "ap42_loading"
+setting = "outdoor"
+hours = 8.0
+container_gallons = 20000.0
+fill_rate_per_hour = 1.0
+saturation_factor = [1.0, 1.0]
+
+[occupational.activities.liquid_sampling]
+label = "Sampling liquids"
+model = "penetration"
+setting = "indoor"
+hours = 1.0
+air_speed_ft_per_min = 100.0
+diameter_cm = [2.53, 10.0]
+proc = "8a"
+
+[occupational.activities.container_cleaning]
+label = "Cleaning liquid residue from drums"
+model = "penetration"
+setting = "indoor"
+hours = 8.0
+air_speed_ft_per_min = 100.0
+diameter_cm = [5.08, 5.08]
+
+[occupational.activities.equipment_cleaning]
+label = "Cleaning process equipment (multiple vessels)"
+model = "mass_transfer"
+setting = "outdoor"
+hours = 4.0
+air_speed_ft_per_min = 440.0
+diameter_cm = [92.0, 92.0]
+proc = "8a"
+
+# Fallback when a facility's industry has no generic scenario for a life cycle stage: ChemSTEER's
+# generic operation of that stage (User Guide, Operations tab: Manufacturing creates the chemical
+# and handles the product; Processing and Use handle the raw material, Processing also ships its
+# product). Which activities each operation includes is this project's screening assumption.
+[occupational.stage_activities]
+Manufacturing = ["drum_loading", "tank_truck_loading", "liquid_sampling", "equipment_cleaning"]
+Processing = [
+    "drum_unloading",
+    "tank_truck_unloading",
+    "container_cleaning",
+    "liquid_sampling",
+    "equipment_cleaning",
+    "drum_loading",
+]
+"Industrial use" = [
+    "drum_unloading",
+    "tank_truck_unloading",
+    "container_cleaning",
+    "liquid_sampling",
+    "equipment_cleaning",
+]
+
+# Crosswalk of CDR industrial sector and TSCA life cycle stage to the EPA generic scenario or OECD
+# emission scenario document that describes the worker activities (curated for this project; every
+# row names its document and pages). A row adds activities to the ChemSTEER generic operation of
+# its stage ([occupational.stage_activities]); it never removes one.
+[generic_scenarios]
+crosswalk_path = "data/cdr_sector_generic_scenarios.csv"
+
+# ECETOC TRA tier-1 worker inhalation estimates for evaporation activities above the volatility
+# range (data/ecetoc_tra_worker_inhalation.csv, from ECETOC TR 114). Bands by vapor pressure at
+# the operating temperature, Pa: very low below 0.01 (TR 114, 2.2.4), low to 500, moderate to
+# 10,000, high above 10,000 (TR 114, 2.2.5; the 500 Pa limit as tabulated in ESIG's TRA key data).
+[ecetoc_tra]
+table_path = "data/ecetoc_tra_worker_inhalation.csv"
+very_low_below_pa = 0.01
+low_up_to_pa = 500.0
+moderate_up_to_pa = 10000.0
 
 # CDR industrial sector (IS1 to IS48) of a facility, from its primary NAICS code
 # (tools/emissions/helpers/inventory/sector.py). The file is EPA's own crosswalk, Table 5 of the
@@ -1614,29 +1825,77 @@ unit = "days/yr"
 group = "receptor_model"
 label = "Exposure duration"
 unit = "yr"
-[scenario.factors.fugitive_release]
+[scenario.factors.worker_evidence]
+group = "source"
+label = "Evidence"
+unit = ""
+[scenario.factors.worker_activity]
+group = "source"
+label = "Driving activity"
+unit = ""
+[scenario.factors.activity_hours]
 group = "release"
-label = "Fugitive air release"
-unit = "kg/yr"
-[scenario.factors.worker_operating_days]
-group = "release"
-label = "Operating days"
-unit = "days/yr"
-[scenario.factors.shift_hours]
-group = "release"
-label = "Hours per operating day"
+label = "Hours per day of the activity"
 unit = "h/day"
+[scenario.factors.generation_model]
+group = "release"
+label = "Vapor generation model"
+unit = ""
+[scenario.factors.generation_rate]
+group = "release"
+label = "Vapor generation rate"
+unit = "g/s"
+[scenario.factors.vapor_pressure]
+group = "release"
+label = "Vapor pressure"
+unit = "mmHg"
+[scenario.factors.molecular_weight]
+group = "release"
+label = "Molecular weight"
+unit = "g/mol"
+[scenario.factors.monitoring_level]
+group = "source"
+label = "Industry level of the samples"
+unit = ""
+[scenario.factors.monitoring_samples]
+group = "source"
+label = "Samples"
+unit = ""
+[scenario.factors.monitoring_nondetects]
+group = "source"
+label = "Non-detects"
+unit = ""
+[scenario.factors.monitoring_years]
+group = "source"
+label = "Years sampled"
+unit = ""
+[scenario.factors.monitoring_p95]
+group = "release"
+label = "95th percentile of the samples"
+unit = "mg/m^3"
 [scenario.factors.ventilation]
 group = "conditions"
 label = "Room ventilation"
 unit = "m^3/s"
+[scenario.factors.room_volume]
+group = "conditions"
+label = "Far-field room volume"
+unit = "m^3"
+[scenario.factors.air_exchange]
+group = "conditions"
+label = "Far-field air changes"
+unit = "1/h"
+[scenario.factors.saturation_cap]
+group = "conditions"
+label = "Saturation cap"
+unit = ""
 [scenario.factors.mixing_factor]
 group = "conditions"
 label = "Mixing factor"
 unit = ""
 [scenario.factors.workplace_concentration]
 group = "conditions"
-label = "Workplace concentration while operating"
+label = "Workplace concentration during the activity"
 unit = "mg/m^3"
 [scenario.factors.twa_concentration]
 group = "conditions"
@@ -1654,3 +1913,35 @@ unit = "days/yr"
 group = "receptor_model"
 label = "Years of work"
 unit = "yr"
+
+# OSHA Chemical Exposure Health Data (CEHD): personal air samples taken at OSHA inspections.
+# There is no API; OSHA publishes one ZIP per year. `scripts/build_osha_cehd_summary.py` downloads
+# them (the OSHA site refuses clients without a browser-like User-Agent), keeps personal,
+# non-blank samples whose unit is one of `units`, averages the samples of one sampling number and
+# substance weighted by sampling time, and writes `summary_path` (per IMIS substance code, NAICS
+# prefix and unit: n, non-detects, median, 95th percentile, years). The same script builds
+# `crosswalk_path` (IMIS code -> CAS number) from OSHA's own Occupational Chemical Database
+# listing (`crosswalk_url_pattern`, one page per `page`), keeping only the pairs OSHA states.
+# Nothing is downloaded while an assessment runs. The window is the last ten published years
+# (2016 to 2025); all ten ZIPs hold one CSV (delimiter, quoting and BOM vary by year; the
+# script detects them). Lookup tries `naics_prefix_lengths` in order, down to the last one, and
+# uses the first level with at least `min_values` values. A ppm result is converted with
+# mg/m^3 = ppm * molecular weight / molar_volume_l_per_mol (24.45 L/mol: 25 degC, 1 atm).
+[osha_cehd]
+url_pattern = "https://www.osha.gov/sites/default/files/sample_data_{year}.zip"
+crosswalk_url_pattern = "https://www.osha.gov/chemicaldata/search?page={page}"
+user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+timeout_s = 120
+years = [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]
+naics_prefix_lengths = [6, 4, 3]
+min_values = 5
+molar_volume_l_per_mol = 24.45
+summary_path = "data/osha_cehd_summary.csv"
+crosswalk_path = "data/osha_imis_cas.csv"
+# Qualifiers that mark a non-detect; a qualifier containing the blank marker is a blank sample.
+nondetect_qualifiers = ["ND"]
+blank_marker = "BLK"
+# OSHA unit code -> the unit it means; every other code (percent, fibres, bulk units) is skipped.
+[osha_cehd.units]
+M = "mg/m^3"
+P = "ppm"

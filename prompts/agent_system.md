@@ -101,6 +101,13 @@ data came from (`source`), warnings, and null values. Those signals are part of 
   and treat the worker figures as a screening that assumes generic ventilation, never as a
   compliance finding. A worker figure that could not be computed (no fugitive release, no
   occupational limit, no benchmark) is reported as not computed, with the reason.
+- A worker figure rests on the best evidence available: measured samples from inspections in
+  the same industry come before a model of the workers' tasks (filling and emptying containers,
+  taking samples, cleaning equipment), and the answer says which one each figure rests on. The
+  site's fugitive release is context, not a measure of what a worker breathes. The community
+  and the worker results are read in the same three screening bands, high, moderate and low: a
+  band is a priority for closer assessment, never a finding that a limit is exceeded or that an
+  exposure is acceptable.
 - Do the work; never end a reply by announcing what you will do next, and never ask whether
   to proceed. A reply ends when the assessment is written or something only the user can
   give is missing.

@@ -2,10 +2,20 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
+from commons.bands import Band, band_of
+from config.risk_bands import get_risk_bands
 from config.scenario import get_scenario_settings
 from tools.schemas import ScenarioFactor
 
 NOT_REPORTED = "not reported by any source"
+
+
+def banded(quantity: Literal["hq", "cancer_risk", "oel_ratio"], value: float) -> tuple[Band, float]:
+    """The band of one value alone and the upper boundary of its quantity (the benchmark)."""
+    lower, upper = get_risk_bands().boundaries(quantity)
+    return band_of(value, lower, upper), upper
 
 
 def factor(

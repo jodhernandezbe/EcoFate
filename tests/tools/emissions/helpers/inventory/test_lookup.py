@@ -51,7 +51,8 @@ def _lookup(
     settings: TriSettings = SETTINGS,
     year: int = YEAR,
 ) -> list[EmissionRecord]:
-    return lookup_emissions(CAS, settings, EMISSIONS, get_unit_settings().aliases, fetcher, year)
+    found = lookup_emissions(CAS, settings, EMISSIONS, get_unit_settings().aliases, fetcher, year)
+    return found.stack
 
 
 def test_rows_across_pages_are_reduced() -> None:
@@ -111,7 +112,7 @@ def test_hours_resolver_reaches_every_record() -> None:
     records = lookup_emissions(
         CAS, SETTINGS, EMISSIONS, get_unit_settings().aliases,
         _fetcher(_serve([ROWS[:4], ROWS[4:]])), YEAR, hours_for=resolve,
-    )  # fmt: skip
+    ).stack  # fmt: skip
     assert records and {r["operating_hours_per_year"] for r in records} == {4380.0}
     assert all(r["operating_hours_source"].startswith("from ") for r in records)
 
@@ -130,7 +131,7 @@ def _with_conditions(rows: list[dict[str, object]]) -> list[EmissionRecord]:
     return lookup_emissions(
         CAS, SETTINGS, EMISSIONS, get_unit_settings().aliases,
         _fetcher(_serve([rows[:4], rows[4:]])), YEAR, conditions=_mapper(),
-    )  # fmt: skip
+    ).stack  # fmt: skip
 
 
 def test_activities_become_conditions_of_use() -> None:

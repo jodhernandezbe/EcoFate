@@ -73,10 +73,7 @@ def _allowed(state: WorkspaceState) -> set[str]:
     printed: list[str] = [str(n) for n in range(1, 9)]
     for leaf in [
         *_leaves(state.model_dump()),
-        t.hq_concern,
-        t.hq_near_lower,
-        t.cancer_lower,
-        t.cancer_upper,
+        *vars(t).values(),
         *_exposure_factors(),
     ]:
         if isinstance(leaf, bool) or leaf is None:

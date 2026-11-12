@@ -41,7 +41,7 @@ describe("ScenarioView", () => {
         digits={3}
       />,
     );
-    expect(screen.getByText("at or above threshold")).toBeInTheDocument();
+    expect(screen.getByText("High")).toBeInTheDocument();
     expect(within(screen.getByRole("region", { name: "Source" })).getByText("30 m")).toBeInTheDocument();
     expect(within(screen.getByRole("region", { name: "Conditions" })).getByText("3 m/s")).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Release" })).toBeNull();
@@ -81,6 +81,11 @@ describe("ScenarioView", () => {
     render(<ScenarioView scenario={scenario({ receptors: [workers] })} digits={3} />);
     expect(screen.getByText("Workers")).toBeInTheDocument();
     expect(screen.queryByText(/from the facility/)).toBeNull();
+  });
+
+  it("says not reported for a level from an old saved workspace", () => {
+    render(<ScenarioView scenario={scenario({ tier: "at or above threshold" })} digits={3} />);
+    expect(screen.getByText("not reported")).toBeInTheDocument();
   });
 
   it("says no level was reported rather than inventing one", () => {

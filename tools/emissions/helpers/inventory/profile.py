@@ -10,13 +10,13 @@ from config.cdr_sector import CdrSectorSettings
 from config.plant_hours import PlantHoursSettings
 from tools.emissions.helpers.inventory.schedule import Schedule, schedule_from_hours
 from tools.emissions.helpers.inventory.sector import SectorTable, sector_for
-from tools.schemas import EmissionRecord, OperationalProfile
+from tools.schemas import FacilityRecord, OperationalProfile
 
 _DERIVED = "days per week derived from the hours per week and a configured working day"
 
 
 def _schedule(
-    record: EmissionRecord,
+    record: FacilityRecord,
     settings: PlantHoursSettings,
 ) -> tuple[Schedule | None, str | None]:
     try:
@@ -25,7 +25,7 @@ def _schedule(
         return None, f"no schedule: {error}"
 
 
-def _categories(record: EmissionRecord) -> list[str]:
+def _categories(record: FacilityRecord) -> list[str]:
     seen: dict[str, None] = {}
     for use in record["conditions_of_use"]:
         seen.setdefault(use["cou_category"])
@@ -33,7 +33,7 @@ def _categories(record: EmissionRecord) -> list[str]:
 
 
 def build_profile(
-    record: EmissionRecord,
+    record: FacilityRecord,
     plant: PlantHoursSettings,
     sector_settings: CdrSectorSettings,
     table: SectorTable,

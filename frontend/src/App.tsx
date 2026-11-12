@@ -106,8 +106,7 @@ function Workspace({ user, onSignOut, onGone }: WorkspaceProps) {
           <OverviewPanel
             workspace={store.workspace}
             digits={digits}
-            thresholds={config?.thresholds}
-            workerThresholds={config?.worker_thresholds}
+            bands={config?.bands}
             chain={<ExposureChainTab facility={focus.facility} workspace={store.workspace} digits={digits} onPick={focus.onPin} />}
           />
         }

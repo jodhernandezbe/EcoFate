@@ -14,7 +14,7 @@ from types import MappingProxyType
 
 from config.industry import IndustrySettings
 from tools.digits import digit_string
-from tools.schemas import EmissionRecord
+from tools.schemas import FacilityRecord
 
 
 @lru_cache(maxsize=4)
@@ -48,19 +48,19 @@ def naics_titles(settings: IndustrySettings) -> Mapping[str, str]:
     )
 
 
-def with_titles(
-    records: Sequence[EmissionRecord],
+def with_titles[R: FacilityRecord](
+    records: Sequence[R],
     titles: Mapping[str, str],
-) -> list[EmissionRecord]:
+) -> list[R]:
     """Copies of ``records`` with ``naics_title`` filled from ``titles`` where the code is known.
 
     A record without a code, or with one the table lacks (a shorter code, a vintage not
     listed), keeps a null title.
     """
-    out: list[EmissionRecord] = []
+    out: list[R] = []
     for record in records:
         code = record["naics_code"]
-        title = titles.get(code) if code is not None else None
-        titled: EmissionRecord = {**record, "naics_title": title}
+        titled = record.copy()
+        titled["naics_title"] = titles.get(code) if code is not None else None
         out.append(titled)
     return out

@@ -10,11 +10,12 @@ import pytest
 from langchain_core.messages import ToolMessage
 
 from tests.tools.assessment.factories import SETTINGS, FakeSteps, match, record, stack
+from tests.tools.emissions.records import worker_only_facility
 from tests.tools.informatics.read_across_fakes import category_index
 from tools.assessment import facilities
 from tools.assessment.facilities import assess_facilities, run_assessment
-from tools.emissions.helpers.inventory.listing import rank_and_cap
-from tools.schemas import EmissionRecord, Toxicity
+from tools.emissions.helpers.inventory.listing import rank_and_cap, with_worker_only
+from tools.schemas import EmissionRecord, Toxicity, WorkerOnlyFacility
 
 # The fake unit-rate bound is HQ 1/3 (the generic 3 m stack), so a bound reaches HQ 0.1 from
 # 0.3 g/s. With its own stack the fake HQ is rate / height.
@@ -88,6 +89,19 @@ def test_every_facility_is_screened_and_the_riskiest_are_assessed_first(
     # Nothing is requested for a facility screened out at the bound.
     assert ("nei", ("TINY", ("9",))) not in _offline.calls
     assert view["note"] is not None and "All 5 facilities were screened" in view["note"]
+
+
+def test_screened_out_facilities_still_get_their_worker_screening() -> None:
+    view, artifact = _run()
+    for out in artifact["screened_out"]:
+        assert "occupational_exposure" in out and "operational_profile" in out
+    screening = view["screening"]
+    assert screening is not None
+    assert sum(screening["screened_out_worker_bands"].values()) == 2
+    top = screening["screened_out_worker_highest"]
+    assert top is not None and top["frs_id"] in {"TINY", "TALL_ONLY"}
+    assert all("worker_risk_tier" in o for o in screening["closest_screened_out"])
+    assert view["note"] is not None and "does not apply to workers" in view["note"]
 
 
 def test_beyond_the_full_cap_facilities_are_kept_at_their_worst_case(
@@ -229,7 +243,14 @@ def test_an_invalid_cas_number_assesses_nothing() -> None:
         None,
         facilities.default_steps(),
     )
-    assert artifact == {"assessed": [], "screened_out": [], "not_assessed": [], "drivers": []}
+    assert artifact == {
+        "assessed": [],
+        "screened_out": [],
+        "not_assessed": [],
+        "worker_only": [],
+        "worker_only_left_out": 0,
+        "drivers": [],
+    }
     assert view["assessed"] == 0 and "not a valid CAS" in view["warnings"][0]
     assert PROPERTIES_CALLS == []
 
@@ -336,9 +357,9 @@ def test_shared_facility_across_categories_keeps_the_larger_release(
             "N085": [record("SHARED", emission_rate=7.0)],
         },
     )
-    records, notes = facilities.category_records(MEMBER, (None, None))
-    assert [(r["frs_id"], r["emission_rate"]) for r in records] == [("SHARED", 7.0)]
-    assert any("more than one" in n for n in notes)
+    found = facilities.category_records(MEMBER, (None, None))
+    assert [(r["frs_id"], r["emission_rate"]) for r in found.records] == [("SHARED", 7.0)]
+    assert any("more than one" in n for n in found.notes)
 
 
 def test_own_releases_win_over_the_categories(
@@ -497,7 +518,7 @@ def test_every_assessed_facility_carries_community_worker_and_profile_results() 
     assert artifact["assessed"]
     for item in artifact["assessed"]:
         assert item["exposure"]["results"] is not None  # the community result is unchanged
-        assert item["occupational_exposure"]["baseline"]["label"]
+        assert "evidence" in item["occupational_exposure"]
         assert item["operational_profile"]["annual_operating_hours"] == 8760.0
     assert all("worker_risk_tier" in f for f in view["facilities"])
     assert all("worker_oel_ratio" in f for f in view["facilities"])
@@ -535,7 +556,8 @@ def test_the_chemicals_limits_and_vapor_pressure_reach_the_worker_result(
                 "iur": None,
                 "warnings": [],
                 "vapor_pressure": 7.0,
-                "sources": {"vapor_pressure": "experimental"},
+                "molecular_weight": 84.0,
+                "sources": {"vapor_pressure": "experimental", "molecular_weight": "PubChem"},
                 "occupational_limits": limits,
             }
 
@@ -545,3 +567,168 @@ def test_the_chemicals_limits_and_vapor_pressure_reach_the_worker_result(
     assert worker["oel_twa_mg_m3"] == 3.0 and worker["oel_source"] == "OSHA PEL-TWA (PubChem)"
     assert worker["vapor_pressure_mmhg"] == 7.0
     assert worker["vapor_pressure_source"] == "CompTox (experimental)"
+    assert worker["molecular_weight"] == 84.0 and worker["molecular_weight_source"] == "PubChem"
+
+
+def _with_workers(
+    monkeypatch: pytest.MonkeyPatch,
+    workers: Sequence[WorkerOnlyFacility],
+    cap: int = 25,
+) -> None:
+    """The inventory of the module's records plus these fugitive-only facilities."""
+
+    def listing(cas: str, state: str | None = None, city: str | None = None):  # noqa: ANN202
+        view, every = rank_and_cap(list(RECORDS), 2, state, city)
+        return with_worker_only(view, workers, cap, state, city), every
+
+    monkeypatch.setattr(facilities, "inventory_listing", listing)
+
+
+WORKERS = [worker_only_facility("WORK_A", 5.0), worker_only_facility("WORK_B", 80.0)]
+
+
+def test_a_worker_only_facility_has_a_worker_result_and_no_community_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _with_workers(monkeypatch, WORKERS)
+    view, artifact = _run()
+    found = {w["facility"]["frs_id"]: w for w in artifact["worker_only"]}
+    assert set(found) == {"WORK_A", "WORK_B"}
+    for item in found.values():
+        assert item["community_reason"] == "the facility reports no stack release"
+        assert item["occupational_exposure"]["fugitive_release_kg_per_year"] is not None
+        assert item["operational_profile"]["schedule_source"]
+        assert "exposure" not in item and "population" not in item
+    assert "WORK_A" not in _ids(view["facilities"]) and view["worker_only_count"] == 2
+
+
+def test_screening_counts_are_unchanged_by_worker_only_facilities(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    plain, plain_artifact = _run()
+    _with_workers(monkeypatch, WORKERS)
+    view, artifact = _run()
+    for key in (
+        "facilities_found",
+        "assessed",
+        "screening",
+        "stack_tiers",
+        "worst_case_only_count",
+    ):
+        assert view[key] == plain[key]  # type: ignore[literal-required]
+    assert _ids(view["facilities"]) == _ids(plain["facilities"])
+    assert artifact["screened_out"] == plain_artifact["screened_out"]
+    assert [a["record"]["frs_id"] for a in artifact["assessed"]] == [
+        a["record"]["frs_id"] for a in plain_artifact["assessed"]
+    ]
+    assert plain["worker_only_count"] == 0 and plain["worker_only_highest"] is None
+
+
+def test_a_worker_only_facility_triggers_no_stack_weather_or_population_request(
+    monkeypatch: pytest.MonkeyPatch,
+    _offline: FakeSteps,
+) -> None:
+    _run()
+    without = list(_offline.calls)
+    _offline.calls.clear()
+    _with_workers(monkeypatch, WORKERS)
+    _run()
+    # Facilities run concurrently, so the calls are compared as a multiset, not in order.
+    assert sorted(map(repr, _offline.calls)) == sorted(map(repr, without))
+    assert not any("WORK" in repr(call) for call in _offline.calls)
+
+
+def test_the_model_is_told_how_many_and_which_has_the_highest_worker_value(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _with_workers(monkeypatch, WORKERS, cap=1)  # the larger release is kept; one is left out
+    view, _ = _run()
+    assert view["worker_only_count"] == 1 and view["worker_only_left_out"] == 1
+    top = view["worker_only_highest"]
+    assert top is not None and top["frs_id"] == "WORK_B"
+    assert view["note"] is not None
+    assert "1 facility reports only a fugitive air release" in view["note"]
+    assert "WORK_B" in view["note"] and "WORK_A" not in view["note"]
+    assert "1 more were left out" in view["note"]
+
+
+def test_the_tool_description_tells_the_model_about_worker_only_facilities() -> None:
+    text = " ".join(assess_facilities.description.split())
+    for phrase in (
+        "worker-only",
+        "no community result",
+        "worker_only_count",
+        "worker_only_highest",
+    ):
+        assert phrase in text
+
+
+def test_asking_for_a_worker_only_facility_by_id_gives_its_worker_result_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _with_workers(monkeypatch, WORKERS)
+    view, artifact = _run(["WORK_B"])
+    assert [w["facility"]["frs_id"] for w in artifact["worker_only"]] == ["WORK_B"]
+    assert view["not_assessed"] == [] and view["assessed"] == 0
+    assert view["worker_only_left_out"] == 0
+
+
+def test_asking_for_a_stack_facility_by_id_leaves_the_worker_only_ones_out(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _with_workers(monkeypatch, WORKERS)
+    view, artifact = _run(["MID"])
+    assert artifact["worker_only"] == [] and view["worker_only_count"] == 0
+    assert _ids(view["facilities"]) == ["MID"]
+
+
+def test_an_unknown_id_is_still_not_assessed_when_worker_only_facilities_exist(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _with_workers(monkeypatch, WORKERS)
+    view, _ = _run(["NOPE"])
+    assert _ids(view["not_assessed"]) == ["NOPE"]
+
+
+def test_a_chemical_with_only_fugitive_releases_is_assessed_for_workers_not_its_categories(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    asked = _member_setup(monkeypatch, tmp_path, own=[], by_code={"N084": [record("CAT")]})
+
+    def listing(cas: str, state: str | None = None, city: str | None = None):  # noqa: ANN202
+        asked.append(cas)
+        view, every = rank_and_cap([], 25, state, city)
+        return with_worker_only(view, WORKERS, 25, state, city), every
+
+    monkeypatch.setattr(facilities, "inventory_listing", listing)
+    asked.clear()
+    view, artifact = run_assessment(
+        MEMBER,
+        None,
+        (None, None),
+        None,
+        None,
+        facilities.default_steps(),
+    )
+    assert asked == [MEMBER]
+    assert len(artifact["worker_only"]) == 2 and view["facilities_found"] == 0
+
+
+def test_category_facilities_with_a_fugitive_release_only_are_merged_once(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _member_setup(monkeypatch, tmp_path, own=[], by_code={})
+
+    def listing(cas: str, state: str | None = None, city: str | None = None):  # noqa: ANN202
+        stack = [record("PLANT_A")] if cas == "N084" else []
+        only = [worker_only_facility("PLANT_A", 9.0), worker_only_facility("SOLO", 4.0)]
+        only = only if cas != MEMBER else []
+        view, every = rank_and_cap(stack, 25, state, city)
+        return with_worker_only(view, only, 25, state, city), every
+
+    monkeypatch.setattr(facilities, "inventory_listing", listing)
+    found = facilities.category_records(MEMBER, (None, None))
+    assert [r["frs_id"] for r in found.records] == ["PLANT_A"]
+    assert [w["frs_id"] for w in found.worker_only] == ["SOLO"]  # PLANT_A is a stack source

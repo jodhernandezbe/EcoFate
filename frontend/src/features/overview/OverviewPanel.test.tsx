@@ -16,15 +16,14 @@ vi.mock("recharts", async (importOriginal) => {
   };
 });
 
-const workerLimits = {
-  ratio_exceedance: 1,
-  ratio_elevated: 0.1,
-  hq_exceedance: 1,
-  hq_elevated: 0.1,
-  cancer_exceedance: 1e-4,
-  cancer_elevated: 1e-6,
+const bands = {
+  hq_lower: 0.1,
+  hq_upper: 1,
+  cancer_risk_lower: 1e-6,
+  cancer_risk_upper: 1e-4,
+  oel_ratio_lower: 0.1,
+  oel_ratio_upper: 1,
 };
-const thresholds = { hq_concern: 1, hq_near_lower: 0.1, cancer_lower: 1e-6, cancer_upper: 1e-4 };
 const extreme = (high: number) => ({ low: high / 2, high, low_stack: 1, high_stack: 2 });
 const exposure = (hq: number, risk: number | null) => ({
   stacks_given: 1,
@@ -60,8 +59,7 @@ const show = (fs: Facility[] = facilities) => {
     <OverviewPanel
       workspace={workspace({ facilities: fs })}
       digits={2}
-      thresholds={thresholds}
-      workerThresholds={workerLimits}
+      bands={bands}
     />,
   );
   if (fs.length > 0) fireEvent.click(screen.getByRole("button", { name: "Risk by group" }));
@@ -139,7 +137,7 @@ describe("risk-by-group sections", () => {
 
 describe("overview views", () => {
   const render0 = (fs: Facility[]) =>
-    render(<OverviewPanel workspace={workspace({ facilities: fs })} digits={2} thresholds={thresholds} />);
+    render(<OverviewPanel workspace={workspace({ facilities: fs })} digits={2} bands={bands} />);
 
   it("opens on the summary, with the charts one click away", () => {
     render0(facilities);
@@ -235,7 +233,7 @@ describe("exposure pathway dropdown", () => {
     fireEvent.click(within(section(industry)).getByRole("button", { name: "Limit ratio" }));
     expect(within(section(industry)).getByRole("heading", { name: /occupational limit/ })).toBeInTheDocument();
     expect(rowsOf(industry)[0]).toHaveTextContent("301 · Industry 301");
-    expect(within(section(industry)).getByText(/Dashed lines: elevated 0\.1, exceedance 1/)).toBeInTheDocument();
+    expect(within(section(industry)).getByText(/Dashed lines: moderate 0\.1, high 1/)).toBeInTheDocument();
   });
 
   it("changes all three sections together", () => {

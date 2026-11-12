@@ -519,7 +519,7 @@ def test_each_asked_value_says_what_it_is_for_and_what_it_is_not_used_for() -> N
     result, _ = _run(props=[], tox=[], mass=None)
     purposes = {e["quantity"]: e["purpose"] for e in result["missing"]}
     assert "molecular_weight" in purposes and "ppm" in purposes["molecular_weight"]
-    assert "not used in an equation" in purposes["vapor_pressure"]
+    assert "vapor generation" in purposes["vapor_pressure"]
     assert "not used in an equation" in purposes["density"]
     assert "occupational limit" in purposes["oel_twa"]
 

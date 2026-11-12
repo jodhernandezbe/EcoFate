@@ -8,42 +8,32 @@ from api.services.exposure_graph import build_exposure_graph
 from api.services.exposure_graph.parts import LaneParts, unavailable
 from config.exposure_graph import GraphText
 from config.ui import get_ui_settings
+from tests.api.services.projectors.factories import (
+    monitoring_result,
+    worker_case,
+    worker_result,
+)
 
 TEXT = get_ui_settings().exposure_graph
 MISSING = TEXT.reasons["missing"]
 
 
-def _tier(label: str, ratio: float | None, tier: str | None) -> dict[str, object]:
-    return {
-        "label": label,
-        "ventilation_m3_per_s": 1.0,
-        "mixing_factor": 0.5,
-        "workplace_concentration_mg_m3": 2.0,
-        "twa_mg_m3": 3.0,
-        "oel_ratio": ratio,
-        "hq": 0.2,
-        "cancer_risk": None,
-        "risk_tier": tier,
-    }
-
-
-WORKER: dict[str, object] = {
-    "fugitive_release_kg_per_year": 100.0,
-    "fugitive_reporting_year": 2020,
-    "operating_days_per_year": 250.0,
-    "hours_per_day": 8.0,
-    "oel_twa_mg_m3": 5.0,
-    "oel_source": "synthetic limit",
-    "rfc": None,
-    "iur": None,
-    "vapor_pressure_mmhg": None,
-    "vapor_pressure_source": None,
-    "baseline": _tier("Baseline", 0.1, "acceptable"),
-    "worst_case": _tier("Worst", 2.0, "exceedance"),
-    "risk_tier": "acceptable",
-    "assumptions": ["well mixed"],
-    "warnings": [],
-}
+WORKER = worker_result(
+    baseline=worker_case(oel_ratio=0.1, risk_tier="low", cancer_risk=None),
+    worst_case=worker_case(
+        estimator="two_zone",
+        airflow_m3_per_s=None,
+        mixing_factor=None,
+        room_m3=50.0,
+        air_exchange_per_h=4.0,
+        oel_ratio=2.0,
+        risk_tier="high",
+        cancer_risk=None,
+        twa_mg_m3=3.0,
+    ),
+    rfc=None,
+    iur=None,
+)
 
 
 def _stack(number: int, peak: float) -> dict[str, object]:
@@ -88,7 +78,7 @@ def _facility(**over: object) -> Facility:
         "release_unit": "Pounds",
         "emission_rate_g_s": 1.0,
         "operating_hours_per_year": 8760.0,
-        "status": "above",
+        "status": "high",
     }
     return Facility.model_validate({**base, **over})
 
@@ -140,12 +130,12 @@ def test_the_peak_distance_is_that_of_the_stack_with_the_peak() -> None:
     assert _value(air, "peak_distance").value == 200.0
 
 
-def test_the_worker_lane_carries_both_ventilation_tiers() -> None:
+def test_the_worker_lane_carries_both_cases() -> None:
     end = _node(_full(), "worker:endpoint")
     assert _value(end, "oel_ratio:worst_case").value == 2.0
     assert _value(end, "oel_ratio:baseline").value == 0.1
     assert TEXT.variants["baseline"] in _value(end, "oel_ratio:baseline").label
-    assert (end.status, end.status_label) == ("above", TEXT.tiers["exceedance"])
+    assert (end.status, end.status_label) == ("high", TEXT.tiers["high"])
 
 
 def test_an_absent_value_carries_the_reason() -> None:
@@ -178,8 +168,8 @@ def test_values_are_passed_through_unchanged() -> None:
     graph = _full()
     numbers = {q.value for n in graph.nodes for q in n.quantities if q.value is not None}
     reported = {100.0, 1.0, 8760.0, 3.0, 4.0, 10.0, 200.0, 0.3, 0.1, 90.0, 2.0}
-    reported |= {1000.0, 0.5, 0.2, 5.0, 250.0, 8.0}
-    assert numbers <= reported
+    reported |= {1000.0, 0.5, 0.2, 5.0, 250.0, 16.0, 0.25, 4.0, 50.0, 100.0, 10.0}
+    assert numbers <= reported | {2.0, 3.0, 1.0}
 
 
 def test_a_new_lane_is_one_builder() -> None:
@@ -188,3 +178,88 @@ def test_a_new_lane_is_one_builder() -> None:
 
     graph = build_exposure_graph(_facility(), TEXT, lanes=(extra,))
     assert [lane.id for lane in graph.lanes] == ["worker"]
+
+
+def _worker_graph(result: dict[str, object]) -> ExposureGraph:
+    return build_exposure_graph(_facility(occupational_exposure=result), TEXT)
+
+
+def _fact(node: GraphNode, key: str) -> str | None:
+    return next(f.text for f in node.facts if f.key == key)
+
+
+def test_the_activity_model_source_is_the_driving_activity_with_its_generation_rate() -> None:
+    source = _node(_worker_graph(WORKER), "worker:release")
+    assert source.title == TEXT.nodes["worker_activity"]
+    assert _fact(source, "activity") == "Drum loading"
+    assert _value(source, "generation_rate:worst_case").value == 0.25
+    assert _value(source, "generation_rate:worst_case").unit == "g/s"
+
+
+def test_the_fugitive_release_is_context_in_the_source_node_not_the_source() -> None:
+    source = _node(_worker_graph(WORKER), "worker:release")
+    assert _value(source, "fugitive_release").value == 1000.0
+    assert _fact(source, "fugitive_statement") == "context only; no worker value uses it"
+    assert source.headline == "generation_rate:worst_case"
+
+
+def test_the_air_node_names_setting_ventilation_concentration_and_the_cap() -> None:
+    air = _node(_worker_graph(WORKER), "worker:air")
+    assert _fact(air, "setting") == TEXT.settings["indoor"]
+    ventilation = _fact(air, "ventilation") or ""
+    assert (
+        TEXT.estimators["two_zone"] in ventilation
+        and TEXT.estimators["mass_balance"] in ventilation
+    )
+    assert TEXT.flags["not_capped"] in ventilation
+    assert _value(air, "workplace_concentration:worst_case").value == 4.0
+    assert _value(air, "room_volume:worst_case").value == 50.0
+    assert _value(air, "air_exchanges:worst_case").value == 4.0
+    assert _value(air, "ventilation_rate:baseline").value == 1.0
+    assert _fact(air, "volatility") == TEXT.volatilities["within"]
+
+
+def test_a_capped_case_says_so() -> None:
+    result = {**WORKER, "worst_case": worker_case(capped=True, risk_tier="high")}
+    ventilation = _fact(_node(_worker_graph(result), "worker:air"), "ventilation") or ""
+    assert TEXT.flags["capped"] in ventilation
+
+
+def test_the_worker_node_carries_the_activity_hours_and_the_working_days() -> None:
+    receptor = _node(_worker_graph(WORKER), "worker:receptor")
+    assert _value(receptor, "activity_hours").value == 2.0
+    assert _value(receptor, "operating_days").value == 250.0
+
+
+def test_a_monitoring_lane_shows_the_osha_evidence_as_its_source() -> None:
+    source = _node(_worker_graph(monitoring_result()), "worker:release")
+    assert source.title == TEXT.nodes["monitoring_evidence"]
+    assert _value(source, "monitoring_samples").value == 40.0
+    assert _value(source, "monitoring_nondetect").value == 5.0
+    assert (
+        _value(source, "monitoring_first_year").value,
+        _value(source, "monitoring_last_year").value,
+    ) == (2005.0, 2020.0)
+    assert _fact(source, "monitoring_source") == "OSHA CEHD (synthetic)"
+    assert source.warnings == ["a synthetic monitoring statement"]
+    assert (
+        _value(_node(_worker_graph(monitoring_result()), "worker:endpoint"), "twa:worst_case").value
+        == 6.0
+    )
+
+
+def test_a_result_without_activities_or_evidence_reads_not_reported() -> None:
+    bare = worker_result(
+        evidence=None,
+        driving_activity=None,
+        activities=[],
+        activity_reason="no activity applies",
+        worst_case=worker_case(estimator=None, generation_g_per_s=None, risk_tier=None),
+    )
+    graph = _worker_graph(bare)
+    source = _node(graph, "worker:release")
+    assert _fact(source, "activity") == "no activity applies"
+    rate = _value(source, "generation_rate:worst_case")
+    assert (rate.value, rate.reason) == (None, MISSING)
+    assert _node(graph, "worker:endpoint").status is None
+    assert _value(_node(graph, "worker:receptor"), "activity_hours").reason == MISSING

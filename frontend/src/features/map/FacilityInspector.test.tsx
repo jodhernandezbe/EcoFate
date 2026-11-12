@@ -3,7 +3,16 @@ import userEvent from "@testing-library/user-event";
 import { vi } from "vitest";
 
 import { FakeMap } from "../../test/fakeMaplibre";
-import { facility, profile, scenario, workspace, worker } from "../../test/fixtures";
+import {
+  facility,
+  monitoredWorker,
+  monitoring,
+  profile,
+  scenario,
+  worker,
+  workerOnly,
+  workspace,
+} from "../../test/fixtures";
 import type { Facility, Stack } from "../../types/workspace";
 import { ExposureMapCanvas } from "./ExposureMapCanvas";
 
@@ -51,8 +60,8 @@ const marker = (name: RegExp) => screen.getByRole("button", { name });
 
 describe("markers", () => {
   it("are reachable by keyboard and announce the facility name", () => {
-    show(facility({ name: "Plant F1", status: "above" }));
-    expect(marker(/Plant F1, above/)).toBeInTheDocument();
+    show(facility({ name: "Plant F1", status: "high" }));
+    expect(marker(/Plant F1, high/)).toBeInTheDocument();
   });
 
   it("say when no risk is computed", () => {
@@ -215,7 +224,7 @@ describe("card content", () => {
     const reason = "screened out: the bound is below HQ 0.1";
     show(
       facility({
-        status: "below",
+        status: "low",
         screening: {
           outcome: "screened_out_at_bound",
           bound_hq: 0.05,
@@ -263,7 +272,7 @@ describe("card content", () => {
     const user = userEvent.setup();
     show(
       facility({
-        status: "above",
+        status: "high",
         receptors: { total_population: 1234, radius_km: 3, age_distribution: {}, source: "s", screening_default: false, warnings: [] },
         exposure: {
           stacks_given: 3,
@@ -286,7 +295,7 @@ describe("card content", () => {
     expect(card).toHaveTextContent("1 × 10⁻⁶ – 2 × 10⁻⁵");
     expect(card).toHaveTextContent("4 – 8 µg/m³");
     expect(card).toHaveTextContent("Residents within 3 km1,234");
-    expect(card).toHaveTextContent("Above concern");
+    expect(card).toHaveTextContent("High");
   });
 
   it("says risk is not reported before an exposure is computed", async () => {
@@ -369,11 +378,11 @@ describe("card height", () => {
 });
 
 describe("community and worker badges", () => {
-  it("show the community hazard quotient beside the worker tier and ratio", async () => {
+  it("show the community band and hazard quotient beside the worker band and ratio", async () => {
     const user = userEvent.setup();
     show(
       facility({
-        status: "above",
+        status: "high",
         exposure: {
           stacks_given: 1,
           stacks_evaluated: 1,
@@ -393,53 +402,151 @@ describe("community and worker badges", () => {
     const badges = within(screen.getByRole("tooltip")).getByRole("group", {
       name: "Community and worker risk",
     });
-    expect(badges).toHaveTextContent("Community HQ 3");
-    expect(badges).toHaveTextContent("Worker Elevated");
+    expect(badges).toHaveTextContent("Community High HQ 3");
+    expect(badges).toHaveTextContent("Worker Moderate");
     expect(badges).toHaveTextContent("R_OEL 0.4");
   });
 
-  it("say not reported for the worker when there is no result", async () => {
+  it("say not computed for the worker when there is no result", async () => {
     const user = userEvent.setup();
     show(facility());
     await user.hover(marker(/Plant F1/));
     const badges = screen.getByRole("group", { name: "Community and worker risk" });
     expect(badges).toHaveTextContent("Worker Not computed");
-    expect(badges).toHaveTextContent("Community HQ not reported");
+    expect(badges).toHaveTextContent("HQ not reported");
   });
 });
 
 describe("worker section and ring", () => {
-  it("lists the schedule, limit and both tiers once the card is pinned", async () => {
+  const pinned = async (f: Facility) => {
     const user = userEvent.setup();
-    show(facility({ occupational_exposure: worker(), operational_profile: profile() }));
+    show(f);
     await user.click(marker(/Plant F1/));
-    const dialog = screen.getByRole("dialog");
+    return screen.getByRole("dialog");
+  };
+
+  it("lists evidence, schedule, vapor pressure, limit, both cases and the fugitive context", async () => {
+    const dialog = await pinned(facility({ occupational_exposure: worker(), operational_profile: profile() }));
     expect(within(dialog).getByRole("button", { name: /Worker exposure/ })).toBeInTheDocument();
+    expect(dialog).toHaveTextContent("Evidence: Drum loading");
     expect(dialog).toHaveTextContent("250 days/yr • 16 hr/day • 4,240 hr/yr");
+    expect(dialog).toHaveTextContent("Life cycle stage: Processing");
+    expect(dialog).toHaveTextContent("Condition of use: Processing as a reactant");
+    expect(dialog).toHaveTextContent("10 mmHg, within the vapor-model range");
     expect(dialog).toHaveTextContent("OSHA PEL-TWA (PubChem)");
-    expect(dialog).toHaveTextContent("Vapor pressure (context)");
-    expect(within(dialog).getByRole("region", { name: "Baseline manufacturing ventilation" })).toHaveTextContent("Elevated");
-    expect(within(dialog).getByRole("region", { name: "Worst case, enclosed zone" })).toHaveTextContent("Exceedance");
+    expect(within(dialog).getByRole("region", { name: "Baseline" })).toHaveTextContent("Moderate");
+    expect(within(dialog).getByRole("region", { name: "Worst case" })).toHaveTextContent("High");
+    expect(dialog).toHaveTextContent("Fugitive release, context only (2020)1000 kg/yr");
+    expect(dialog).toHaveTextContent("context only; no worker value uses it");
+    expect(dialog).toHaveTextContent("a well-mixed zone");
+    expect(dialog).toHaveTextContent("no IUR");
+  });
+
+  it("lists each activity with its two averages and marks the one that drives", async () => {
+    const dialog = await pinned(facility({ occupational_exposure: worker() }));
+    const rows = within(within(dialog).getByRole("list", { name: "Evaluated activities" })).getAllByRole("listitem");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveTextContent("Drum loading");
+    expect(rows[0]).toHaveTextContent("Drives the worst case");
+    expect(rows[0]).toHaveTextContent("8-hr average, typical2 mg/m³");
+    expect(rows[0]).toHaveTextContent("8-hr average, worst case6 mg/m³");
+    expect(rows[0]).toHaveTextContent("Mass balance typical, Two-zone model worst case");
+    expect(rows[1]).not.toHaveTextContent("Drives the worst case");
+  });
+
+  it("says OSHA monitoring when the result rests on it, with the summary and the modelled activities", async () => {
+    const dialog = await pinned(facility({ occupational_exposure: monitoredWorker({ activities: worker().activities }) }));
+    expect(dialog).toHaveTextContent("Evidence: OSHA monitoring");
+    const summary = within(dialog).getByRole("group", { name: "OSHA monitoring" });
+    expect(summary).toHaveTextContent("Industry level4-digit NAICS");
+    expect(summary).toHaveTextContent("Samples40");
+    expect(summary).toHaveTextContent("Non-detects5");
+    expect(summary).toHaveTextContent("Years2005–2020");
+    expect(summary).toHaveTextContent("Median1.5 mg/m³");
+    expect(summary).toHaveTextContent("95th percentile6 mg/m³");
+    expect(within(dialog).getByRole("list", { name: "Evaluated activities" })).toBeInTheDocument();
+  });
+
+  it("says why the median is below detection, never zero", async () => {
+    const dialog = await pinned(
+      facility({
+        occupational_exposure: monitoredWorker({
+          monitoring: monitoring({ median_mg_m3: null, reason: "most samples were not detected" }),
+        }),
+      }),
+    );
+    expect(dialog).toHaveTextContent("Medianbelow detection (most samples were not detected)");
+  });
+
+  it("says why there is no monitoring or activity, and keeps the routes folded", async () => {
+    const dialog = await pinned(
+      facility({ occupational_exposure: worker({ activities: [], activity_reason: "no activity for the stage" }) }),
+    );
+    expect(dialog).toHaveTextContent("OSHA monitoring: no samples for the industry");
+    expect(dialog).toHaveTextContent("Activities: no activity for the stage");
+    const routes = within(dialog).getByRole("button", { name: /How the activities were chosen/ });
+    expect(routes).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("lists the routes with the scenario documents and pages once opened", async () => {
+    const user = userEvent.setup();
+    const dialog = await pinned(facility({ occupational_exposure: worker() }));
+    await user.click(within(dialog).getByRole("button", { name: /How the activities were chosen/ }));
+    expect(dialog).toHaveTextContent("Generic operations: drum_loading");
+    expect(dialog).toHaveTextContent("A synthetic scenario (published ESD) · a synthetic citation, pp. 1-2");
   });
 
   it("says not reported when there is no worker result", async () => {
-    const user = userEvent.setup();
-    show(facility());
-    await user.click(marker(/Plant F1/));
-    expect(screen.getByRole("dialog")).toHaveTextContent("Worker exposure: not reported");
+    const dialog = await pinned(facility());
+    expect(dialog).toHaveTextContent("Worker exposure: not reported");
   });
 
   it("announces the worker tier on the marker and draws the ring in the legend", () => {
-    show(facility({ status: "above", occupational_exposure: worker() }));
-    expect(marker(/Plant F1, above, worker elevated/)).toBeInTheDocument();
+    show(facility({ status: "high", occupational_exposure: worker() }));
+    expect(marker(/Plant F1, high, worker moderate/)).toBeInTheDocument();
     const rings = screen.getByRole("group", { name: "Worker screening rings" });
-    expect(rings).toHaveTextContent("Elevated1");
-    expect(rings).toHaveTextContent("Acceptable0");
+    expect(rings).toHaveTextContent("Moderate1");
+    expect(rings).toHaveTextContent("Low0");
   });
 
   it("has no ring legend without any worker result", () => {
     show(facility());
     expect(screen.queryByRole("group", { name: "Worker screening rings" })).toBeNull();
+  });
+});
+
+describe("worker-only facilities", () => {
+  it("announce that they report no stack release, with the worker band", () => {
+    show(workerOnly({ name: "Plant W1" }));
+    expect(marker(/Plant W1, reports no stack release, worker moderate/)).toBeInTheDocument();
+  });
+
+  it("are counted in the legend with the outlined marker explained", () => {
+    show(workerOnly(), facility({ status: "low" }));
+    const legend = screen.getByRole("complementary", { name: "Map legend" });
+    expect(within(legend).getByRole("button", { name: /No stack release/ })).toHaveTextContent("No stack release1");
+    expect(legend).toHaveTextContent("Outlined marker: no stack release");
+    expect(within(legend).getByRole("button", { name: /Not computed/ })).toHaveTextContent("Not computed0");
+  });
+
+  it("leave the legend without the entry when none is on the map", () => {
+    show(facility({ status: "low" }));
+    const legend = screen.getByRole("complementary", { name: "Map legend" });
+    expect(within(legend).queryByRole("button", { name: /No stack release/ })).toBeNull();
+    expect(legend).not.toHaveTextContent("Outlined marker");
+  });
+
+  it("say in the inspector that no community result applies, and show the worker section", async () => {
+    const user = userEvent.setup();
+    show(workerOnly({ name: "Plant W1" }));
+    await user.click(marker(/Plant W1/));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("Community No stack release");
+    expect(dialog).toHaveTextContent("The facility reports no stack release, so no community result applies.");
+    expect(within(dialog).getByRole("button", { name: /Worker exposure/ })).toHaveAttribute("aria-expanded", "true");
+    expect(within(dialog).queryByRole("button", { name: /Receptor risk/ })).toBeNull();
+    expect(within(dialog).queryByRole("button", { name: /Stacks/ })).toBeNull();
+    expect(dialog).not.toHaveTextContent("Emission rate");
   });
 });
 

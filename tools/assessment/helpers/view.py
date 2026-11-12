@@ -7,9 +7,13 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import TypedDict
 
+from commons.bands import Band
 from config.assessment import ScreeningSettings
 from tools.assessment.helpers.scenarios import drivers_of
+from tools.assessment.helpers.screened_workers import highest_worker, worker_bands
+from tools.assessment.helpers.screened_workers import sentence as screened_sentence
 from tools.assessment.helpers.screening import exceedance
+from tools.assessment.helpers.worker_only import highest, sentence
 from tools.schemas import (
     AssessmentResult,
     FacilityAssessment,
@@ -20,6 +24,8 @@ from tools.schemas import (
     ScreenedOutSummary,
     ScreeningSummary,
     Toxicity,
+    WorkerOnlyAssessment,
+    WorkerOnlySummary,
     WorstCaseSummary,
 )
 
@@ -42,6 +48,8 @@ class Findings:
         possible: Whether a benchmark allowed screening at all.
         skipped: Facilities not assessed (not found, or over a cap), with the reason.
         warnings: Benchmark warnings.
+        worker_only: Fugitive-only facilities, with a worker result and no community one.
+        worker_only_left_out: Fugitive-only facilities beyond the inventory's cap.
     """
 
     cas: str | None
@@ -54,6 +62,8 @@ class Findings:
     possible: bool
     skipped: list[NotAssessed]
     warnings: list[str]
+    worker_only: Sequence[WorkerOnlyAssessment] = ()
+    worker_only_left_out: int = 0
 
 
 def _notes(item: FacilityAssessment) -> list[str]:
@@ -97,7 +107,7 @@ class _Setting(TypedDict):
     weather_source: str
     residents: int
     radius_km: float | None
-    worker_risk_tier: str | None
+    worker_risk_tier: Band | None
     worker_oel_ratio: float | None
 
 
@@ -148,7 +158,7 @@ def worst_summary(item: FacilityAssessment) -> WorstCaseSummary:
 
 
 def _screened_summary(out: ScreenedOut) -> ScreenedOutSummary:
-    record = out["record"]
+    record, worker = out["record"], out.get("occupational_exposure")
     return ScreenedOutSummary(
         frs_id=record["frs_id"],
         facility_name=record["facility_name"],
@@ -158,6 +168,7 @@ def _screened_summary(out: ScreenedOut) -> ScreenedOutSummary:
         stage=out["stage"],
         hq=out["hq"],
         cancer_risk=out["cancer_risk"],
+        worker_risk_tier=worker["risk_tier"] if worker is not None else None,
     )
 
 
@@ -183,6 +194,8 @@ def _screening(f: Findings, max_listed: int) -> ScreeningSummary | None:
         screened_out_at_bound=stages["bound"],
         screened_out_with_own_stacks=stages["own stacks"],
         closest_screened_out=_closest(f.screened_out, t, max_listed),
+        screened_out_worker_bands=worker_bands(f.screened_out),
+        screened_out_worker_highest=highest_worker(f.screened_out),
     )
 
 
@@ -203,6 +216,31 @@ def _note(f: Findings) -> str | None:
         f"maximum) and were left out; {len(f.full)} were fully assessed and "
         f"{len(f.worst_only)} kept at the worst case with their own stacks."
     )
+
+
+class _Workers(TypedDict):
+    """The fugitive-only facilities as the model reads them, with the note that says so."""
+
+    worker_only_count: int
+    worker_only_left_out: int
+    worker_only_highest: WorkerOnlySummary | None
+    note: str | None
+
+
+def _workers(f: Findings) -> _Workers:
+    top = highest(f.worker_only)
+    count, left_out = len(f.worker_only), f.worker_only_left_out
+    return _Workers(
+        worker_only_count=count,
+        worker_only_left_out=left_out,
+        worker_only_highest=top,
+        note=_joined(_note(f), screened_sentence(f.screened_out), sentence(count, left_out, top)),
+    )
+
+
+def _joined(*texts: str | None) -> str | None:
+    parts = [part for part in texts if part]
+    return " ".join(parts) if parts else None
 
 
 def _risk_first(items: Sequence[FacilityAssessment]) -> list[WorstCaseSummary]:
@@ -234,7 +272,7 @@ def assessment_view(
         worst_case_only_count=len(worst),
         worst_case_only=worst[:max_worst_listed],
         not_assessed=f.skipped,
-        note=_note(f),
+        **_workers(f),
         warnings=f.warnings,
         drivers=drivers_of([*f.full, *f.worst_only]),
     )

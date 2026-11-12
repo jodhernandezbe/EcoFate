@@ -164,6 +164,8 @@ def _receptor_edges(bands: list[GraphNode]) -> list[GraphEdge]:
 def community_lane(facility: Facility, text: GraphText) -> LaneParts:
     """The fenceline lane of the facility, or an empty lane when it has no community result."""
     exposure = facility.exposure
+    if facility.worker_only:
+        return unavailable(text, LANE, "worker_only")
     if exposure is None:
         return unavailable(text, LANE)
     releases, release_edges = _releases(facility, text)

@@ -27,6 +27,7 @@ from app.turns.recording import BackgroundServices
 from app.web_turn import web_turn_settings
 from config.agent import get_agent_settings
 from config.population import get_population_settings
+from config.risk_bands import get_risk_bands
 from config.telemetry import get_telemetry_settings
 from config.ui import UiSettings
 
@@ -43,7 +44,7 @@ def get_key_services(request: Request) -> KeyServices:
 
 def _workspace_rules(ui: UiSettings) -> WorkspaceRules:
     return WorkspaceRules(
-        thresholds=ui.thresholds,
+        thresholds=get_risk_bands(),
         coordinate_tolerance_deg=ui.map.coordinate_tolerance_deg,
         default_radius_km=get_population_settings().default_radius_km,
         sector_half_angle_deg=ui.map.sector_half_angle_deg,

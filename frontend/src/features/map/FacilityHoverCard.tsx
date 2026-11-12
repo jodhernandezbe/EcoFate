@@ -1,5 +1,4 @@
-import { ChevronRight, X } from "lucide-react";
-import { useId, useState, type ReactNode } from "react";
+import { X } from "lucide-react";
 
 import { StatusPill } from "../../components/ui/StatusPill";
 import { TierPill } from "../../components/ui/TierPill";
@@ -9,11 +8,13 @@ import {
   formatRange,
   formatReported,
   formatWithUnit,
+  NOT_REPORTED,
   orNotReported,
 } from "../../lib/format";
 import { stackNumber } from "../../lib/scenarios";
 import type { Extreme, Facility, Screening, Stack } from "../../types/workspace";
 import { Metric } from "../overview/Metric";
+import { FoldSection as Section } from "./FoldSection";
 import { ScenarioSection } from "./ScenarioSection";
 import { WorkerSection } from "./WorkerSection";
 
@@ -149,10 +150,20 @@ function RiskBadges({ facility, digits }: { facility: Facility; digits: number }
       className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-fg2/5 p-2 text-xs"
     >
       <span className="flex items-center gap-1.5">
-        Community HQ{" "}
-        <span className="font-medium tabular-nums">
-          {exposure?.hq_worst ? formatNumber(exposure.hq_worst.high, digits) : formatNumber(null, digits)}
-        </span>
+        Community{" "}
+        {facility.worker_only ? (
+          <StatusPill status={null} label="No stack release" />
+        ) : (
+          <>
+            <StatusPill status={facility.status} />{" "}
+            <span>
+              <span className="text-fg2">HQ </span>
+              <span className="font-medium tabular-nums">
+                {exposure?.hq_worst ? formatNumber(exposure.hq_worst.high, digits) : formatNumber(null, digits)}
+              </span>
+            </span>
+          </>
+        )}
       </span>
       <span className="flex items-center gap-1.5">
         Worker <TierPill tier={worker?.risk_tier ?? null} />{" "}
@@ -162,43 +173,108 @@ function RiskBadges({ facility, digits }: { facility: Facility; digits: number }
   );
 }
 
-interface SectionProps {
-  title: string;
-  /** Shown beside the title: a count, or the status pill. */
-  aside?: ReactNode;
-  initiallyOpen: boolean;
-  children: ReactNode;
+/** What the facility reported: a stack release and its rate, or no stack release at all. */
+function ReleaseMetrics({ facility, digits }: { facility: Facility; digits: number }) {
+  const release =
+    facility.total_release === null ? NOT_REPORTED : `${formatReported(facility.total_release)} ${facility.release_unit ?? ""}/yr`;
+  return (
+    <dl className="m-0 grid grid-cols-2 gap-x-3 gap-y-1">
+      {!facility.worker_only && (
+        <>
+          <Metric label="Reported release">{release}</Metric>
+          <Metric label="Emission rate">{formatWithUnit(facility.emission_rate_g_s, "g/s", digits)}</Metric>
+        </>
+      )}
+      <Metric label="Operating hours">{formatReported(facility.operating_hours_per_year)} h/yr</Metric>
+      <Metric label="CAS number">{orNotReported(facility.cas_number)}</Metric>
+    </dl>
+  );
 }
 
-/** A titled part of the card that folds; its heading is the toggle (usable once pinned). */
-function Section({ title, aside, initiallyOpen, children }: SectionProps) {
-  const [open, setOpen] = useState(initiallyOpen);
-  const bodyId = useId();
+/** The community part of a worker-only facility: why there is none (the API's reason), never zero. */
+function NoStackRelease({ facility }: { facility: Facility }) {
   return (
-    <section className="mt-2">
-      <div className="flex items-center justify-between gap-2">
-        <h4 className="m-0 text-xs font-semibold text-fg2">
-          <button
-            type="button"
-            aria-expanded={open}
-            aria-controls={bodyId}
-            onClick={() => setOpen((value) => !value)}
-            className="flex items-center gap-1 rounded-lg hover:text-fg"
-          >
-            <ChevronRight
-              size={12}
-              aria-hidden="true"
-              className={`transition-transform duration-200 ${open ? "rotate-90" : ""}`}
-            />
-            {title}
-          </button>
-        </h4>
-        {aside}
-      </div>
-      <div id={bodyId} hidden={!open} className="mt-1">
-        {children}
-      </div>
-    </section>
+    <Section title="Community result" aside={<StatusPill status={null} label="No stack release" />} initiallyOpen>
+      <p className="m-0 text-xs text-fg2">
+        {facility.community_reason ?? "This facility reports no stack release, so no community result applies."}
+      </p>
+    </Section>
+  );
+}
+
+function WorkerPart({ facility, digits }: { facility: Facility; digits: number }) {
+  return (
+    <Section
+      title="Worker exposure"
+      aside={<TierPill tier={facility.occupational_exposure?.risk_tier ?? null} />}
+      initiallyOpen={facility.occupational_exposure !== null}
+    >
+      <WorkerSection facility={facility} digits={digits} />
+    </Section>
+  );
+}
+
+function StackPart({ facility, digits }: { facility: Facility; digits: number }) {
+  const { stacks, screening } = facility;
+  const drivers = drivingStacks(facility);
+  return (
+    <>
+      {facility.scenarios.length > 0 && (
+        <Section title="Worst-case scenarios" aside={null} initiallyOpen>
+          <ScenarioSection facility={facility} digits={digits} />
+        </Section>
+      )}
+      <Section
+        title="Stacks"
+        aside={<span className="text-xs text-fg2">{stacks.length}</span>}
+        initiallyOpen={stacks.length <= STACKS_SHOWN_OPEN && drivers.size === 0}
+      >
+        {stacks.length === 0 ? (
+          <p className="m-0 text-xs text-fg2">{noStacks(screening)}</p>
+        ) : (
+          <ul className="m-0 grid list-none gap-1.5 p-0">
+            {stacks.map((stack, index) => (
+              <StackRow
+                key={index}
+                stack={stack}
+                digits={digits}
+                drives={stack.stack_number === null ? [] : (drivers.get(stack.stack_number) ?? [])}
+              />
+            ))}
+          </ul>
+        )}
+      </Section>
+    </>
+  );
+}
+
+function ReceptorPart({ facility, digits }: { facility: Facility; digits: number }) {
+  const { exposure, receptors, screening } = facility;
+  return (
+    <Section title="Receptor risk" aside={<StatusPill status={facility.status} />} initiallyOpen>
+      <ScreeningNote screening={screening} digits={digits} />
+      <dl className="m-0 grid grid-cols-2 gap-x-3 gap-y-1">
+        <Metric label="Concentration, worst case">
+          {exposure?.concentration_worst
+            ? `${range(exposure.concentration_worst, digits)} µg/m³`
+            : formatNumber(null, digits)}
+        </Metric>
+        <Metric label="Concentration, representative">
+          {exposure?.concentration_representative
+            ? `${range(exposure.concentration_representative, digits)} µg/m³`
+            : formatNumber(null, digits)}
+        </Metric>
+        <Metric label="HQ, worst case">{range(exposure?.hq_worst, digits)}</Metric>
+        <Metric label="HQ, representative">{range(exposure?.hq_representative, digits)}</Metric>
+        <Metric label="Cancer risk, worst case">{range(exposure?.cancer_risk_worst, digits)}</Metric>
+        <Metric label="Cancer risk, representative">
+          {range(exposure?.cancer_risk_representative, digits)}
+        </Metric>
+        <Metric label={`Residents within ${receptors ? formatNumber(receptors.radius_km, digits) : "?"} km`}>
+          {receptors ? formatCount(receptors.total_population) : formatNumber(null, digits)}
+        </Metric>
+      </dl>
+    </Section>
   );
 }
 
@@ -215,8 +291,7 @@ interface CardProps {
 
 /** The inspector of one facility: identifiers, release, stacks with their tier, and risk. */
 export function FacilityHoverCard({ facility, digits, id, pinned, onClose, maxHeight }: CardProps) {
-  const { industry, exposure, receptors, stacks, screening } = facility;
-  const drivers = drivingStacks(facility);
+  const { industry } = facility;
   return (
     <div
       id={id}
@@ -252,16 +327,7 @@ export function FacilityHoverCard({ facility, digits, id, pinned, onClose, maxHe
       </header>
       <div className="min-h-0 flex-1 overflow-y-auto px-3.5 pb-3.5 pt-2">
         <RiskBadges facility={facility} digits={digits} />
-        <dl className="m-0 grid grid-cols-2 gap-x-3 gap-y-1">
-          <Metric label="Reported release">
-            {formatReported(facility.total_release)} {facility.release_unit}/yr
-          </Metric>
-          <Metric label="Emission rate">{formatWithUnit(facility.emission_rate_g_s, "g/s", digits)}</Metric>
-          <Metric label="Operating hours">
-            {formatReported(facility.operating_hours_per_year)} h/yr
-          </Metric>
-          <Metric label="CAS number">{orNotReported(facility.cas_number)}</Metric>
-        </dl>
+        <ReleaseMetrics facility={facility} digits={digits} />
         <Section
           title="TSCA conditions of use"
           aside={<span className="text-xs text-fg2">{facility.conditions_of_use.length}</span>}
@@ -269,62 +335,18 @@ export function FacilityHoverCard({ facility, digits, id, pinned, onClose, maxHe
         >
           <Conditions facility={facility} />
         </Section>
-        {facility.scenarios.length > 0 && (
-          <Section title="Worst-case scenarios" aside={null} initiallyOpen>
-            <ScenarioSection facility={facility} digits={digits} />
-          </Section>
+        {facility.worker_only ? (
+          <>
+            <WorkerPart facility={facility} digits={digits} />
+            <NoStackRelease facility={facility} />
+          </>
+        ) : (
+          <>
+            <StackPart facility={facility} digits={digits} />
+            <WorkerPart facility={facility} digits={digits} />
+            <ReceptorPart facility={facility} digits={digits} />
+          </>
         )}
-        <Section
-          title="Stacks"
-          aside={<span className="text-xs text-fg2">{stacks.length}</span>}
-          initiallyOpen={stacks.length <= STACKS_SHOWN_OPEN && drivers.size === 0}
-        >
-          {stacks.length === 0 ? (
-            <p className="m-0 text-xs text-fg2">{noStacks(screening)}</p>
-          ) : (
-            <ul className="m-0 grid list-none gap-1.5 p-0">
-              {stacks.map((stack, index) => (
-                <StackRow
-                  key={index}
-                  stack={stack}
-                  digits={digits}
-                  drives={stack.stack_number === null ? [] : (drivers.get(stack.stack_number) ?? [])}
-                />
-              ))}
-            </ul>
-          )}
-        </Section>
-        <Section
-          title="Worker exposure"
-          aside={<TierPill tier={facility.occupational_exposure?.risk_tier ?? null} />}
-          initiallyOpen={facility.occupational_exposure !== null}
-        >
-          <WorkerSection facility={facility} digits={digits} />
-        </Section>
-        <Section title="Receptor risk" aside={<StatusPill status={facility.status} />} initiallyOpen>
-          <ScreeningNote screening={screening} digits={digits} />
-          <dl className="m-0 grid grid-cols-2 gap-x-3 gap-y-1">
-            <Metric label="Concentration, worst case">
-              {exposure?.concentration_worst
-                ? `${range(exposure.concentration_worst, digits)} µg/m³`
-                : formatNumber(null, digits)}
-            </Metric>
-            <Metric label="Concentration, representative">
-              {exposure?.concentration_representative
-                ? `${range(exposure.concentration_representative, digits)} µg/m³`
-                : formatNumber(null, digits)}
-            </Metric>
-            <Metric label="HQ, worst case">{range(exposure?.hq_worst, digits)}</Metric>
-            <Metric label="HQ, representative">{range(exposure?.hq_representative, digits)}</Metric>
-            <Metric label="Cancer risk, worst case">{range(exposure?.cancer_risk_worst, digits)}</Metric>
-            <Metric label="Cancer risk, representative">
-              {range(exposure?.cancer_risk_representative, digits)}
-            </Metric>
-            <Metric label={`Residents within ${receptors ? formatNumber(receptors.radius_km, digits) : "?"} km`}>
-              {receptors ? formatCount(receptors.total_population) : formatNumber(null, digits)}
-            </Metric>
-          </dl>
-        </Section>
       </div>
     </div>
   );

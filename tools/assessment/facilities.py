@@ -5,7 +5,7 @@ from __future__ import annotations
 import copy
 import logging
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 
 from langchain_core.runnables import RunnableConfig
@@ -18,10 +18,12 @@ from config.read_across import get_read_across_settings
 from tools.assessment.helpers.chain import Refined, assess_all, refine_all, worst_case_only
 from tools.assessment.helpers.occupational import Workplace, no_limits
 from tools.assessment.helpers.scenarios import drivers_of
+from tools.assessment.helpers.screened_workers import with_workers
 from tools.assessment.helpers.screening import can_screen, unit_bound
 from tools.assessment.helpers.steps import Steps
 from tools.assessment.helpers.tiers import Screen, Split, screen, split
 from tools.assessment.helpers.view import Findings, assessment_view
+from tools.assessment.helpers.worker_only import assess_worker_only
 from tools.emissions.helpers.inventory.lookup import TriReadError
 from tools.emissions.industry import fetch_facility_industry
 from tools.emissions.inventory import inventory_listing, with_eis_ids
@@ -45,10 +47,12 @@ from tools.schemas import (
     Population,
     ReadAcrossMatch,
     SccLookupResult,
+    ScreenedOut,
     StackParameters,
     Toxicity,
+    WorkerOnlyFacility,
 )
-from tools.tri_categories import get_category_index
+from tools.tri_categories import Category, get_category_index
 
 logger = logging.getLogger(__name__)
 Outcome = tuple[AssessmentResult, AssessmentArtifact]
@@ -148,21 +152,33 @@ def _toxicity(
 _COMPTOX_PRESSURE = ("experimental", "predicted")
 
 
-def _pressure_source(found: ChemicalProperties) -> str | None:
-    source = (found.get("sources") or {}).get("vapor_pressure")
+def _property_source(found: ChemicalProperties, field: str) -> str | None:
+    source = (found.get("sources") or {}).get(field)
     if source is None:
         return None
-    return f"CompTox ({source})" if source in _COMPTOX_PRESSURE else source
+    return (
+        f"CompTox ({source})"
+        if field == "vapor_pressure" and source in _COMPTOX_PRESSURE
+        else source
+    )
 
 
-def _workplace(found: ChemicalProperties | None) -> Workplace:
-    """What the worker screening needs about the chemical (limits, vapor pressure)."""
+def _workplace(found: ChemicalProperties | None, cas: str) -> Workplace:
+    """What the worker screening needs about the chemical (limits, properties), as resolved."""
     settings = get_occupational_settings()
     if found is None:
         limits = no_limits("benchmarks were given, so the chemical's limits were not looked up")
-        return Workplace(settings, limits, None, None)
+        return Workplace(settings, limits, cas, None, None, None, None)
     limits = found.get("occupational_limits") or no_limits("no limits were read")
-    return Workplace(settings, limits, found.get("vapor_pressure"), _pressure_source(found))
+    return Workplace(
+        settings,
+        limits,
+        cas,
+        found.get("molecular_weight"),
+        _property_source(found, "molecular_weight"),
+        found.get("vapor_pressure"),
+        _property_source(found, "vapor_pressure"),
+    )
 
 
 def _once_per_title(scc: Callable[[str], SccLookupResult]) -> Callable[[str], SccLookupResult]:
@@ -182,14 +198,18 @@ def _once_per_title(scc: Callable[[str], SccLookupResult]) -> Callable[[str], Sc
 def _chosen(
     records: list[EmissionRecord],
     frs_ids: list[str],
+    worker_ids: frozenset[str] = frozenset(),
 ) -> tuple[list[EmissionRecord], list[NotAssessed]]:
-    """The facilities asked for that are in the inventory, and those that are not."""
+    """The stack facilities asked for that are in the inventory, and those that are not.
+
+    A fugitive-only facility asked for (``worker_ids``) is neither: it has a worker result only.
+    """
     wanted = list(dict.fromkeys(i.strip() for i in frs_ids if i.strip()))
     by_id = {r["frs_id"]: r for r in records}
     skipped = [
         NotAssessed(frs_id=i, reason="not in the inventory of this chemical (and place)")
         for i in wanted
-        if i not in by_id
+        if i not in by_id and i not in worker_ids
     ]
     return [by_id[i] for i in wanted if i in by_id], skipped
 
@@ -216,6 +236,7 @@ class _Call:
     steps: Steps
     settings: AssessmentSettings
     workplace: Workplace
+    worker_ids: frozenset[str] = frozenset()
 
 
 def _up_to_cap(
@@ -234,7 +255,7 @@ def _up_to_cap(
 
 def _by_id(call: _Call, frs_ids: list[str]) -> Findings:
     """The facilities asked for, without screening: the first ``max_facilities`` fully assessed."""
-    chosen, skipped = _chosen(call.records, frs_ids)
+    chosen, skipped = _chosen(call.records, frs_ids, call.worker_ids)
     candidates = [(r, None) for r in _resolved(chosen)]
     refined = refine_all(candidates, call.toxicity, call.steps, call.settings)
     full, worst = _up_to_cap(call, refined)
@@ -267,6 +288,12 @@ def _bound_warning(over: list[NotAssessed], bound: int) -> list[str]:
     return [f"{len(over)} facilities beyond the safety bound of {bound} were not assessed"]
 
 
+def _with_workers(call: _Call, first: Screen, tiers: Split) -> list[ScreenedOut]:
+    """Every screened-out facility, with its worker screening: the screen is a community one."""
+    out = [*first.screened_out, *tiers.screened_out]
+    return with_workers(out, call.toxicity, call.workplace)
+
+
 def _found(call: _Call, possible: bool, first: Screen, tiers: Split) -> Findings:
     """Tier 3 and the record of it all: the full chain for the riskiest, the rest kept."""
     s = call.settings
@@ -280,7 +307,7 @@ def _found(call: _Call, possible: bool, first: Screen, tiers: Split) -> Findings
         found=len(call.records),
         full=full,
         worst_only=worst,
-        screened_out=[*first.screened_out, *tiers.screened_out],
+        screened_out=_with_workers(call, first, tiers),
         thresholds=s.screening,
         possible=possible,
         skipped=first.over,
@@ -303,6 +330,8 @@ def _artifact(f: Findings) -> AssessmentArtifact:
         assessed=assessed,
         screened_out=list(f.screened_out),
         not_assessed=list(f.skipped),
+        worker_only=list(f.worker_only),
+        worker_only_left_out=f.worker_only_left_out,
         drivers=drivers_of(assessed),
     )
 
@@ -393,16 +422,33 @@ def _keep_larger(
     return shared
 
 
-def category_records(
-    cas: str,
-    place: tuple[str | None, str | None],
-) -> tuple[list[EmissionRecord], list[str]]:
-    """The facilities of the TRI categories listing ``cas``, with a note saying so (else none)."""
-    categories = get_category_index().lookup(cas).categories
-    if not categories:
-        return [], []
-    found: dict[tuple[str, str], EmissionRecord] = {}
-    shared = sum(_keep_larger(found, inventory_listing(c.code, *place)[1]) for c in categories)
+@dataclass(frozen=True)
+class _Inventory:
+    """What the inventory gave: stack facilities, fugitive-only ones, how many were left out."""
+
+    records: list[EmissionRecord]
+    worker_only: list[WorkerOnlyFacility]
+    left_out: int
+    notes: list[str]
+
+
+def _release(facility: WorkerOnlyFacility) -> float:
+    release = facility["fugitive_release_kg_per_year"]
+    return release if release is not None else -1.0
+
+
+def _keep_larger_release(
+    found: dict[str, WorkerOnlyFacility],
+    facilities_: list[WorkerOnlyFacility],
+) -> None:
+    """Add each fugitive-only facility to ``found`` (one per facility, the larger release kept)."""
+    for facility in facilities_:
+        held = found.get(facility["frs_id"])
+        if held is None or _release(facility) > _release(held):
+            found[facility["frs_id"]] = facility
+
+
+def _category_notes(cas: str, categories: Sequence[Category], shared: int) -> list[str]:
     named = "; ".join(f"{c.code} ({c.name})" for c in categories)
     notes = [
         f"{cas} has no TRI release of its own: its facilities are those of TRI category {named}, "
@@ -413,16 +459,50 @@ def category_records(
             f"{shared} facility record(s) report under more than one of these categories; the "
             "larger release of each is kept",
         )
-    return list(found.values()), notes
+    return notes
+
+
+def category_records(
+    cas: str,
+    place: tuple[str | None, str | None],
+) -> _Inventory:
+    """The facilities of the TRI categories listing ``cas``, with a note saying so (else none)."""
+    categories = get_category_index().lookup(cas).categories
+    if not categories:
+        return _Inventory([], [], 0, [])
+    found: dict[tuple[str, str], EmissionRecord] = {}
+    only: dict[str, WorkerOnlyFacility] = {}
+    listings = [inventory_listing(c.code, *place) for c in categories]
+    shared = sum(_keep_larger(found, records) for _, records in listings)
+    for result, _ in listings:
+        _keep_larger_release(only, result["worker_only"])
+    stacked = {frs_id for frs_id, _ in found}
+    notes = _category_notes(cas, categories, shared)
+    kept = sorted((w for i, w in only.items() if i not in stacked), key=_release, reverse=True)
+    left_out = sum(result["worker_only_left_out"] for result, _ in listings)
+    return _Inventory(list(found.values()), kept, left_out, notes)
 
 
 def _inventory(
     cas: str,
     place: tuple[str | None, str | None],
-) -> tuple[list[EmissionRecord], list[str]]:
+) -> _Inventory:
     """The chemical's own TRI facilities; if TRI has none, those of its categories."""
-    _, own = inventory_listing(cas, *place)
-    return (own, []) if own else category_records(cas, place)
+    result, own = inventory_listing(cas, *place)
+    if own or result["worker_only"]:
+        return _Inventory(own, result["worker_only"], result["worker_only_left_out"], [])
+    return category_records(cas, place)
+
+
+def _worker_side(
+    inventory: _Inventory,
+    frs_ids: list[str] | None,
+) -> list[WorkerOnlyFacility]:
+    """The fugitive-only facilities to assess: all of them, or only those asked for by ID."""
+    if not frs_ids:
+        return inventory.worker_only
+    wanted = {i.strip() for i in frs_ids}
+    return [w for w in inventory.worker_only if w["frs_id"] in wanted]
 
 
 def run_assessment(
@@ -458,6 +538,59 @@ def _not_completed(cas_number: str, reason: str) -> Outcome:
     return view, _artifact(f)
 
 
+def _with_worker_only(
+    findings: Findings,
+    inventory: _Inventory,
+    frs_ids: list[str] | None,
+    call: _Call,
+) -> Findings:
+    """The findings plus the fugitive-only facilities: a worker result each, nothing community.
+
+    Facilities asked for by ID are the only ones assessed, so nothing was "left out" then.
+    """
+    chosen = _worker_side(inventory, frs_ids)
+    worker = assess_worker_only(chosen, call.toxicity, call.workplace)
+    return replace(
+        findings,
+        worker_only=worker,
+        worker_only_left_out=0 if frs_ids else inventory.left_out,
+    )
+
+
+def _invalid_cas(cas_number: str) -> Outcome:
+    """The outcome for text that is not a CAS number: nothing assessed, and the result says so."""
+    settings = get_assessment_settings()
+    warning = f"{cas_number!r} is not a valid CAS registry number; nothing was assessed"
+    empty = (Toxicity(rfc=None, iur=None), "none")
+    f = Findings(None, empty, 0, [], [], [], None, True, [], [warning])
+    view = assessment_view(f, settings.max_worst_case_listed, settings.max_screened_out_listed)
+    return view, _artifact(f)
+
+
+def _call_of(
+    cas: str,
+    inventory: _Inventory,
+    benchmarks: tuple[Toxicity, str, list[str]],
+    found: ChemicalProperties | None,
+    run: tuple[float | None, Steps, AssessmentSettings],
+) -> _Call:
+    """What every path of this call shares, from the inventory, benchmarks and run settings."""
+    toxicity, source, warnings = benchmarks
+    radius_km, steps, settings = run
+    return _Call(
+        cas,
+        inventory.records,
+        toxicity,
+        source,
+        warnings,
+        radius_km,
+        steps,
+        settings,
+        _workplace(found, cas),
+        frozenset(w["frs_id"] for w in inventory.worker_only),
+    )
+
+
 def _assess(
     cas_number: str,
     frs_ids: list[str] | None,
@@ -470,19 +603,16 @@ def _assess(
     settings = get_assessment_settings()
     cas = format_cas(cas_number)
     if cas is None:
-        warning = f"{cas_number!r} is not a valid CAS registry number; nothing was assessed"
-        empty = (Toxicity(rfc=None, iur=None), "none")
-        f = Findings(None, empty, 0, [], [], [], None, True, [], [warning])
-        view = assessment_view(f, settings.max_worst_case_listed, settings.max_screened_out_listed)
-        return view, _artifact(f)
-    records, notes = _inventory(cas, place)
+        return _invalid_cas(cas_number)
+    inventory = _inventory(cas, place)
     tox, source, warnings, found = _toxicity(cas, toxicity, config)
     tox, source, warnings = _analogue_toxicity(cas, tox, source, warnings)
-    steps.prefetch(sorted({r["naics_title"] for r in records if r["naics_title"]}))
+    steps.prefetch(sorted({r["naics_title"] for r in inventory.records if r["naics_title"]}))
     steps = replace(steps, scc=_once_per_title(steps.scc))
-    work = _workplace(found)
-    call = _Call(cas, records, tox, source, [*warnings, *notes], radius_km, steps, settings, work)
+    run = (radius_km, steps, settings)
+    call = _call_of(cas, inventory, (tox, source, [*warnings, *inventory.notes]), found, run)
     findings = _by_id(call, frs_ids) if frs_ids else _screened(call)
+    findings = _with_worker_only(findings, inventory, frs_ids, call)
     listed = (settings.max_worst_case_listed, settings.max_screened_out_listed)
     return assessment_view(findings, *listed), _artifact(findings)
 
@@ -518,6 +648,14 @@ def assess_facilities(
         its own, the nearest TRI analogue's are used only if it is inside the applicability
         domain; `toxicity_source` then names the analogue and its score, and the warnings say the
         values are estimates. Report both in the answer, as the result states them.
+        A facility that reports only a fugitive air release and no stack release (the inventory
+        lists it in `worker_only`) is a worker-only facility: nothing is released through a
+        stack, so it has no community result (never zero, never a band) and is not counted among
+        the screened, refined, assessed or screened-out facilities. It gets the worker screening
+        and its operating profile, reported on the worker side; `worker_only_count`,
+        `worker_only_left_out` and `worker_only_highest` say how many there are, how many were
+        left out by the cap and which has the highest worker value. Name that one and say the
+        others have the same kind of result in the dashboard; do not list them all.
         Give `frs_ids` only when the user asks about particular
         facilities: they are then fully assessed without screening. Each facility's result
         already includes its stacks, the weather at its site and the residents around it.
@@ -565,15 +703,29 @@ def assess_facilities(
           representative weather (null when not computable: no benchmark, or no stack could be
           evaluated), and notes (why a better stack source could not be used, defaults, and
           the method's limits). These are the community (neighbourhood) result. Each facility
-          also has worker_risk_tier ("exceedance", "elevated" or "acceptable") and
-          worker_oel_ratio (the worker's 8-hour average over the occupational limit, unitless;
-          above 1 exceeds the limit): a separate screening of the workers from the facility's
-          fugitive air release with generic baseline ventilation. They are context to report
-          beside the community result, say which of the two drives the concern, and a null
-          means it could not be computed (no fugitive release, no occupational limit and no
-          benchmark): report it as not computed, never as zero or acceptable. The fuller worker
-          result and the facility's schedule, life cycle stage and condition of use go to the
-          program's dashboard.
+          also has worker_risk_tier ("high", "moderate" or "low", the screening priority of
+          the worker indicator, not a finding) and worker_oel_ratio (the worker's 8-hour
+          average over the occupational limit, unitless). They are a separate worker screening
+          indicator, distinct from the community result: report them beside it and say which of
+          the two drives the concern. The indicator rests on the best evidence available: first
+          the measured personal air samples OSHA took in the facility's industry (the median is
+          the baseline, the 95th percentile the worst case); otherwise the worker activity that
+          gives the highest worst-case 8-hour average, modelled from the chemical's vapor
+          pressure and molecular weight with EPA ChemSTEER defaults for the activities of the
+          facility's industry and life cycle stage (and, for evaporation tasks of a very volatile
+          chemical, an ECETOC TRA band estimate). The baseline is the typical case and the worst
+          case the conservative one; the bands compare the 8-hour average with the occupational
+          limit and the worker hazard quotient and cancer risk with the same boundaries as the
+          community result, and the band is the highest of them. The activities are those a
+          generic scenario of the industry describes, not observed at the facility, with no
+          local exhaust ventilation or protective equipment assumed; the samples are targeted
+          inspections of the industry, not of the facility. The facility's TRI fugitive air
+          release is context only and enters no worker value. A null means it could not be
+          computed (no measured data and no modelled activity, no vapor pressure or molecular
+          weight, no occupational limit, no schedule or no benchmark): report it as not
+          computed with the reason, never as zero or low. The fuller worker result (evidence,
+          activities, routes, monitoring summary) and the facility's schedule, life cycle stage
+          and condition of use go to the program's dashboard.
         - drivers: for each pathway (outdoor air to the general population, indoor air to
           workers) and quantity (hazard quotient, cancer risk, worker limit ratio), the facility
           with the highest value (frs_id, facility_name, value) and, for the community
@@ -586,6 +738,12 @@ def assess_facilities(
           hq_worst and cancer_risk_worst (ranges over its stacks; no weather, residents or
           representative case)
         - not_assessed: facilities asked for but not assessed, or over a cap, with the reason
+        - worker_only_count: worker-only (fugitive release, no stack release) facilities; they are
+          not part of `facilities_found`, `assessed` or the screening counts. worker_only_left_out:
+          how many more the inventory's cap left out. worker_only_highest: the one with the
+          highest worker value (the worker band, then the worst-case 8-hour average), with
+          frs_id, facility_name, city, state, fugitive_release_kg_per_year (kg/yr),
+          worker_risk_tier and worker_twa_worst_mg_m3 (mg/m3); null when there are none
         - note: what was screened out and assessed, in one sentence (report it)
         The worst case is the screening maximum between 100 m and 10 km, which may fall where
         no one lives. These are screening estimates, not regulatory determinations.

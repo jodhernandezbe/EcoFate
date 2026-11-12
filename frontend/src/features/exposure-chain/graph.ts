@@ -1,3 +1,4 @@
+import { BAND_LOOK, isBand } from "../../lib/band";
 import { NOT_REPORTED, formatNumber, formatWithUnit } from "../../lib/format";
 import type { ExposureGraph, GraphEdge, GraphLane, GraphNode, GraphQuantity } from "../../types/api";
 
@@ -37,4 +38,4 @@ export const shapeKey = (graph: ExposureGraph): string =>
 
 /** CSS colour of a status (design tokens), neutral when there is none. */
 export const statusColor = (status: GraphLane["status"]): string =>
-  status === "above" ? "var(--bad)" : status === "near" ? "var(--warn)" : status === "below" ? "var(--ok)" : "var(--fg-2)";
+  isBand(status) ? BAND_LOOK[status].color : "var(--fg-2)";

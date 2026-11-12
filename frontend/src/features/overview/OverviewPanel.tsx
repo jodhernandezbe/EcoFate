@@ -1,6 +1,6 @@
 import { useState, type KeyboardEvent, type ReactNode } from "react";
 
-import type { Thresholds, WorkerThresholds } from "../../types/api";
+import type { BandBoundaries } from "../../types/api";
 import type { WorkspaceState } from "../../types/workspace";
 import { EpaOverviewRibbon } from "./EpaOverviewRibbon";
 import { isAssessed } from "./assessment";
@@ -10,10 +10,8 @@ import { PATHWAYS, type GroupBy, type Pathway, type Quantity } from "./riskGroup
 interface Props {
   workspace: WorkspaceState;
   digits: number;
-  /** Status thresholds from the client settings; the charts draw them as reference lines. */
-  thresholds?: Thresholds;
-  /** Tier boundaries of the worker screening, drawn on the indoor-air charts. */
-  workerThresholds?: WorkerThresholds;
+  /** Band boundaries from the client settings; the charts draw them as reference lines. */
+  bands?: BandBoundaries;
   /** The exposure chain, composed by the app; drawn above the summary cards. */
   chain?: ReactNode;
 }
@@ -69,7 +67,7 @@ function PathwayPicker({ pathway, onPathway }: { pathway: Pathway; onPathway: (p
  * The pathway (outdoor air for the general population, or indoor air for workers) and the quantity shown
  * are kept here, so the three sections agree. A chart section can expand to fill the panel, hiding the others.
  */
-export function OverviewPanel({ workspace, digits, thresholds, workerThresholds, chain }: Props) {
+export function OverviewPanel({ workspace, digits, bands, chain }: Props) {
   const [view, setView] = useState<View>("summary");
   const [expanded, setExpanded] = useState<GroupBy | null>(null);
   const [quantity, setQuantity] = useState<Quantity>("hq");
@@ -127,8 +125,7 @@ export function OverviewPanel({ workspace, digits, thresholds, workerThresholds,
                 expanded={expanded === by}
                 hidden={open && expanded !== by}
                 onToggleExpand={() => setExpanded((now) => (now === by ? null : by))}
-                thresholds={thresholds}
-                workerThresholds={workerThresholds}
+                bands={bands}
                 digits={digits}
               />
             ))}

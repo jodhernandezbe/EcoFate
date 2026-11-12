@@ -48,7 +48,7 @@ def profile() -> OperationalProfile:
     """A worker schedule of 250 days at 16 hours."""
     return OperationalProfile(
         naics_code="325199",
-        life_cycle_stage=[],
+        life_cycle_stage=["Manufacturing"],
         cou_category=[],
         cdr_sector=None,
         days_per_week=5,
@@ -60,8 +60,8 @@ def profile() -> OperationalProfile:
     )
 
 
-def worker(oel: float | None = 5.0, toxicity: Toxicity = BOTH, kg: float = 1000.0):  # noqa: ANN201
-    """The real worker screening of a facility with a fugitive release of ``kg`` kg/yr."""
+def worker(oel: float | None = 5.0, toxicity: Toxicity = BOTH, vapor_pressure: float = 10.0):  # noqa: ANN201
+    """The real worker screening of a manufacturing facility, for a chemical of 100 g/mol."""
     limits = OccupationalLimits(
         oel_twa_mg_m3=oel,
         oel_source=None if oel is None else "OSHA PEL-TWA (PubChem)",
@@ -69,8 +69,16 @@ def worker(oel: float | None = 5.0, toxicity: Toxicity = BOTH, kg: float = 1000.
         reasons={},
         warnings=[],
     )
-    place = Workplace(get_occupational_settings(), limits, None, None)
-    row = record(fugitive_release_kg_per_year=kg, fugitive_reporting_year=2020)
+    place = Workplace(
+        get_occupational_settings(),
+        limits,
+        None,
+        100.0,
+        "test",
+        vapor_pressure,
+        "test",
+    )
+    row = record(fugitive_release_kg_per_year=1000.0, fugitive_reporting_year=2020)
     return occupational_exposure(row, profile(), toxicity, place)
 
 
@@ -82,11 +90,11 @@ def assessed(
     tracts: list[TractReceptor] | None = None,
     level: str = "full",
     oel: float | None = 5.0,
-    kg: float = 1000.0,
+    vapor_pressure: float = 10.0,
 ) -> FacilityAssessment:
     """A facility assessed with the real equations (no scenarios attached yet)."""
     chosen = stacks if stacks is not None else [LOW, HIGH]
-    row = record(frs_id, emission_rate=RATE, fugitive_release_kg_per_year=kg)
+    row = record(frs_id, emission_rate=RATE)
     full = level == "full"
     exposure = assess_facility(RATE, chosen, WEATHER, PEOPLE, toxicity, get_exposure_settings())
     return FacilityAssessment(
@@ -101,7 +109,7 @@ def assessed(
         population=population(tracts or []) if full else None,
         radius_km=None,
         exposure=exposure,
-        occupational_exposure=worker(oel, toxicity, kg),
+        occupational_exposure=worker(oel, toxicity, vapor_pressure),
         operational_profile=profile(),
         notes=[],
     )

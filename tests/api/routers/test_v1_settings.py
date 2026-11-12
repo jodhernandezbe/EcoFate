@@ -174,17 +174,26 @@ def test_a_provider_failure_message_carries_no_key(client: TestClient) -> None:
 
 def test_client_config_comes_from_settings(client: TestClient) -> None:
     body = client.get("/api/v1/settings/client").json()
-    assert body["thresholds"]["hq_concern"] == 1.0
+    assert body["bands"]["hq_upper"] == 1.0
+    assert "thresholds" not in body and "worker_thresholds" not in body
     assert 3 <= len(body["suggestions"]) <= 4
     assert body["map"]["light_style"].startswith("https://")
     assert body["model"]
 
 
-def test_client_config_carries_the_worker_tier_boundaries(client: TestClient) -> None:
-    worker = client.get("/api/v1/settings/client").json()["worker_thresholds"]
-    assert worker["ratio_exceedance"] == 1.0 and worker["ratio_elevated"] == 0.1
-    assert worker["hq_elevated"] < worker["hq_exceedance"]
-    assert worker["cancer_elevated"] < worker["cancer_exceedance"]
+def test_client_config_carries_the_band_boundaries_of_both_pathways(client: TestClient) -> None:
+    bands = client.get("/api/v1/settings/client").json()["bands"]
+    assert set(bands) == {
+        "hq_lower",
+        "hq_upper",
+        "cancer_risk_lower",
+        "cancer_risk_upper",
+        "oel_ratio_lower",
+        "oel_ratio_upper",
+    }
+    for quantity in ("hq", "cancer_risk", "oel_ratio"):
+        assert 0 < bands[f"{quantity}_lower"] < bands[f"{quantity}_upper"]
+    assert bands["oel_ratio_lower"] == 0.1 and bands["oel_ratio_upper"] == 1.0
 
 
 def test_client_config_carries_the_layout_limits(client: TestClient) -> None:

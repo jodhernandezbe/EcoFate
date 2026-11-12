@@ -10,9 +10,8 @@ risk. Screening level only, not a compliance determination.
 from __future__ import annotations
 
 import math
+from typing import NamedTuple
 
-_SECONDS_PER_HOUR = 3600.0
-_MG_PER_KG = 1.0e6
 _UG_PER_MG = 1000.0
 _DAYS_PER_YEAR = 365.0
 
@@ -27,50 +26,39 @@ def _non_negative(value: float, name: str) -> None:
         raise ValueError(f"{name} must be a finite, non-negative number, got {value!r}")
 
 
-def generation_rate(
-    release_kg_per_year: float,
-    operating_days_per_year: float,
-    hours_per_day: float,
-) -> float:
-    """Generation rate of the chemical inside the workplace while the plant runs.
+class WorkplaceConcentration(NamedTuple):
+    """A workplace concentration and whether the saturation cap set it.
 
-    G = E x 1e6 / (OD x H x 3600).
-
-    Args:
-        release_kg_per_year: Fugitive air release E, kg/yr; >= 0.
-        operating_days_per_year: Operating days OD, days/yr; > 0.
-        hours_per_day: Operating hours per day H, h/day; > 0.
-
-    Returns:
-        Generation rate G, mg/s.
-
-    Raises:
-        ValueError: If an input is not finite, the release is negative or a schedule value
-            is not positive.
+    Attributes:
+        concentration_mg_per_m3: Concentration, mg/m^3.
+        capped: True when the mass balance exceeded saturation and saturation was used.
     """
-    _non_negative(release_kg_per_year, "release_kg_per_year")
-    _positive(operating_days_per_year, "operating_days_per_year")
-    _positive(hours_per_day, "hours_per_day")
-    seconds = operating_days_per_year * hours_per_day * _SECONDS_PER_HOUR
-    return release_kg_per_year * _MG_PER_KG / seconds
+
+    concentration_mg_per_m3: float
+    capped: bool
 
 
 def workplace_concentration(
     generation_mg_per_s: float,
     ventilation_m3_per_s: float,
     mixing_factor: float,
-) -> float:
-    """Steady-state air concentration of a well-mixed workplace zone.
+    saturation_mg_per_m3: float,
+) -> WorkplaceConcentration:
+    """Steady-state air concentration of a well-mixed workplace zone, capped at saturation.
 
-    C = G / (Q x k).
+    C = min(G / (Q x k), C_sat). Air cannot hold more vapor than its saturation concentration, so
+    as in the EPA/OPPT Mass Balance Inhalation Model the concentration is the lesser of the mass
+    balance and saturation.
 
     Args:
         generation_mg_per_s: Generation rate G, mg/s; >= 0.
         ventilation_m3_per_s: Ventilation rate Q, m^3/s; > 0.
         mixing_factor: Mixing factor k, unitless, in (0, 1].
+        saturation_mg_per_m3: Saturation concentration C_sat, mg/m^3; >= 0 (``math.inf`` for
+            no cap).
 
     Returns:
-        Workplace concentration, mg/m^3.
+        Workplace concentration, mg/m^3, and whether the cap applied.
 
     Raises:
         ValueError: If an input is invalid.
@@ -80,7 +68,38 @@ def workplace_concentration(
     _positive(mixing_factor, "mixing_factor")
     if mixing_factor > 1.0:
         raise ValueError(f"mixing_factor must be at most 1, got {mixing_factor!r}")
-    return generation_mg_per_s / (ventilation_m3_per_s * mixing_factor)
+    if math.isnan(saturation_mg_per_m3) or saturation_mg_per_m3 < 0:
+        raise ValueError(f"saturation_mg_per_m3 must be non-negative, got {saturation_mg_per_m3!r}")
+    balance = generation_mg_per_s / (ventilation_m3_per_s * mixing_factor)
+    return WorkplaceConcentration(
+        min(balance, saturation_mg_per_m3),
+        balance > saturation_mg_per_m3,
+    )
+
+
+def outdoor_ventilation_ft3_per_min(
+    coefficient_ft3_per_min: float,
+    air_speed_ft_per_min: float,
+) -> float:
+    """Outdoor ventilation rate of the mass-balance model.
+
+    Q = coefficient x (60 x vz / 5,280). EPA/OPPT ChemSTEER Mass Balance Inhalation Model, Table
+    B-2a (outdoor defaults): coefficient 26,400 ft^3/min; the average wind of 792 ft/min gives
+    237,600 ft^3/min and 440 ft/min gives 132,000 ft^3/min.
+
+    Args:
+        coefficient_ft3_per_min: Coefficient of the outdoor rate, ft^3/min; > 0.
+        air_speed_ft_per_min: Wind or air speed vz, ft/min; > 0.
+
+    Returns:
+        Ventilation rate Q, ft^3/min.
+
+    Raises:
+        ValueError: If an input is not finite and positive.
+    """
+    _positive(coefficient_ft3_per_min, "coefficient_ft3_per_min")
+    _positive(air_speed_ft_per_min, "air_speed_ft_per_min")
+    return coefficient_ft3_per_min * (60.0 * air_speed_ft_per_min / 5280.0)
 
 
 def twa_concentration(
@@ -208,37 +227,3 @@ def worker_cancer_risk(
     _non_negative(ladc_mg_per_m3, "ladc_mg_per_m3")
     _non_negative(iur_per_ug_m3, "iur_per_ug_m3")
     return ladc_mg_per_m3 * _UG_PER_MG * iur_per_ug_m3
-
-
-def _above(value: float | None, limit: float) -> bool:
-    return value is not None and value > limit
-
-
-def risk_tier(
-    ratio: float | None,
-    hq: float | None,
-    cancer_risk: float | None,
-    *,
-    exceedance: tuple[float, float, float],
-    elevated: tuple[float, float, float],
-) -> str | None:
-    """Tier of the worker screening: "exceedance", "elevated", "acceptable", or None.
-
-    Args:
-        ratio: OEL ratio (unitless) or None.
-        hq: Worker hazard quotient (unitless) or None.
-        cancer_risk: Worker lifetime cancer risk (probability) or None.
-        exceedance: Boundaries (ratio, hq, cancer risk) above which the tier is "exceedance".
-        elevated: Boundaries (ratio, hq, cancer risk) above which the tier is "elevated".
-
-    Returns:
-        The tier, or None when all three quantities are None (nothing to compare).
-    """
-    values = (ratio, hq, cancer_risk)
-    if all(v is None for v in values):
-        return None
-    if any(_above(v, limit) for v, limit in zip(values, exceedance, strict=True)):
-        return "exceedance"
-    if any(_above(v, limit) for v, limit in zip(values, elevated, strict=True)):
-        return "elevated"
-    return "acceptable"

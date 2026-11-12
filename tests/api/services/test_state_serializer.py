@@ -373,22 +373,23 @@ def test_no_exposure_yet_gives_no_risk_and_the_reason() -> None:
     assert state.risk.reason == "not yet computed"
 
 
-def test_hq_above_the_threshold_of_concern_is_above() -> None:
+def test_hq_at_the_upper_boundary_or_above_is_high() -> None:
     state = build(inventory(record()), evaluated(1.0, 2.5))
     top = state.risk.hq_worst
-    assert top is not None and (top.value, top.status, top.frs_id) == (2.5, "above", "F1")
-    assert state.facilities[0].status == "above"
+    assert top is not None and (top.value, top.status, top.frs_id) == (2.5, "high", "F1")
+    assert state.facilities[0].status == "high"
 
 
-def test_status_bands_follow_the_thresholds() -> None:
+def test_status_bands_follow_the_risk_band_boundaries() -> None:
     def status(hq: float) -> str | None:
         return build(inventory(record()), evaluated(1.0, hq)).facilities[0].status
 
-    assert [status(0.1), status(0.5), status(1.0), status(1.01)] == [
-        "below",
-        "near",
-        "near",
-        "above",
+    assert [status(0.05), status(0.1), status(0.5), status(1.0), status(1.01)] == [
+        "low",
+        "moderate",
+        "moderate",
+        "high",
+        "high",
     ]
 
 
@@ -397,7 +398,7 @@ def test_cancer_risk_status_uses_its_own_thresholds() -> None:
         top = build(inventory(record()), evaluated(1.0, 0.1, risk)).risk.cancer_risk_worst
         return top.status if top else None
 
-    assert [status(1e-7), status(1e-5), status(1e-3)] == ["below", "near", "above"]
+    assert [status(1e-7), status(1e-5), status(1e-3)] == ["low", "moderate", "high"]
 
 
 def test_the_summary_names_the_facility_and_stack_with_the_highest_value() -> None:

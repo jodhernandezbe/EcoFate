@@ -105,23 +105,6 @@ class MapDisplay:
 
 
 @dataclass(frozen=True)
-class RiskThresholds:
-    """Status thresholds: HQ (unitless) and lifetime cancer risk (unitless probability).
-
-    Attributes:
-        hq_concern: HQ above this is "above" the threshold of concern.
-        hq_near_lower: HQ from this up to ``hq_concern`` is "near".
-        cancer_lower: Cancer risk below this is "below".
-        cancer_upper: Cancer risk above this is "above"; in between is "near".
-    """
-
-    hq_concern: float
-    hq_near_lower: float
-    cancer_lower: float
-    cancer_upper: float
-
-
-@dataclass(frozen=True)
 class Display:
     """Display settings: significant digits, narrow breakpoint (px) and suggestion chips."""
 
@@ -201,7 +184,6 @@ class UiSettings:
         prompts: Scope-guardrail prompts.
         step_labels: Tool name -> step label shown in the chat.
         map: Map settings.
-        thresholds: Risk status thresholds.
         display: Digits, breakpoint and suggestion chips.
         layout: Workspace layout limits.
         pricing: Chat model name -> token prices.
@@ -218,7 +200,6 @@ class UiSettings:
     prompts: ScopePrompts
     step_labels: Mapping[str, str]
     map: MapDisplay
-    thresholds: RiskThresholds
     display: Display
     layout: Layout
     pricing: Mapping[str, ModelPrice]
@@ -360,22 +341,6 @@ def _map(table: dict[str, object]) -> MapDisplay:
     )
 
 
-def _thresholds(table: dict[str, object]) -> RiskThresholds:
-    name = f"{_NAME}.thresholds"
-    sub = subtable(table, "thresholds", _NAME)
-    values = RiskThresholds(
-        hq_concern=require_number(sub, "hq_concern", minimum=0.001, name=name),
-        hq_near_lower=require_number(sub, "hq_near_lower", minimum=0, name=name),
-        cancer_lower=require_number(sub, "cancer_lower", minimum=0, name=name),
-        cancer_upper=require_number(sub, "cancer_upper", minimum=0, name=name),
-    )
-    if values.hq_near_lower > values.hq_concern:
-        raise ValueError(f"{name}.hq_near_lower must not exceed {name}.hq_concern")
-    if values.cancer_lower > values.cancer_upper:
-        raise ValueError(f"{name}.cancer_lower must not exceed {name}.cancer_upper")
-    return values
-
-
 def _display(table: dict[str, object]) -> Display:
     name = f"{_NAME}.display"
     sub = subtable(table, "display", _NAME)
@@ -512,7 +477,6 @@ def load_ui_settings(path: Path | None = None) -> UiSettings:
         prompts=_prompts(table),
         step_labels=_step_labels(table),
         map=_map(table),
-        thresholds=_thresholds(table),
         display=_display(table),
         layout=_layout(table),
         pricing=_pricing(table),

@@ -1,4 +1,5 @@
 import { formatNumber, NOT_REPORTED } from "../../lib/format";
+import { evidenceText } from "../../lib/worker";
 import type { Facility } from "../../types/workspace";
 import { isAssessed, isScreenedOut } from "./assessment";
 
@@ -31,6 +32,8 @@ export interface Best {
   twa: number | null;
   /** The stack that gives the value (outdoor air), when the API named it. */
   stack: number | null;
+  /** What the 8-hour average rests on, in words ("OSHA monitoring" or the driving activity); indoor air only. */
+  evidence: string | null;
 }
 
 export interface Group {
@@ -65,6 +68,7 @@ interface Measured {
   concentration: number | null | undefined;
   twa: number | null | undefined;
   stack?: number | null;
+  evidence?: string | null;
 }
 
 function bestOf(
@@ -81,6 +85,7 @@ function bestOf(
     concentration: finite(measured.concentration) ? measured.concentration : null,
     twa: finite(measured.twa) ? measured.twa : null,
     stack: finite(measured.stack) ? measured.stack : null,
+    evidence: measured.evidence ?? null,
   };
 }
 
@@ -121,10 +126,14 @@ function addOutdoor(group: Group, facility: Facility): void {
   );
 }
 
-/** The worker result at the baseline ventilation, the tier the API calls the facility's own. */
+/** The worker result at the baseline, the case the API calls the facility's own. */
 function addIndoor(group: Group, facility: Facility): void {
-  const tier = facility.occupational_exposure?.baseline;
-  const measured = { concentration: null, twa: tier?.twa_mg_m3 };
+  const worker = facility.occupational_exposure;
+  const tier = worker?.baseline;
+  const evidence = worker
+    ? evidenceText({ evidence: worker.evidence, drivingLabel: worker.driving_activity?.label ?? null })
+    : null;
+  const measured = { concentration: null, twa: tier?.twa_mg_m3, evidence };
   group.hq = bestOf(group.hq, facility, tier?.hq, measured);
   group.risk = bestOf(group.risk, facility, tier?.cancer_risk, measured);
   group.ratio = bestOf(group.ratio, facility, tier?.oel_ratio, measured);
@@ -132,11 +141,19 @@ function addIndoor(group: Group, facility: Facility): void {
 
 function addTo(group: Group, facility: Facility, pathway: Pathway): void {
   group.facilities += 1;
+  // The community screen bounds what reaches the neighbours, not what workers breathe: on the
+  // indoor pathway every facility with a worker result is ranked, screened out or worker-only.
+  if (pathway === "indoor") {
+    if (facility.occupational_exposure) {
+      group.assessed += 1;
+      addIndoor(group, facility);
+    }
+    return;
+  }
   if (isScreenedOut(facility)) group.screenedOut += 1;
   if (!isAssessed(facility)) return;
   group.assessed += 1;
-  if (pathway === "indoor") addIndoor(group, facility);
-  else addOutdoor(group, facility);
+  addOutdoor(group, facility);
 }
 
 /**
@@ -149,7 +166,8 @@ function addTo(group: Group, facility: Facility, pathway: Pathway): void {
 export function groupFacilities(facilities: Facility[], by: GroupBy, pathway: Pathway = "outdoor"): Grouping {
   const groups = new Map<string, Group>();
   let ungrouped = 0;
-  for (const facility of facilities) {
+  // The outdoor pathway has no place for a facility without a stack release.
+  for (const facility of facilities.filter((f) => pathway === "indoor" || !f.worker_only)) {
     const member = membership(facility, by);
     if (member.size === 0) ungrouped += 1;
     for (const [key, label] of member) {
@@ -197,7 +215,7 @@ function facilityText(best: Best, pathway: Pathway, digits: number): string {
   const name = best.name ?? `FRS ${best.frsId}`;
   if (pathway === "indoor") {
     const twa = best.twa === null ? "8-hour average not reported" : `${formatNumber(best.twa, digits)} mg/m³ 8-hour average`;
-    return `${name} · ${twa}`;
+    return best.evidence === null ? `${name} · ${twa}` : `${name} · ${twa} · ${best.evidence}`;
   }
   const concentration =
     best.concentration === null

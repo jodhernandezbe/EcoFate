@@ -48,12 +48,14 @@ The assessor's rules, which an answer must keep:
 - A result no tool reported reads "not reported" with its reason, never zero. This holds for a
   whole side too: an answer that says the worker (or community) result was not computed and
   why has reported that side, not left it out.
-- The worker risk tier ("exceedance", "elevated", "acceptable") is set by three quantities
-  compared separately: the OEL ratio (8-hour average over the occupational limit), the
-  worker hazard quotient and the worker lifetime cancer risk. "Exceedance" means any one of
-  the three crossed its line, so a table that shows an OEL ratio below 1 beside "exceedance"
-  is not a contradiction: the worker hazard quotient or cancer risk drove it. Likewise the
-  community tier follows the community hazard quotient and cancer risk, not the OEL ratio.
+- The worker screening band ("high", "moderate", "low") is set by three quantities compared
+  separately: the OEL ratio (8-hour average over the occupational limit), the worker hazard
+  quotient and the worker lifetime cancer risk. "High" means any one of the three reached
+  its upper line, so a table that shows an OEL ratio below 1 beside "high" is not a
+  contradiction: the worker hazard quotient or cancer risk drove it. Likewise the community
+  band follows the community hazard quotient and cancer risk, not the OEL ratio. A band is a
+  screening priority: an answer that calls a "high" band an exceedance of a limit, or a "low"
+  band acceptable or safe, states a finding the band does not make.
 - Toxicity benchmarks reach the assessor through EPA's CompTox dashboard, which carries values
   from IRIS and other programs. An answer that names CompTox as the source in one place and
   IRIS in another is naming the channel and the program, not contradicting itself.

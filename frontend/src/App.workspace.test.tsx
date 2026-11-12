@@ -9,7 +9,7 @@ import { meResponse, renderApp } from "./test/session";
 const ASSESSED = workspace({
   framing_version: 3,
   facilities: [facility()],
-  risk: { ...EMPTY_WORKSPACE.risk, hq_worst: extremum(2.5, "above"), reason: null },
+  risk: { ...EMPTY_WORKSPACE.risk, hq_worst: extremum(2.5, "high"), reason: null },
 });
 
 const CONFIG = {
@@ -120,8 +120,8 @@ describe("clear workspace", () => {
     const user = userEvent.setup();
     await renderApp();
     await runOnce(user);
-    // The ribbon's status joins the legend's always-present "Above concern" label.
-    const shown = (await screen.findAllByText("Above concern")).length;
+    // The ribbon's status joins the legend's always-present "High" label.
+    const shown = (await screen.findAllByText("High")).length;
     await waitFor(() => expect(FakeMap.instances.length).toBeGreaterThan(0));
     const map = FakeMap.last;
     const before = map.fits.length;
@@ -129,7 +129,7 @@ describe("clear workspace", () => {
     await user.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Clear" }));
     expect(await chat().findByRole("button", { name: "Assess benzene" })).toBeInTheDocument();
     expect(screen.queryByText("Hi")).toBeNull();
-    await waitFor(() => expect(screen.queryAllByText("Above concern").length).toBeLessThan(shown));
+    await waitFor(() => expect(screen.queryAllByText("High").length).toBeLessThan(shown));
     expect(api.calls.filter((call) => call.startsWith("DELETE"))).toHaveLength(1);
     await waitFor(() => expect(map.fits.length).toBe(before + 1));
     expect(map.fits.at(-1)?.bounds).toEqual([

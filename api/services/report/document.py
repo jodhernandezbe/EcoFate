@@ -18,7 +18,7 @@ from docx.text.paragraph import Paragraph
 from api.schemas.workspace import Chemical, Facility
 from api.services.report.values import ValueFormat
 from config.report import ReportSettings
-from config.ui import RiskThresholds
+from config.risk_bands import RiskBands
 
 _TABLE_STYLE = "Table Grid"
 _DATE_FORMAT = "%Y-%m-%d %H:%M"
@@ -33,7 +33,7 @@ class ReportContext:
 
     settings: ReportSettings
     fmt: ValueFormat
-    thresholds: RiskThresholds
+    thresholds: RiskBands
 
 
 def new_document() -> Document:

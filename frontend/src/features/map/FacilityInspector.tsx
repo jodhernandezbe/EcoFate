@@ -42,7 +42,8 @@ function useMapMoves(map: MapLibreMap): void {
 function markerLabel(facility: Facility): string {
   const name = facility.name ?? `FRS ${facility.frs_id}`;
   const tier = facility.occupational_exposure?.risk_tier;
-  return `${name}, ${facility.status ?? "risk not computed"}${tier ? `, worker ${tier}` : ""}`;
+  const community = facility.worker_only ? "reports no stack release" : (facility.status ?? "risk not computed");
+  return `${name}, ${community}${tier ? `, worker ${tier}` : ""}`;
 }
 
 export function FacilityInspector({

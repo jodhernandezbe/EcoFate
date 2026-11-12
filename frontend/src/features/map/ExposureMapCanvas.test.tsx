@@ -199,7 +199,7 @@ describe("legend", () => {
   it("explains the colours and sizes", () => {
     render(<ExposureMapCanvas digits={2} workspace={placed(1)} config={config} />);
     const legend = screen.getByRole("complementary", { name: "Map legend" });
-    expect(legend).toHaveTextContent("Above concern");
+    expect(legend).toHaveTextContent("High");
     expect(legend).toHaveTextContent("Marker size follows the emission rate");
   });
 
@@ -224,8 +224,8 @@ describe("legend", () => {
     const two = () =>
       placed(1, {
         facilities: [
-          facility({ frs_id: "A", name: "Plant A", status: "above" }),
-          facility({ frs_id: "B", name: "Plant B", status: "below", latitude: 11 }),
+          facility({ frs_id: "A", name: "Plant A", status: "high" }),
+          facility({ frs_id: "B", name: "Plant B", status: "low", latitude: 11 }),
           facility({ frs_id: "C", name: "Plant C", status: null, latitude: 12 }),
         ],
       });
@@ -234,7 +234,7 @@ describe("legend", () => {
       render(<ExposureMapCanvas digits={2} workspace={workspace()} config={config} />);
       const legend = screen.getByRole("complementary", { name: "Map legend" });
       expect(legend).toHaveTextContent("No facilities mapped yet.");
-      expect(entry(/Above concern/).textContent).not.toMatch(/\d/);
+      expect(entry(/High/).textContent).not.toMatch(/\d/);
       expect(entry(/Not computed/).textContent).not.toMatch(/\d/);
     });
 
@@ -245,9 +245,9 @@ describe("legend", () => {
 
     it("counts the facilities of each status in the legend", () => {
       render(<ExposureMapCanvas digits={2} workspace={two()} config={config} />);
-      expect(entry(/Above concern/)).toHaveTextContent("1");
-      expect(entry(/Below concern/)).toHaveTextContent("1");
-      expect(entry(/Near concern/)).toHaveTextContent("0");
+      expect(entry(/High/)).toHaveTextContent("1");
+      expect(entry(/Low/)).toHaveTextContent("1");
+      expect(entry(/Moderate/)).toHaveTextContent("0");
       expect(entry(/Not computed/)).toHaveTextContent("1");
     });
 
@@ -255,28 +255,28 @@ describe("legend", () => {
       render(<ExposureMapCanvas digits={2} workspace={two()} config={config} />);
       load();
       expect(shown()).toBe(3);
-      await userEvent.click(entry(/Above concern/));
-      expect(entry(/Above concern/)).toHaveAttribute("aria-pressed", "false");
+      await userEvent.click(entry(/High/));
+      expect(entry(/High/)).toHaveAttribute("aria-pressed", "false");
       expect(shown()).toBe(2);
-      await userEvent.click(entry(/Above concern/));
-      expect(entry(/Above concern/)).toHaveAttribute("aria-pressed", "true");
+      await userEvent.click(entry(/High/));
+      expect(entry(/High/)).toHaveAttribute("aria-pressed", "true");
       expect(shown()).toBe(3);
     });
 
     it("hides several statuses independently and keeps their counts", async () => {
       render(<ExposureMapCanvas digits={2} workspace={two()} config={config} />);
       load();
-      await userEvent.click(entry(/Above concern/));
+      await userEvent.click(entry(/High/));
       await userEvent.click(entry(/Not computed/));
       expect(shown()).toBe(1);
-      expect(entry(/Above concern/)).toHaveTextContent("1");
+      expect(entry(/High/)).toHaveTextContent("1");
     });
 
     it("takes a hidden facility's card away with its marker", async () => {
       render(<ExposureMapCanvas digits={2} workspace={two()} config={config} />);
       load();
       expect(screen.getByRole("button", { name: /Plant A/ })).toBeInTheDocument();
-      await userEvent.click(entry(/Above concern/));
+      await userEvent.click(entry(/High/));
       expect(screen.queryByRole("button", { name: /Plant A/ })).toBeNull();
       expect(screen.getByRole("button", { name: /Plant B/ })).toBeInTheDocument();
     });

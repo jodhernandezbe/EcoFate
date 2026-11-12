@@ -13,6 +13,8 @@ export interface MarkerProperties {
   status: Status | "none";
   /** Tier of the worker screening (drawn as a ring), or "none" while it is not computed. */
   worker_tier: OccupationalTier | "none";
+  /** A facility with a worker result and no stack release: outlined, no community fill. */
+  worker_only: boolean;
   /** Whether the facility has the highest value of some result (drawn as an outer ring). */
   driver: boolean;
   radius_px: number;
@@ -30,7 +32,8 @@ export function markerRadius(rate: number, rates: number[], scale: MarkerScale):
 
 /**
  * One point per facility: filled by the community status (none while not computed), ringed by the
- * worker tier, sized by emission rate.
+ * worker tier, sized by emission rate. A worker-only facility has no emission rate: it keeps one
+ * fixed size (the smallest) and its marker is outlined instead of filled.
  */
 export function facilityCollection(
   facilities: Facility[],
@@ -38,7 +41,7 @@ export function facilityCollection(
   drivers: readonly ScenarioDriver[] = [],
 ): FeatureCollection<Point, MarkerProperties> {
   const driving = new Set(drivers.map((d) => d.frs_id));
-  const rates = facilities.map((f) => f.emission_rate_g_s);
+  const rates = facilities.flatMap((f) => (f.emission_rate_g_s === null ? [] : [f.emission_rate_g_s]));
   return {
     type: "FeatureCollection",
     features: facilities.map((f) => ({
@@ -49,8 +52,9 @@ export function facilityCollection(
         name: f.name ?? `FRS ${f.frs_id}`,
         status: f.status ?? "none",
         worker_tier: f.occupational_exposure?.risk_tier ?? "none",
+        worker_only: f.worker_only,
         driver: driving.has(f.frs_id),
-        radius_px: markerRadius(f.emission_rate_g_s, rates, scale),
+        radius_px: f.emission_rate_g_s === null ? scale.minPx : markerRadius(f.emission_rate_g_s, rates, scale),
       },
     })),
   };

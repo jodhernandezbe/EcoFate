@@ -20,6 +20,7 @@ from api.services.report.sources import write_sources
 from api.services.report.summary import write_summary
 from api.services.report.uncertainties import write_uncertainties
 from api.services.report.values import ValueFormat
+from config.risk_bands import get_risk_bands
 from config.ui import UiSettings
 
 Section = Callable[[Document, WorkspaceState, ReportContext], None]
@@ -45,7 +46,7 @@ def report_context(settings: UiSettings) -> ReportContext:
     return ReportContext(
         settings=report,
         fmt=ValueFormat(settings.display.significant_digits, report.not_reported),
-        thresholds=settings.thresholds,
+        thresholds=get_risk_bands(),
     )
 
 

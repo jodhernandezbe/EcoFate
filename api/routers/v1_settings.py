@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends
 from api.core.session_guard import CurrentUser, current_user
 from api.dependencies import get_key_services, get_settings
 from api.schemas.settings import (
+    BandBoundaries,
     ClientConfig,
     InitialView,
     KeysStatusResponse,
@@ -19,13 +20,11 @@ from api.schemas.settings import (
     MapConfig,
     ServiceAvailability,
     ServicesAvailability,
-    Thresholds,
-    WorkerThresholds,
 )
 from api.services.key_setup import KeyServices
 from app.key_vault import KeyStatus
 from config.agent import get_agent_settings
-from config.occupational import get_occupational_settings
+from config.risk_bands import get_risk_bands
 from config.ui import UiSettings
 
 router = APIRouter(
@@ -100,31 +99,17 @@ def _layout_config(settings: UiSettings) -> LayoutConfig:
     )
 
 
-def _worker_thresholds() -> WorkerThresholds:
-    t = get_occupational_settings().thresholds
-    return WorkerThresholds(
-        ratio_exceedance=t.exceedance_ratio,
-        ratio_elevated=t.elevated_ratio,
-        hq_exceedance=t.exceedance_hq,
-        hq_elevated=t.elevated_hq,
-        cancer_exceedance=t.exceedance_cancer_risk,
-        cancer_elevated=t.elevated_cancer_risk,
-    )
+def _band_boundaries() -> BandBoundaries:
+    return BandBoundaries(**vars(get_risk_bands()))
 
 
 @public_router.get("/client")
 def client_config(settings: Settings) -> ClientConfig:
     """Display settings the frontend needs."""
-    limits, display = settings.thresholds, settings.display
+    display = settings.display
     return ClientConfig(
         model=get_agent_settings().model,
-        thresholds=Thresholds(
-            hq_concern=limits.hq_concern,
-            hq_near_lower=limits.hq_near_lower,
-            cancer_lower=limits.cancer_lower,
-            cancer_upper=limits.cancer_upper,
-        ),
-        worker_thresholds=_worker_thresholds(),
+        bands=_band_boundaries(),
         map=_map_config(settings),
         significant_digits=display.significant_digits,
         narrow_breakpoint_px=display.narrow_breakpoint_px,

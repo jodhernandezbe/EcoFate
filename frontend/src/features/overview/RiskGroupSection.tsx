@@ -1,7 +1,7 @@
 import { Maximize2, Minimize2 } from "lucide-react";
 import { useMemo } from "react";
 
-import type { Thresholds, WorkerThresholds } from "../../types/api";
+import type { BandBoundaries } from "../../types/api";
 import type { Facility } from "../../types/workspace";
 import { isAssessed } from "./assessment";
 import { RiskGroupChart } from "./RiskGroupChart";
@@ -81,8 +81,7 @@ interface Props {
   /** Another section is expanded: this one stays mounted but is not shown. */
   hidden: boolean;
   onToggleExpand: () => void;
-  thresholds: Thresholds | undefined;
-  workerThresholds?: WorkerThresholds;
+  bands: BandBoundaries | undefined;
   digits: number;
 }
 
@@ -142,13 +141,17 @@ function EmptyChart({ title, text, tall }: { title: string; text: string; tall: 
 
 /** Two charts of the worst-case hazard quotient and cancer risk by a grouping of the facilities. */
 export function RiskGroupSection(props: Props) {
-  const { by, facilities, quantity, pathway, expanded, hidden, thresholds, workerThresholds, digits } = props;
+  const { by, facilities, quantity, pathway, expanded, hidden, bands, digits } = props;
   const copy = COPY[by];
   const grouping = useMemo(() => groupFacilities(facilities, by, pathway), [facilities, by, pathway]);
   const { shown, hidden: cut } = useMemo(() => topGroups(grouping.groups, quantity), [grouping, quantity]);
   const charts = chartsFor(pathway);
   const chart = charts.find((c) => c.quantity === quantity) ?? charts[0];
-  const anyAssessed = useMemo(() => facilities.some(isAssessed), [facilities]);
+  // A worker-only facility has a worker result to rank, and no stack result to.
+  const anyAssessed = useMemo(
+    () => facilities.some((f) => isAssessed(f) || (pathway === "indoor" && f.worker_only)),
+    [facilities, pathway],
+  );
   const Icon = expanded ? Minimize2 : Maximize2;
   const emptyText = (missing: string) =>
     facilities.length === 0
@@ -182,8 +185,7 @@ export function RiskGroupSection(props: Props) {
           groups={shown}
           quantity={chart.quantity}
           title={chart.title}
-          thresholds={thresholds}
-          workerThresholds={workerThresholds}
+          bands={bands}
           pathway={pathway}
           digits={digits}
           labelChars={expanded ? LONG_LABEL_CHARS : SHORT_LABEL_CHARS}

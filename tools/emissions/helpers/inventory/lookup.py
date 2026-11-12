@@ -8,11 +8,10 @@ from collections.abc import Mapping
 from config.loader import EmissionsSettings, TriSettings
 from tools.emissions.helpers.efservice import EfserviceError
 from tools.emissions.helpers.inventory.conditions import ConditionsMapper
-from tools.emissions.helpers.inventory.fugitive import fold_fugitive
+from tools.emissions.helpers.inventory.fugitive import Folded, fold_fugitive
 from tools.emissions.helpers.inventory.rate import HoursFor
 from tools.emissions.helpers.inventory.reduce import LatestReports, Locator
 from tools.emissions.helpers.inventory.tri import TriFetcher
-from tools.schemas import EmissionRecord
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +39,7 @@ def lookup_emissions(
     locate: Locator | None = None,
     hours_for: HoursFor | None = None,
     conditions: ConditionsMapper | None = None,
-) -> list[EmissionRecord]:
+) -> Folded:
     """Find the latest-year release record of each facility for a chemical.
 
     Args:
@@ -60,9 +59,10 @@ def lookup_emissions(
             names the activity columns to read. Without it records carry no conditions.
 
     Returns:
-        One record per (medium, facility) of the configured media, each with its facility's
-        fugitive air release; empty if nothing was reported. Data problems and a
-        hit page cap are logged as warnings.
+        ``stack``: one record per (medium, facility) of the configured media, each with its
+        facility's fugitive air release. ``worker_only``: the facilities with a fugitive air
+        release and no such record. Both empty if nothing was reported. Data problems and a hit
+        page cap are logged as warnings.
 
     Raises:
         TriReadError: If retrieval failed. A partial result is never returned as if it were
@@ -78,7 +78,7 @@ def lookup_emissions(
         logger.warning("TRI emissions lookup for %s failed: %s", cas, exc)
         raise TriReadError(f"TRI could not be read for {cas}: {exc}") from exc
     found = reducer.records(emissions, aliases, locate, hours_for, conditions)
-    records = fold_fugitive(found, tri.fugitive_medium, aliases)
+    folded = fold_fugitive(found, tri.fugitive_medium, aliases)
     for message in reducer.stats.warnings():
         logger.warning("TRI %s: %s", cas, message)
-    return records
+    return folded

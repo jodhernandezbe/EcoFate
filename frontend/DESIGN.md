@@ -31,9 +31,9 @@ use the tokens, never a literal colour, shadow, easing or font.
 | `--accent` | `#0066cc` | `#2997ff` | Interactive | Links, primary action, focus ring, selected state, chat send | Status, decoration |
 | `--accent-fg` | `#ffffff` | `#000000` | Text on accent | Labels inside accent-filled controls | Anything else |
 | `--series-cancer` | `#8944ab` | `#bf5af2` | The cancer-risk series | Cancer risk bars and markers next to hazard-quotient series | Status, UI chrome |
-| `--ok` | `#1b7a34` | `#32d74b` | Below the level of concern | `StatusPill`, `TierPill`, success `Banner`, scenario level | Buttons |
-| `--warn` | `#a35200` | `#ff9f0a` | Near the level of concern, or a screening default | `StatusPill`, `TierPill`, "screening default" badge | Errors |
-| `--bad` | `#c4001a` | `#ff6961` | Above the level of concern, or an error | `StatusPill`, `TierPill`, error `Banner`, `role="alert"` text | Emphasis |
+| `--ok` | `#1b7a34` | `#32d74b` | Low screening band | `StatusPill`, `TierPill`, success `Banner`, scenario level | Buttons |
+| `--warn` | `#a35200` | `#ff9f0a` | Moderate screening band, or a screening default | `StatusPill`, `TierPill`, "screening default" badge | Errors |
+| `--bad` | `#c4001a` | `#ff6961` | High screening band, or an error | `StatusPill`, `TierPill`, error `Banner`, `role="alert"` text | Emphasis |
 | `--shadow` | `0 8px 30px rgba(0,0,0,.12)` | `0 8px 30px rgba(0,0,0,.5)` | Elevation of a layer over the workspace | `BottomDrawer`, `ConfirmDialog`, popovers | Cards in the flow |
 | `--ease` | `cubic-bezier(.22,1,.36,1)` | same | The one easing (a settled spring) | `.spring`, `.sheet-in`, camera and splitter transitions | Linear or bounce effects |
 | `--font` | system stack | same | The typeface | `body`; nothing sets another family | Monospace for data labels |
@@ -97,8 +97,8 @@ they do not restyle them. Adding a primitive means adding a row here.
 | Primitive | What it is | Use when | Not for |
 | --- | --- | --- | --- |
 | `GlassCard` | Translucent `rounded-2xl` surface with hairline | Any card in the analysis area or chat | Nested inside another `GlassCard` |
-| `StatusPill` | Coloured pill that also says the status in words; `null` renders "Not computed" | Community risk status (below / near / above concern) | Arbitrary tags |
-| `TierPill` | Same for the occupational screening tier | Worker screening tier | Community status |
+| `StatusPill` | Coloured pill that also says the status in words; `null` renders "Not computed" | Screening band of a community result (Low / Moderate / High) | Arbitrary tags |
+| `TierPill` | Same for the worker screening band | Worker screening band | Community status |
 | `SegmentedBar` | Horizontal stacked bar summing to 100 with legend | Shares of a whole (age bands) | Comparing independent quantities |
 | `Banner` | Inline success or error line; errors interrupt assistive technology | Result of a user action (key saved, report failed) | Persistent status |
 | `AccordionSection` | Heading button that shows or hides content, `aria-expanded` | Secondary detail inside a card or drawer | Primary navigation |
@@ -138,8 +138,8 @@ Icons are Lucide, sized `size-4` inline and `size-7` as icon buttons; icon-only 
 - When the API gives the reason a value is absent, the reason takes the place of "not reported";
   never both ("not reported (not reported by the tool)").
 - Counted nouns agree with their number ("1 step", "4 steps").
-- Status words are exactly "Below concern", "Near concern", "Above concern". Never write
-  "unreasonable risk" or any regulatory determination.
+- Status words are exactly "Low", "Moderate", "High" (from `lib/band.ts`, the one mapping); a longer phrase says "screening priority". A band this build does not know reads "not reported". Never write
+  "unreasonable risk", "exceedance", "acceptable" or any regulatory determination.
 - Every number carries its unit; the UI shows only values the API sent and never computes,
   converts or rounds beyond the configured digits.
 - Counts of items (pins, rows) are shown only when there are items to count; before that one

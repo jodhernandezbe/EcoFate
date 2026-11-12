@@ -12,10 +12,13 @@ def test_thresholds_and_risk_ranges() -> None:
     doc = new_document()
     write_risk(doc, assessed(), context())
     text = lines(doc)
-    assert text[0].startswith("Hazard quotient: above 1 is above the threshold of concern")
-    assert "1 × 10⁻⁴ is above" in text[0]
+    assert text[0].startswith(
+        "Screening priority bands, not findings. Hazard quotient: low below 0.1",
+    )
+    assert "high from 1. " in text[0] and "high from 1 × 10⁻⁴" in text[0]
+    assert "exceeds" not in text[0] and "threshold of concern" not in text[0]
     assert (
-        "Plant A (FRS 110000000001) | 0.375 | 2.5 × 10⁻⁵ | not reported | not reported | Near"
+        "Plant A (FRS 110000000001) | 0.375 | 2.5 × 10⁻⁵ | not reported | not reported | Moderate"
         in text
     )
     assert "Plant A (FRS 110000000001) | Fully assessed | 0.375 | 2.5 × 10⁻⁵ | " in text
@@ -30,7 +33,7 @@ def test_risk_by_life_cycle_stage_and_condition_of_use_comes_first() -> None:
     assert text[by_use + 2].startswith("Life cycle stage | Condition of use | TRI activity")
     assert text[by_use + 3] == (
         "Manufacturing | Domestic manufacturing | Produce | Plant A (FRS 110000000001) | "
-        "0.375 | 2.5 × 10⁻⁵ | Near"
+        "0.375 | 2.5 × 10⁻⁵ | Moderate"
     )
 
 

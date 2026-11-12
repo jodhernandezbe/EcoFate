@@ -20,9 +20,11 @@ from api.services.projectors.payloads import (
     OccupationalPayload,
     ProfilePayload,
     ScreenedOutPayload,
+    WorkerOnlyPayload,
     WorstCaseScenarioPayload,
     validate,
 )
+from api.services.projectors.worker_only import note_left_out, place
 
 _LEFT_OUT = "A facility of the batch assessment was left out: its result was not valid."
 
@@ -62,24 +64,24 @@ def _keep[T](
         store[frs_id] = parsed
 
 
+def _worker_results(
+    frs_id: str,
+    exposure: object,
+    profile: object,
+    ledger: Ledger,
+) -> None:
+    """The worker screening and the operational profile of one facility."""
+    _keep(exposure, OccupationalPayload, ledger.worker, frs_id, ledger, "worker exposure")
+    _keep(profile, ProfilePayload, ledger.profiles, frs_id, ledger, "operational profile")
+
+
 def _worker(item: AssessedPayload, ledger: Ledger) -> None:
     """The worker screening and the operational profile of one facility."""
-    frs_id = item.record.frs_id
-    _keep(
+    _worker_results(
+        item.record.frs_id,
         item.occupational_exposure,
-        OccupationalPayload,
-        ledger.worker,
-        frs_id,
-        ledger,
-        "worker exposure",
-    )
-    _keep(
         item.operational_profile,
-        ProfilePayload,
-        ledger.profiles,
-        frs_id,
         ledger,
-        "operational profile",
     )
 
 
@@ -125,7 +127,7 @@ def _file(item: AssessedPayload, ledger: Ledger, cas: str | None) -> None:
 
 
 def _file_out(item: ScreenedOutPayload, ledger: Ledger, cas: str | None) -> None:
-    """A screened-out facility: placed, with its own stacks if it has them, and why."""
+    """A screened-out facility: placed, with its own stacks if it has them, why, and its workers."""
     frs_id = item.record.frs_id
     _place(item.record, ledger, cas)
     if item.stacks:
@@ -139,6 +141,16 @@ def _file_out(item: ScreenedOutPayload, ledger: Ledger, cas: str | None) -> None
         value_cancer_risk=item.cancer_risk,
         reason=item.reason,
     )
+    _worker_results(frs_id, item.occupational_exposure, item.operational_profile, ledger)
+
+
+def _file_worker_only(item: WorkerOnlyPayload, ledger: Ledger, cas: str | None) -> None:
+    """A fugitive-only facility: placed with its worker result and why it has no community one."""
+    frs_id = item.facility.frs_id
+    if not place(item.facility, ledger, cas):
+        return
+    ledger.community_reasons[frs_id] = item.community_reason
+    _worker_results(frs_id, item.occupational_exposure, item.operational_profile, ledger)
 
 
 def _list(body: Mapping[str, object], key: str) -> list[object] | None:
@@ -189,3 +201,17 @@ def project_assessment(exchange: ToolExchange, ledger: Ledger) -> None:
     _each(AssessedPayload, parts[0], ledger, lambda item: _file(item, ledger, cas))
     _each(ScreenedOutPayload, parts[1], ledger, lambda item: _file_out(item, ledger, cas))
     _each(NotAssessedPayload, parts[2], ledger, lambda item: _file_unassessed(item, ledger))
+    _worker_only(exchange.artifact, ledger, cas)
+
+
+def _worker_only(artifact: object, ledger: Ledger, cas: str | None) -> None:
+    """The artifact's fugitive-only facilities (an earlier form has none) and the left-out count."""
+    if not isinstance(artifact, Mapping):
+        return
+    body = cast(Mapping[str, object], artifact)
+    raws = _list(body, "worker_only")
+    if raws is None:
+        ledger.warnings.append(_LEFT_OUT)
+        return
+    _each(WorkerOnlyPayload, raws, ledger, lambda item: _file_worker_only(item, ledger, cas))
+    note_left_out(body, ledger)

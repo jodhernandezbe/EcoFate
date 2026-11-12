@@ -32,7 +32,8 @@ describe("graph helpers", () => {
 
   it("lists only available lanes and colours by status token", () => {
     expect(drawnLanes(FULL_GRAPH).map((l) => l.id)).toEqual(["community", "worker"]);
-    expect(statusColor("above")).toBe("var(--bad)");
+    expect(statusColor("high")).toBe("var(--bad)");
+    expect(statusColor("above" as never)).toBe("var(--fg-2)");
     expect(statusColor(null)).toBe("var(--fg-2)");
   });
 });

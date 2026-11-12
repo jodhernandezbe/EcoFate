@@ -12,11 +12,12 @@ from api.schemas.workspace import (
     Extreme,
     Extremum,
     Facility,
+    OccupationalExposure,
     ReadAcross,
     RiskSummary,
     ScenarioDriver,
     Status,
-    VentilationTier,
+    WorkerCase,
     WorkerExtremum,
     WorkerRiskSummary,
     WorkerTierSummary,
@@ -131,59 +132,54 @@ def risk_summary(
 NO_WORKER_RESULT = "no facility has a worker screening result yet"
 
 
+def _extremum(
+    facility: Facility,
+    worker: OccupationalExposure,
+    case: WorkerCase,
+    value: float,
+) -> WorkerExtremum:
+    driving = worker.driving_activity
+    return WorkerExtremum(
+        value=value,
+        frs_id=facility.frs_id,
+        facility_name=facility.name,
+        risk_tier=case.risk_tier or worker.risk_tier,
+        evidence=worker.evidence,
+        driving_activity=driving.label if driving else None,
+    )
+
+
 def _worst_worker(
     facilities: Sequence[Facility],
-    pick: Callable[[Facility], float | None],
+    case: Callable[[OccupationalExposure], WorkerCase],
+    field: Callable[[WorkerCase], float | None],
 ) -> WorkerExtremum | None:
     """The facility with the highest value of one worker quantity (a selection, never a sum)."""
     best: WorkerExtremum | None = None
     for facility in facilities:
-        value = pick(facility)
-        if value is not None and (best is None or value > best.value):
-            tier = (
-                facility.occupational_exposure.risk_tier if facility.occupational_exposure else None
-            )
-            best = WorkerExtremum(
-                value=value,
-                frs_id=facility.frs_id,
-                facility_name=facility.name,
-                risk_tier=tier,
-            )
+        worker = facility.occupational_exposure
+        value = field(case(worker)) if worker is not None else None
+        if worker is not None and value is not None and (best is None or value > best.value):
+            best = _extremum(facility, worker, case(worker), value)
     return best
 
 
 def _tier_summary(
     facilities: Sequence[Facility],
-    tier: Callable[[Facility], VentilationTier | None],
+    case: Callable[[OccupationalExposure], WorkerCase],
 ) -> WorkerTierSummary:
-    def of(field: Callable[[VentilationTier], float | None]) -> WorkerExtremum | None:
-        return _worst_worker(facilities, lambda f: _field(tier(f), field))
-
     return WorkerTierSummary(
-        oel_ratio=of(lambda t: t.oel_ratio),
-        hq=of(lambda t: t.hq),
-        cancer_risk=of(lambda t: t.cancer_risk),
+        oel_ratio=_worst_worker(facilities, case, lambda c: c.oel_ratio),
+        hq=_worst_worker(facilities, case, lambda c: c.hq),
+        cancer_risk=_worst_worker(facilities, case, lambda c: c.cancer_risk),
     )
 
 
-def _field(
-    tier: VentilationTier | None,
-    field: Callable[[VentilationTier], float | None],
-) -> float | None:
-    return field(tier) if tier is not None else None
-
-
 def worker_summary(facilities: Sequence[Facility]) -> WorkerRiskSummary:
-    """The highest worker limit ratio, hazard quotient and cancer risk, for both tiers."""
+    """The highest worker limit ratio, hazard quotient and cancer risk, for both cases."""
     summary = WorkerRiskSummary(
-        baseline=_tier_summary(
-            facilities,
-            lambda f: f.occupational_exposure.baseline if f.occupational_exposure else None,
-        ),
-        worst_case=_tier_summary(
-            facilities,
-            lambda f: f.occupational_exposure.worst_case if f.occupational_exposure else None,
-        ),
+        baseline=_tier_summary(facilities, lambda w: w.baseline),
+        worst_case=_tier_summary(facilities, lambda w: w.worst_case),
     )
     if any(f.occupational_exposure for f in facilities):
         return summary
@@ -199,7 +195,8 @@ def select(facilities: Sequence[Facility], summary: RiskSummary) -> Facility | N
     with_receptors = [f for f in facilities if f.receptors]
     if with_receptors:
         return with_receptors[-1]
-    return facilities[0] if len(facilities) == 1 else None
+    community = [f for f in facilities if not f.worker_only]
+    return community[0] if len(facilities) == 1 and community else None
 
 
 def scenario_drivers(facilities: Sequence[Facility]) -> list[ScenarioDriver]:

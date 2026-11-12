@@ -31,11 +31,13 @@ from api.services.projectors.ledger import Ledger, Located, Receptor
 from api.services.projectors.payloads import (
     EmissionPayload,
     ExposurePayload,
+    FacilityPayload,
     IndustryPayload,
     MeteorologyPayload,
     PopulationPayload,
     RangeEntryPayload,
     StackPayload,
+    WorkerOnlyFacilityPayload,
 )
 from api.services.projectors.rules import WorkspaceRules, cancer_status, hq_status, worse
 from api.services.projectors.stacks import dose_of, facility_stacks
@@ -172,7 +174,7 @@ INVENTORY_SOURCE = "TRI inventory"
 
 def _industry(
     entry: tuple[str, IndustryPayload] | None,
-    record: EmissionPayload,
+    record: FacilityPayload,
 ) -> Industry | None:
     """The industry tool's answer; else the code and title the inventory reported, if any."""
     if entry is not None:
@@ -186,7 +188,7 @@ def _industry(
     )
 
 
-def _identity(record: EmissionPayload) -> dict[str, object]:
+def _identity(record: FacilityPayload) -> dict[str, object]:
     return {
         "frs_id": record.frs_id,
         "name": record.facility_name,
@@ -203,14 +205,11 @@ def _identity(record: EmissionPayload) -> dict[str, object]:
     }
 
 
-def _release(record: EmissionPayload, cas: str | None) -> dict[str, object]:
+def _context(record: FacilityPayload, cas: str | None) -> dict[str, object]:
+    """What any facility reports: year, hours, fugitive release (context) and conditions of use."""
     return {
         "cas_number": cas,
-        "medium": record.environmental_medium,
         "reporting_year": record.reporting_year,
-        "total_release": record.total_release,
-        "release_unit": record.unit,
-        "emission_rate_g_s": record.emission_rate,
         "operating_hours_per_year": record.operating_hours_per_year,
         "operating_hours_source": record.operating_hours_source,
         "fugitive_release_kg_per_year": record.fugitive_release_kg_per_year,
@@ -218,6 +217,16 @@ def _release(record: EmissionPayload, cas: str | None) -> dict[str, object]:
         "conditions_of_use": [c.model_dump() for c in record.conditions_of_use],
         "lifecycle_stages": list(record.lifecycle_stages),
         "conditions_note": record.conditions_note,
+    }
+
+
+def _release(record: EmissionPayload, cas: str | None) -> dict[str, object]:
+    return {
+        **_context(record, cas),
+        "medium": record.environmental_medium,
+        "total_release": record.total_release,
+        "release_unit": record.unit,
+        "emission_rate_g_s": record.emission_rate,
     }
 
 
@@ -278,24 +287,63 @@ def _with_graph(facility: Facility, rules: WorkspaceRules) -> Facility:
     )
 
 
+def _worker_only(
+    record: WorkerOnlyFacilityPayload,
+    ledger: Ledger,
+    rules: WorkspaceRules,
+) -> Facility:
+    """A fugitive-only facility: its worker result, and no community value (never zero)."""
+    frs_id = record.frs_id
+    reason = ledger.community_reasons.get(frs_id, rules.graph.reasons["worker_only"])
+    return Facility.model_validate(
+        {
+            **_identity(record),
+            **_context(record, ledger.facility_cas.get(frs_id)),
+            "worker_only": True,
+            "community_reason": reason,
+            "industry": _industry(None, record),
+            "occupational_exposure": _model(ledger.worker.get(frs_id)),
+            "operational_profile": _model(ledger.profiles.get(frs_id)),
+        },
+    )
+
+
+def _stack_facility(
+    frs_id: str,
+    record: EmissionPayload,
+    found: Attachments,
+    ledger: Ledger,
+    rules: WorkspaceRules,
+) -> Facility:
+    return _with_graph(
+        Facility.model_validate(
+            {
+                **_identity(record),
+                **_release(record, ledger.facility_cas.get(frs_id)),
+                **_attached(record, found, ledger, rules),
+            },
+        ),
+        rules,
+    )
+
+
 def build_facilities(
     ledger: Ledger,
     rules: WorkspaceRules,
 ) -> tuple[list[Facility], list[Unattributed]]:
-    """Every placed facility with its attributed results, and the results that fit none."""
+    """Every placed facility with its attributed results, and the results that fit none.
+
+    The stack facilities come first; the fugitive-only ones follow, with a worker result only.
+    """
     lost: list[Unattributed] = []
     found = _attach(ledger, rules, lost)
     facilities = [
-        _with_graph(
-            Facility.model_validate(
-                {
-                    **_identity(record),
-                    **_release(record, ledger.facility_cas.get(frs_id)),
-                    **_attached(record, found, ledger, rules),
-                },
-            ),
-            rules,
-        )
+        _stack_facility(frs_id, record, found, ledger, rules)
         for frs_id, record in ledger.facilities.items()
     ]
-    return facilities, lost
+    only = [
+        _with_graph(_worker_only(record, ledger, rules), rules)
+        for frs_id, record in ledger.worker_only.items()
+        if frs_id not in ledger.facilities
+    ]
+    return [*facilities, *only], lost

@@ -1,19 +1,16 @@
+import { BAND_LOOK, isBand, NEUTRAL_PILL } from "../../lib/band";
 import { formatCount, formatNumber } from "../../lib/format";
 import { factorValue, groupFactors } from "../../lib/scenarios";
 import type { ScenarioReceptor, WorstCaseScenario } from "../../types/workspace";
 
-/** Tone of the level the assessment gave a value; the words are always shown too. */
-function toneOf(tier: string | null): string {
-  if (tier === "exceedance" || tier === "at or above threshold") return "bg-bad/15 text-bad";
-  if (tier === "elevated") return "bg-warn/15 text-warn";
-  if (tier === "acceptable" || tier === "below threshold") return "bg-ok/15 text-ok";
-  return "bg-fg2/10 text-fg2";
-}
-
 function Tier({ tier }: { tier: string | null }) {
+  const known = isBand(tier);
+  const words = tier === null ? "no level reported" : known ? BAND_LOOK[tier].label : "not reported";
   return (
-    <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${toneOf(tier)}`}>
-      {tier ?? "no level reported"}
+    <span
+      className={`inline-flex whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium ${known ? BAND_LOOK[tier].pill : NEUTRAL_PILL}`}
+    >
+      {words}
     </span>
   );
 }
@@ -81,7 +78,7 @@ export function ScenarioView({ scenario, digits }: { scenario: WorstCaseScenario
         <span className="text-fg2">{scenario.quantity_label}: </span>
         <span className="text-xl font-semibold tabular-nums">{formatNumber(scenario.value, digits)}</span>
         {scenario.benchmark !== null && (
-          <span className="text-xs text-fg2"> (level of concern {formatNumber(scenario.benchmark, digits)})</span>
+          <span className="text-xs text-fg2"> (screening benchmark {formatNumber(scenario.benchmark, digits)})</span>
         )}
       </p>
       {groupFactors(scenario.factors).map((group) => (

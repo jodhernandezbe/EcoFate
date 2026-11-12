@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Literal, NotRequired, TypedDict
 
+from commons.bands import Band
+
 
 class ChemicalProperties(TypedDict):
     """Physical-chemical and toxicity values for one chemical, in the units noted below.
@@ -118,13 +120,17 @@ class OperationalProfile(TypedDict):
     warnings: list[str]
 
 
-class EmissionRecord(TypedDict):
-    """One facility's most recent reported release of a chemical to one environmental medium."""
+class FacilityRecord(TypedDict):
+    """What the inventory knows about a facility, whatever it released: identity, industry, where.
+
+    The part of a record the worker screening and the operational profile read; a stack source
+    adds its release (``EmissionRecord``), a fugitive-only facility has none
+    (``WorkerOnlyFacility``).
+    """
 
     frs_id: str  # EPA Facility Registry Service identifier
     facility_name: str | None
-    environmental_medium: str  # TRI medium, e.g. "AIR STACK"
-    reporting_year: int  # latest year the facility reported for this medium
+    reporting_year: int  # latest year the facility reported for its medium
     doc_ctrl_num: (
         str | None
     )  # TRI control number of that year's submission (its highest, if several)
@@ -134,14 +140,9 @@ class EmissionRecord(TypedDict):
     naics_title: str | None  # that code's title in words (Census code lists); None if unknown
     naics_subsector: str | None  # first three digits of `naics_code`; None if it has fewer
     naics_subsector_title: str | None  # that subsector's title (Census); None if unknown
-    eis_ids: list[str]  # the facility's NEI (EIS) facility IDs; empty when FRS has none
-    eis_note: str | None  # why `eis_ids` is empty, or that they were borrowed from an FRS twin
-    total_release: float  # annual quantity, in `unit`, exactly as reported
-    unit: str  # unit of `total_release` as reported, e.g. "Pounds"
-    emission_rate: float  # g/s, total_release averaged over `operating_hours_per_year`
     fugitive_release_kg_per_year: float | None  # TRI fugitive air release, kg/yr; None if none
     fugitive_reporting_year: int | None  # year of that fugitive release; None if none
-    operating_hours_per_year: float  # h/yr assumed for `emission_rate`
+    operating_hours_per_year: float  # h/yr assumed for the facility's schedule
     operating_hours_source: str  # where those hours came from (industry baseline or default)
     conditions_of_use: list[ConditionOfUse]  # TSCA conditions of use of the reported activities
     lifecycle_stages: list[str]  # the distinct TSCA life cycle stages of `conditions_of_use`
@@ -153,6 +154,25 @@ class EmissionRecord(TypedDict):
     county: str | None
     state: str | None  # postal abbreviation, e.g. "TX"
     zip_code: str | None
+
+
+class EmissionRecord(FacilityRecord):
+    """One facility's most recent reported release of a chemical to one environmental medium."""
+
+    environmental_medium: str  # TRI medium, e.g. "AIR STACK"
+    eis_ids: list[str]  # the facility's NEI (EIS) facility IDs; empty when FRS has none
+    eis_note: str | None  # why `eis_ids` is empty, or that they were borrowed from an FRS twin
+    total_release: float  # annual quantity, in `unit`, exactly as reported
+    unit: str  # unit of `total_release` as reported, e.g. "Pounds"
+    emission_rate: float  # g/s, total_release averaged over `operating_hours_per_year`
+
+
+class WorkerOnlyFacility(FacilityRecord):
+    """A facility with a fugitive air release and no stack release: it exposes its workers only.
+
+    It has no stack release, emission rate or EIS ID, is never a stack source, and gets no
+    community result. ``fugitive_release_kg_per_year`` is None when TRI's unit was not a mass.
+    """
 
 
 class InventoryResult(TypedDict):
@@ -167,6 +187,8 @@ class InventoryResult(TypedDict):
     shown: int  # facilities listed below
     facilities: list[EmissionRecord]  # the largest ``emission_rate`` first
     note: str | None  # says when the list is partial and how to see others; None when complete
+    worker_only: list[WorkerOnlyFacility]  # fugitive-only facilities, largest release first
+    worker_only_left_out: int  # fugitive-only facilities beyond the cap, not listed
 
 
 StackSource = Literal["NEI", "PSTK", "AirToxScreen global default"]
@@ -420,41 +442,145 @@ class ScreeningBound(TypedDict):
     cancer_risk: float | None  # unitless lifetime excess risk
 
 
-class VentilationTier(TypedDict):
-    """The worker screening for one ventilation tier of the box model (None = not computable)."""
+Evidence = Literal["monitoring", "activity_model"]
+Volatility = Literal["below", "within", "above"]
+CaseEstimator = Literal["mass_balance", "two_zone", "ecetoc_tra", "monitoring"]
 
-    label: str  # e.g. "Baseline manufacturing ventilation"
-    ventilation_m3_per_s: float  # room ventilation rate Q, m^3/s
-    mixing_factor: float  # k, unitless
-    workplace_concentration_mg_m3: float | None  # mg/m^3 while the plant runs
+
+class WorkerCase(TypedDict):
+    """The worker screening for one case (baseline or worst case); None = not computable.
+
+    Under the activity model the setting, estimator and ventilation fields describe the driving
+    activity's case; under monitoring only ``estimator`` ("monitoring") and the values are set.
+    """
+
+    setting: str | None  # "indoor" or "outdoor" (driving activity)
+    estimator: CaseEstimator | None  # what gave the 8-hour average
+    airflow_m3_per_s: float | None  # ventilation Q of the mass balance, m^3/s
+    mixing_factor: float | None  # k of the mass balance, unitless
+    room_m3: float | None  # far-field room volume of the two-zone model, m^3
+    air_exchange_per_h: float | None  # far-field air changes of the two-zone model, 1/h
+    generation_g_per_s: float | None  # vapor generation rate, g/s
+    workplace_concentration_mg_m3: float | None  # air during the activity, mg/m^3
+    capped: bool | None  # whether the saturation concentration set the concentration
     twa_mg_m3: float | None  # 8-hour time-weighted average, mg/m^3
-    oel_ratio: float | None  # TWA over the occupational exposure limit; above 1 exceeds it
+    oel_ratio: float | None  # TWA over the occupational exposure limit, unitless
     hq: float | None  # worker hazard quotient (average daily concentration over the RfC)
     cancer_risk: float | None  # worker lifetime excess cancer risk
-    risk_tier: str | None  # "exceedance", "elevated", "acceptable", or None
+    risk_tier: Band | None  # "high", "moderate", "low", or None
+
+
+class ActivityCase(TypedDict):
+    """One output (typical or worst case) of a modelled worker activity."""
+
+    estimator: CaseEstimator
+    airflow_m3_per_s: float | None  # m^3/s
+    mixing_factor: float | None  # unitless
+    room_m3: float | None  # m^3
+    air_exchange_per_h: float | None  # 1/h
+    generation_g_per_s: float | None  # g/s; None for the band estimate
+    concentration_mg_m3: float | None  # mg/m^3; None for the band estimate
+    capped: bool
+    twa_mg_m3: float  # 8-hour time-weighted average, mg/m^3
+
+
+class WorkerActivity(TypedDict):
+    """A modelled worker activity with its typical and worst-case outputs."""
+
+    key: str  # e.g. "drum_loading"
+    label: str
+    model: str  # "ap42_loading", "penetration" or "mass_transfer"
+    setting: str  # "indoor" or "outdoor"
+    hours: float  # hours per day performed, h/day
+    typical: ActivityCase
+    worst_case: ActivityCase
+    warnings: list[str]
+    statement: str | None  # the band estimate's statement, when it gave the values
+
+
+class DrivingActivity(TypedDict):
+    """The activity with the highest worst-case 8-hour average."""
+
+    key: str
+    label: str
+    model: str
+    setting: str
+    hours: float  # h/day
+    estimator: CaseEstimator  # of its worst case
+    statement: str | None
+
+
+class ScenarioRoute(TypedDict):
+    """A generic scenario or emission scenario document that applied to a stage."""
+
+    title: str
+    category: str  # e.g. "published ESD"
+    pages: str  # where the document describes each activity
+    source: str  # the document's citation
+    activities: list[str]
+
+
+class StageRoute(TypedDict):
+    """How the activities of one life cycle stage were chosen."""
+
+    stage: str
+    generic_operation: list[str]  # activity keys of ChemSTEER's generic operation of the stage
+    scenarios: list[ScenarioRoute]
+    note: str | None  # why no scenario document applied
+
+
+class MonitoringSummary(TypedDict):
+    """What OSHA's measured air samples say about the chemical in the facility's industry."""
+
+    imis_code: str | None
+    naics_level: str | None
+    level_note: str | None
+    n_values: int | None
+    n_nondetect: int | None
+    median_mg_m3: float | None  # None when the median is below detection
+    p95_mg_m3: float | None
+    original_unit: str | None
+    unit_note: str | None
+    first_year: int | None
+    last_year: int | None
+    reason: str | None  # why the median is missing
+    source: str
+    statements: list[str]
 
 
 class OccupationalExposure(TypedDict):
-    """Worker screening of one facility: EPA ChemSTEER box model and RAGS Part F dosimetry.
+    """Worker screening of one facility: measured data or the EPA ChemSTEER activity models.
 
-    The fugitive release is treated as generated only while the plant runs, in one well-mixed
-    zone; the ventilation tiers are screening defaults, not the plant's; and it is not a
-    compliance determination. A value is None when an input is missing; ``warnings`` says which.
+    The headline rests on OSHA's measured samples of the industry when there are enough, else on
+    the driving worker activity modelled with ChemSTEER defaults (not the plant's ventilation); it
+    is not a compliance determination. The TRI fugitive release is context and enters no value.
+    A value is None when an input is missing; ``warnings`` says which.
     """
 
-    fugitive_release_kg_per_year: float | None  # TRI fugitive air release, kg/yr
-    fugitive_reporting_year: int | None  # year of that release
-    operating_days_per_year: float | None  # d/yr
-    hours_per_day: float | None  # h/day
+    evidence: Evidence | None  # what the headline rests on; None = nothing could be computed
+    molecular_weight: float | None  # g/mol
+    molecular_weight_source: str | None
+    vapor_pressure_mmhg: float | None  # mmHg at about 25 C
+    vapor_pressure_source: str | None  # "CompTox (experimental)", "PubChem", ...
+    volatility: Volatility | None  # against ChemSTEER's preferred range
+    operating_days_per_year: float | None  # d/yr, the plant schedule (context)
+    hours_per_day: float | None  # h/day, the plant schedule (context)
     oel_twa_mg_m3: float | None  # 8-hour TWA limit used, mg/m^3
     oel_source: str | None  # e.g. "OSHA PEL-TWA (PubChem)"
     rfc: float | None  # mg/m^3, inhalation reference concentration used
     iur: float | None  # (ug/m^3)^-1, inhalation unit risk used
-    vapor_pressure_mmhg: float | None  # context only; never enters an equation
-    vapor_pressure_source: str | None  # "CompTox" (experimental/predicted) or "PubChem"
-    baseline: VentilationTier
-    worst_case: VentilationTier
-    risk_tier: str | None  # the baseline tier; the worst case is in `worst_case`
+    fugitive_release_kg_per_year: float | None  # TRI fugitive air release, kg/yr (context only)
+    fugitive_reporting_year: int | None  # year of that release
+    fugitive_statement: str  # what the release is and that no worker value uses it
+    driving_activity: DrivingActivity | None
+    activities: list[WorkerActivity]  # worst-case 8-hour average, highest first
+    activity_reason: str | None  # why no activity was modelled
+    routes: list[StageRoute]  # how each life cycle stage's activities were chosen
+    monitoring: MonitoringSummary | None
+    monitoring_reason: str | None  # why there is no monitoring result
+    baseline: WorkerCase
+    worst_case: WorkerCase
+    risk_tier: Band | None  # the baseline band (the worst-case band when the baseline is null)
     assumptions: list[str]
     warnings: list[str]
 
@@ -499,7 +625,7 @@ class WorstCaseScenario(TypedDict):
     quantity: str  # "hq", "cancer_risk" or "oel_ratio"
     quantity_label: str
     value: float  # unitless
-    tier: str | None  # e.g. "above threshold", "exceedance"; None when none was given
+    tier: Band | None  # the band of this value alone; None when none was given
     benchmark: float | None  # the level of concern the value was compared with, unitless
     factors: list[ScenarioFactor]
     receptors: list[ScenarioReceptor]
@@ -552,6 +678,23 @@ class ScreenedOut(TypedDict):
     stacks: list[StackParameters]  # its own stacks ("own stacks" stage); empty at the bound
     stack_tier: StackSource
     reason: str
+    # The workers are screened whatever the community screen found: it bounds what reaches the
+    # neighbours, not what workers breathe inside the plant. Absent only before the worker step.
+    occupational_exposure: NotRequired[OccupationalExposure]
+    operational_profile: NotRequired[OperationalProfile]
+
+
+class WorkerOnlyAssessment(TypedDict):
+    """A fugitive-only facility as the batch assessment ran it: a worker result, no community one.
+
+    Nothing community was computed for it (no stack, dispersion, screening bound, weather or
+    residents): its community values are absent, with ``community_reason``, never zero or a band.
+    """
+
+    facility: WorkerOnlyFacility  # identity and location as the inventory gave them
+    operational_profile: OperationalProfile  # schedule, life cycle stage, COU, CDR sector
+    occupational_exposure: OccupationalExposure  # the worker screening
+    community_reason: str  # why it has no community result
 
 
 class AssessmentArtifact(TypedDict):
@@ -560,6 +703,8 @@ class AssessmentArtifact(TypedDict):
     assessed: list[FacilityAssessment]  # fully assessed first, then worst case only
     screened_out: list[ScreenedOut]
     not_assessed: list[NotAssessed]  # asked for or reaching a threshold, but with no result
+    worker_only: list[WorkerOnlyAssessment]  # fugitive-only facilities, highest worker value first
+    worker_only_left_out: int  # fugitive-only facilities beyond the inventory's cap
     drivers: NotRequired[list[ScenarioDriver]]  # the facility behind each scenario's top value
 
 
@@ -597,8 +742,8 @@ class FacilitySummary(FacilityRanges):
     residents: int  # within the radius
     radius_km: float | None  # None = the default radius
     worker_risk_tier: (
-        str | None
-    )  # worker screening tier (baseline ventilation), None = not computed
+        Band | None
+    )  # worker screening band (baseline of the headline), None = not computed
     worker_oel_ratio: float | None  # worker 8-hour TWA over the occupational limit, unitless
     notes: list[str]  # the most important warnings, deduplicated and capped
 
@@ -627,6 +772,18 @@ class ScreenedOutSummary(TypedDict):
     stage: ScreeningStage
     hq: float | None
     cancer_risk: float | None
+    worker_risk_tier: Band | None  # its worker screening band; None = not computed
+
+
+class ScreenedOutWorkerSummary(TypedDict):
+    """The screened-out facility with the highest worker value, as the model reads it."""
+
+    frs_id: str
+    facility_name: str | None
+    city: str | None
+    state: str | None
+    worker_risk_tier: Band | None  # the worker screening band (a priority, not a finding)
+    worker_twa_worst_mg_m3: float | None  # worst-case 8-hour average, mg/m^3
 
 
 class ScreeningSummary(TypedDict):
@@ -638,6 +795,22 @@ class ScreeningSummary(TypedDict):
     screened_out_at_bound: int
     screened_out_with_own_stacks: int
     closest_screened_out: list[ScreenedOutSummary]  # closest to a threshold first, capped
+    # The screened-out facilities' workers, screened all the same: band -> count, with
+    # "not computed" for those without a worker value, and the one with the highest value.
+    screened_out_worker_bands: dict[str, int]
+    screened_out_worker_highest: ScreenedOutWorkerSummary | None
+
+
+class WorkerOnlySummary(TypedDict):
+    """The fugitive-only facility with the highest worker value, as the model reads it."""
+
+    frs_id: str
+    facility_name: str | None
+    city: str | None
+    state: str | None
+    fugitive_release_kg_per_year: float | None  # kg/yr
+    worker_risk_tier: Band | None  # the worker screening band (a priority, not a finding)
+    worker_twa_worst_mg_m3: float | None  # worst-case 8-hour average, mg/m^3
 
 
 class AssessmentResult(TypedDict):
@@ -654,6 +827,9 @@ class AssessmentResult(TypedDict):
     worst_case_only_count: int
     worst_case_only: list[WorstCaseSummary]  # highest worst-case risk first, capped
     not_assessed: list[NotAssessed]
+    worker_only_count: int  # fugitive-only facilities given a worker result and no community one
+    worker_only_left_out: int  # fugitive-only facilities beyond the inventory's cap
+    worker_only_highest: WorkerOnlySummary | None  # the one with the highest worker value
     note: str | None  # what was left out of the listing
     warnings: list[str]
     drivers: NotRequired[list[ScenarioDriver]]  # the facility behind each pathway's top value

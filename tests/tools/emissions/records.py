@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from tools.schemas import EmissionRecord
+from typing import cast
+
+from tools.schemas import EmissionRecord, WorkerOnlyFacility
 
 
 def emission_record(
@@ -41,3 +43,18 @@ def emission_record(
         "state": state,
         "zip_code": None,
     }
+
+
+def worker_only_facility(
+    frs_id: str,
+    kilograms: float | None,
+    state: str | None = "TX",
+    city: str | None = "Houston",
+) -> WorkerOnlyFacility:
+    """A fugitive-only facility: no stack release, emission rate or EIS ID."""
+    stack = emission_record(frs_id, 1.0, state, city)
+    stack_only = {"environmental_medium", "eis_ids", "eis_note", "total_release", "unit"}
+    shared = {k: v for k, v in stack.items() if k not in stack_only | {"emission_rate"}}
+    shared["fugitive_release_kg_per_year"] = kilograms
+    shared["fugitive_reporting_year"] = 2020 if kilograms is not None else None
+    return cast(WorkerOnlyFacility, shared)

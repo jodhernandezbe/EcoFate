@@ -208,7 +208,6 @@ ALLOWED = {
     ("api/routers/v1_chat.py", "REPORT_RESPONSES"),
     ("api/routers/v1_settings.py", "KEY_PATHS"),
     # Read-only lookup tables (label and status maps), reviewed: nothing ever writes to them.
-    ("api/services/exposure_graph/worker.py", "TIER_STATUS"),
     ("api/services/projectors/stacks.py", "TIERS"),
     ("api/services/report/chemical.py", "PROPERTY_LABELS"),
     ("api/services/report/chemical.py", "_KIND_LABELS"),

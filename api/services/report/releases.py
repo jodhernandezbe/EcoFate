@@ -46,8 +46,8 @@ def _release(facility: Facility, ctx: ReportContext) -> list[str]:
     return [
         facility.frs_id,
         str(facility.reporting_year),
-        facility.medium,
-        fmt.reported(facility.total_release, facility.release_unit),
+        ctx.fmt.text(facility.medium),
+        fmt.reported(facility.total_release, facility.release_unit or ""),
         fmt.number(facility.emission_rate_g_s, "g/s"),
         hours,
     ]

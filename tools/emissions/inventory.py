@@ -25,14 +25,14 @@ from tools.emissions.helpers.efservice import EfserviceClient
 from tools.emissions.helpers.inventory.conditions import ConditionsMapper, get_crosswalk
 from tools.emissions.helpers.inventory.eis import UNREACHABLE_NOTE, EisResolver
 from tools.emissions.helpers.inventory.frs_point import FrsLocator
-from tools.emissions.helpers.inventory.listing import rank_and_cap
+from tools.emissions.helpers.inventory.listing import rank_and_cap, with_worker_only
 from tools.emissions.helpers.inventory.lookup import TriReadError, lookup_emissions
 from tools.emissions.helpers.inventory.plant_hours import PlantHours, get_baseline
 from tools.emissions.helpers.inventory.rate import HoursFor, operating_hours_per_year
 from tools.emissions.helpers.inventory.tri import TriFetcher
 from tools.emissions.helpers.naics_subsectors import subsector_titles, with_subsectors
 from tools.emissions.helpers.naics_titles import naics_titles, with_titles
-from tools.schemas import EmissionRecord, InventoryResult
+from tools.schemas import EmissionRecord, FacilityRecord, InventoryResult
 from tools.tri_categories import get_category_index
 
 logger = logging.getLogger(__name__)
@@ -90,9 +90,11 @@ def query_emissions_inventory(
     Purpose:
         Use this to discover emission sources of a chemical from the EPA Toxics Release
         Inventory (TRI). For each facility it uses the most recent year the facility
-        reported, so different facilities may be reported for different years. Only
-        stack (point-source) air releases are returned; fugitive air, water and land
-        releases are not. Each result carries the facility's location (latitude, longitude,
+        reported, so different facilities may be reported for different years. The
+        facilities listed are stack (point-source) air sources; water and land releases are
+        not returned. A facility that reports a fugitive air release but no stack release
+        is not a stack source: it is listed apart in `worker_only` (see Returns). Each
+        result carries the facility's location (latitude, longitude,
         address) and its `frs_id` identifies it. A widely reported chemical
         can take a while because TRI is read in many pages (facilities without TRI coordinates
         are then located in FRS, many per request) and may have over a thousand facilities.
@@ -131,6 +133,14 @@ def query_emissions_inventory(
         - matching: facilities that match `state` and `city` (all of them when none is given)
         - shown: facilities listed in `facilities`
         - note: says that the list is partial and how to see others; null when it is complete
+        - worker_only: facilities with a fugitive air release and no stack release, largest
+          fugitive release first (at most a configured number; empty if none), each with the
+          facility fields below except the stack ones (no `environmental_medium`, `eis_ids`,
+          `eis_note`, `total_release`, `unit` or `emission_rate`). They expose their
+          workers, not the neighbours: they have no stack release, so they get only a worker
+          result in the assessment and no community result; never describe them as stack sources
+          or give them an emission rate
+        - worker_only_left_out: fugitive-only facilities beyond that number, not listed (say so)
         - facilities: the largest matching facilities, highest `emission_rate` first (empty if
           none, if the CAS number is invalid, or if TRI could not be read), each with:
           - frs_id: EPA Facility Registry Service identifier
@@ -270,7 +280,7 @@ def _read_listing(cas: str, state: str | None, city: str | None, year: int) -> L
     tri = get_tri_settings()
     with _open_client() as client:
         ef = EfserviceClient(get_efservice_settings(), client)
-        records = lookup_emissions(
+        found = lookup_emissions(
             cas,
             tri,
             get_emissions_settings(),
@@ -281,7 +291,10 @@ def _read_listing(cas: str, state: str | None, city: str | None, year: int) -> L
             _hours_for(),
             _conditions(),
         )
-        return rank_and_cap(_titled(records), tri.max_listed, state, city, _eis_resolver(client))
+        eis = _eis_resolver(client)
+        result, matching = rank_and_cap(_titled(found.stack), tri.max_listed, state, city, eis)
+        worker_only = _titled(found.worker_only)
+        return with_worker_only(result, worker_only, tri.max_worker_only, state, city), matching
 
 
 def _hours_for() -> HoursFor:
@@ -303,7 +316,7 @@ def with_eis_ids(records: list[EmissionRecord]) -> list[EmissionRecord]:
         return _eis_resolver(client)(records)
 
 
-def _titled(records: list[EmissionRecord]) -> list[EmissionRecord]:
+def _titled[R: FacilityRecord](records: list[R]) -> list[R]:
     """The records with each NAICS code's title and subsector from the local Census lists."""
     settings = get_industry_settings()
     titled = with_titles(records, naics_titles(settings))

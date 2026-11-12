@@ -11,8 +11,9 @@ from typing import Literal
 from pydantic import Field
 
 from api.schemas.base import ContractModel
+from commons.bands import Band
 
-GraphStatus = Literal["below", "near", "above"]
+GraphStatus = Band
 NodeKind = Literal["source", "release", "pathway", "route", "receptor", "endpoint"]
 
 

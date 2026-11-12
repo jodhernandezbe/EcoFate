@@ -24,6 +24,7 @@ from api.services.projectors.summary import (
     worker_summary,
 )
 from api.services.projectors.supplied import apply_supplied
+from api.services.projectors.worker_only import left_out_notes
 
 
 def pair_exchanges(messages: Sequence[BaseMessage]) -> list[ToolExchange]:
@@ -105,6 +106,6 @@ def build_workspace(
             "scenario_drivers": scenario_drivers(facilities),
             "facilities": facilities,
             "unattributed": lost,
-            "warnings": ledger.warnings,
+            "warnings": [*ledger.warnings, *left_out_notes(ledger)],
         },
     )

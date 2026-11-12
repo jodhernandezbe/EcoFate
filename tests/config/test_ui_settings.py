@@ -56,12 +56,6 @@ south = 20.0
 east = 10.0
 north = 30.0
 
-[ui.thresholds]
-hq_concern = 1.0
-hq_near_lower = 0.2
-cancer_lower = 0.01
-cancer_upper = 0.1
-
 [ui.display]
 significant_digits = 2
 narrow_breakpoint_px = 800
@@ -144,7 +138,6 @@ def test_values(tmp_path: Path) -> None:
     assert settings.map.vertex_spacing_deg == 10.0
     view = settings.map.initial_view
     assert (view.west, view.south, view.east, view.north) == (-10.0, 20.0, 10.0, 30.0)
-    assert settings.thresholds.hq_near_lower == 0.2
     assert settings.display.suggestions == ("first", "second")
     assert (settings.layout.rail.collapsed_px, settings.layout.chat.min_px) == (60, 280)
     assert settings.layout.overview.default_share == 0.4
@@ -160,7 +153,6 @@ def test_shipped_settings_load() -> None:
         "census": "census_api_key",
         "comptox": "comptox_api_key",
     }
-    assert settings.thresholds.hq_concern == 1.0
     assert 3 <= len(settings.display.suggestions) <= 4
 
 
@@ -231,10 +223,6 @@ def test_unpriced_when_pricing_empty(tmp_path: Path) -> None:
         ("south", "south = true", "ui.map.initial_view.south"),
         ("marker_max_px", "marker_max_px = 1.0", "ui.map.marker_max_px"),
         ("coordinate_tolerance_deg", "coordinate_tolerance_deg = -1", "coordinate_tolerance"),
-        ("hq_concern", "hq_concern = true", "ui.thresholds.hq_concern"),
-        ("hq_near_lower", "hq_near_lower = 2.0", "ui.thresholds.hq_near_lower"),
-        ("hq_near_lower", "hq_near_lower = -0.1", "ui.thresholds.hq_near_lower"),
-        ("cancer_lower", "cancer_lower = 0.5", "ui.thresholds.cancer_lower"),
         ("significant_digits", "significant_digits = 0", "ui.display.significant_digits"),
         ("suggestions", "suggestions = []", "ui.display.suggestions"),
         ("rail_min_px", "rail_min_px = 300", "ui.layout.rail"),

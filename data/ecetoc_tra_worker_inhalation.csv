@@ -1,0 +1,19 @@
+# ECETOC TRA worker inhalation estimates: industrial setting, no local exhaust ventilation, volatile liquids.
+# Source: ECETOC Technical Report No. 114, "ECETOC TRA version 3: Background and Rationale for the Improvements" (2012).
+# "estimate" rows: initial 8-hour (long-term) estimates in ppm, Appendix A, Table A-1 (p. 48). PROC 8a inhalation values are
+# unchanged in TRA Worker 3.2 (ECETOC, ISES-Europe 2024: version 3.2 changed PROC 10 inhalation and PROC 8a dermal only).
+# PROC 8a scope (TR 114, Appendix B): "Sampling, loading, filling, transfer, dumping, bagging in non-dedicated facilities.
+# Exposure related to dust, vapour, aerosols or spillage, and cleaning of equipment to be expected."
+# "duration" rows: exposure duration modifiers, factor on the initial estimate, TR 114 Table 5 (the TRA inhalation modifiers of
+# TR 93 Appendix H), source ranges ">4 h", "1-4 h", "15 min-1 h", "<15 min". A duration h takes the row with
+# min_hours <= h < max_hours (the last row includes 24 h), so a duration on a boundary takes the larger factor (screening choice).
+# Only values read in the source are listed; a process category or band that is absent has no estimate.
+kind,proc,band,min_hours,max_hours,value,unit
+estimate,8a,high,,,250,ppm
+estimate,8a,moderate,,,50,ppm
+estimate,8a,low,,,10,ppm
+estimate,8a,very_low,,,0.1,ppm
+duration,,,4,24,1.0,
+duration,,,1,4,0.6,
+duration,,,0.25,1,0.2,
+duration,,,0,0.25,0.1,

@@ -31,9 +31,22 @@ const shot = (name: string) => `${name}-${window.matchMedia("(prefers-color-sche
 const READY = workspace({
   risk: {
     ...EMPTY_WORKSPACE.risk,
-    hq_worst: extremum(2.5, "above", 3),
-    hq_representative: extremum(0.4, "below"),
-    cancer_risk_worst: extremum(0.000012, "near"),
+    hq_worst: extremum(2.5, "high", 3),
+    hq_representative: extremum(0.4, "low"),
+    cancer_risk_worst: extremum(0.000012, "moderate"),
+    reason: null,
+  },
+  worker_risk: {
+    baseline: {
+      oel_ratio: { value: 0.4, frs_id: "W1", facility_name: "Plant W1", risk_tier: "moderate", evidence: "monitoring", driving_activity: null },
+      hq: { value: 0.2, frs_id: "F1", facility_name: "Plant F1", risk_tier: "low", evidence: "activity_model", driving_activity: "Drum loading" },
+      cancer_risk: null,
+    },
+    worst_case: {
+      oel_ratio: { value: 1.2, frs_id: "W1", facility_name: "Plant W1", risk_tier: "high", evidence: "monitoring", driving_activity: null },
+      hq: { value: 0.6, frs_id: "F1", facility_name: "Plant F1", risk_tier: "moderate", evidence: "activity_model", driving_activity: "Drum loading" },
+      cancer_risk: null,
+    },
     reason: null,
   },
   chemical: {

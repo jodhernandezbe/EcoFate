@@ -22,6 +22,12 @@ def _industry(facility: Facility) -> str | None:
 
 def _quantities(facility: Facility, text: GraphText) -> list[GraphQuantity]:
     hours = facility.operating_hours_per_year
+    if facility.worker_only:
+        fugitive = quantity(text, "fugitive_release", facility.fugitive_release_kg_per_year)
+        return [
+            fugitive,
+            quantity(text, "operating_hours", hours, source=facility.operating_hours_source),
+        ]
     return [
         quantity(text, "total_release", facility.total_release, unit=facility.release_unit),
         quantity(text, "emission_rate", facility.emission_rate_g_s),
@@ -46,7 +52,7 @@ def hub_node(facility: Facility, text: GraphText) -> GraphNode:
         id=HUB,
         kind="source",
         title=facility.name or facility.frs_id,
-        headline="total_release",
+        headline="fugitive_release" if facility.worker_only else "total_release",
         quantities=_quantities(facility, text),
         facts=_facts(facility, text),
     )

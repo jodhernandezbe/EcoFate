@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { facility, worker } from "../../test/fixtures";
+import { facility, monitoredWorker, worker, workerOnly } from "../../test/fixtures";
 import type { Facility } from "../../types/workspace";
 import { describeBar, groupFacilities, topGroups } from "./riskGroups";
 
@@ -40,8 +40,8 @@ describe("groupFacilities by subsector", () => {
   it("takes the highest value of each quantity from one facility, never a combination", () => {
     const chem = must(groupFacilities(facilities, "subsector").groups.find((g) => g.key === "325"));
     expect(chem.label).toBe("325 · Chemicals");
-    expect(chem.hq).toEqual({ value: 5, frsId: "B", name: "Plant B", concentration: 8, twa: null, stack: 2 });
-    expect(chem.risk).toEqual({ value: 1e-6, frsId: "A", name: "Plant A", concentration: 4, twa: null, stack: 2 });
+    expect(chem.hq).toEqual({ value: 5, frsId: "B", name: "Plant B", concentration: 8, twa: null, stack: 2, evidence: null });
+    expect(chem.risk).toEqual({ value: 1e-6, frsId: "A", name: "Plant A", concentration: 4, twa: null, stack: 2, evidence: null });
     expect([chem.facilities, chem.assessed]).toEqual([2, 2]);
   });
 
@@ -212,11 +212,55 @@ describe("the indoor air pathway (workers)", () => {
     const chem = must(grouping.groups.find((g) => g.key === "325"));
     expect(describeBar(chem, "ratio", 2, "indoor").lines[0]).toMatchObject({
       label: "Highest 8-hour average over the occupational limit",
-      detail: "Plant B · 7 mg/m³ 8-hour average",
+      detail: "Plant B · 7 mg/m³ 8-hour average · Drum loading",
     });
     const unsent = groupFacilities([withWorker("D", "999", tier({ hq: 1, twa_mg_m3: null }))], "subsector", "indoor");
     expect(describeBar(must(unsent.groups[0]), "hq", 2, "indoor").lines[0]?.detail).toBe(
-      "Plant D · 8-hour average not reported",
+      "Plant D · 8-hour average not reported · Drum loading",
     );
+  });
+});
+
+describe("screened-out facilities on the indoor pathway", () => {
+  const out = make("S", {
+    ...sub("325", "Chemicals"),
+    screening: screenedOut,
+    occupational_exposure: worker(),
+  });
+
+  it("are ranked by their worker result: the community screen does not apply to workers", () => {
+    const [group] = groupFacilities([out], "subsector", "indoor").groups;
+    expect(group).toMatchObject({ facilities: 1, assessed: 1, screenedOut: 0 });
+    expect(group?.ratio?.frsId).toBe("S");
+  });
+
+  it("stay out of the outdoor bars, counted as screened out", () => {
+    const [group] = groupFacilities([out], "subsector").groups;
+    expect(group).toMatchObject({ facilities: 1, assessed: 0, screenedOut: 1 });
+    expect(group?.hq).toBeNull();
+  });
+});
+
+describe("worker-only facilities", () => {
+  const only = workerOnly({ ...sub("325", "Chemicals"), occupational_exposure: monitoredWorker() });
+  const stack = make("A", { ...sub("325", "Chemicals"), exposure: exposure(2, 1e-5, 5) });
+
+  it("are ranked on the indoor pathway, with their evidence in the tooltip", () => {
+    const [group] = groupFacilities([only, stack], "subsector", "indoor").groups;
+    // Indoors, "assessed" counts the facilities with a worker result; the stack one has none.
+    expect(group).toMatchObject({ facilities: 2, assessed: 1, screenedOut: 0 });
+    expect(group?.ratio).toMatchObject({ frsId: "W1", evidence: "OSHA monitoring" });
+    expect(describeBar(must(group), "ratio", 2, "indoor").lines[0]?.detail).toBe(
+      "Plant W1 · 1.5 mg/m³ 8-hour average · OSHA monitoring",
+    );
+  });
+
+  it("are absent from the outdoor pathway, even from the counts", () => {
+    const [group] = groupFacilities([only, stack], "subsector").groups;
+    expect(group).toMatchObject({ facilities: 1, assessed: 1 });
+    expect(group?.hq?.frsId).toBe("A");
+    const alone = groupFacilities([only], "subsector");
+    expect(alone.groups).toEqual([]);
+    expect(alone.ungrouped).toBe(0);
   });
 });

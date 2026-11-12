@@ -1,7 +1,7 @@
 import { Bar, BarChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { formatNumber } from "../../lib/format";
-import type { Thresholds, WorkerThresholds } from "../../types/api";
+import type { BandBoundaries } from "../../types/api";
 import { describeBar, type Group, type Pathway, type Quantity } from "./riskGroups";
 
 const BAR_COLOR = "var(--accent)";
@@ -26,29 +26,17 @@ const compactTick = (value: number): string =>
 
 const shorten = (text: string, max: number): string => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
 
-/** The dashed reference lines of a quantity: where it nears and where it crosses concern. */
-export function thresholdLines(quantity: Quantity, thresholds: Thresholds): { y: number; text: string }[] {
-  const [low, high, lowText, highText] =
-    quantity === "hq"
-      ? [thresholds.hq_near_lower, thresholds.hq_concern, "near", "concern"]
-      : [thresholds.cancer_lower, thresholds.cancer_upper, "lower", "upper"];
-  return [
-    { y: low, text: `${lowText} ${compactTick(low)}` },
-    { y: high, text: `${highText} ${compactTick(high)}` },
-  ].map((line) => ({ ...line, text: line.text.replace(/\s+/g, " ") }));
-}
-
-/** The reference lines of a worker quantity: where it becomes elevated and where it exceeds. */
-export function workerLines(quantity: Quantity, limits: WorkerThresholds): { y: number; text: string }[] {
+/** The dashed reference lines of a quantity: the boundaries where it becomes moderate and high. */
+export function bandLines(quantity: Quantity, bands: BandBoundaries): { y: number; text: string }[] {
   const [low, high] =
     quantity === "hq"
-      ? [limits.hq_elevated, limits.hq_exceedance]
+      ? [bands.hq_lower, bands.hq_upper]
       : quantity === "risk"
-        ? [limits.cancer_elevated, limits.cancer_exceedance]
-        : [limits.ratio_elevated, limits.ratio_exceedance];
+        ? [bands.cancer_risk_lower, bands.cancer_risk_upper]
+        : [bands.oel_ratio_lower, bands.oel_ratio_upper];
   return [
-    { y: low, text: `elevated ${compactTick(low)}` },
-    { y: high, text: `exceedance ${compactTick(high)}` },
+    { y: low, text: `moderate ${compactTick(low)}` },
+    { y: high, text: `high ${compactTick(high)}` },
   ];
 }
 
@@ -121,9 +109,8 @@ interface Props {
   quantity: Quantity;
   /** The chart's heading, also its name for assistive technology. */
   title: string;
-  thresholds: Thresholds | undefined;
-  /** Tier boundaries of the worker screening, drawn instead when the pathway is indoor air. */
-  workerThresholds?: WorkerThresholds;
+  /** Band boundaries from the client settings; the dashed lines of the shown quantity. */
+  bands: BandBoundaries | undefined;
   /** The exposure pathway the bars belong to; outdoor air unless said otherwise. */
   pathway?: Pathway;
   digits: number;
@@ -135,27 +122,23 @@ interface Props {
   angled: boolean;
 }
 
-/** One bar per group: the highest worst-case value of one quantity, with its thresholds dashed. */
+/** One bar per group: the highest worst-case value of one quantity, with its band boundaries dashed. */
 export function RiskGroupChart({
   groups,
   quantity,
   title,
-  thresholds,
-  workerThresholds,
+  bands,
   pathway = "outdoor",
   digits,
   labelChars,
   heightClass,
   angled,
 }: Props) {
-  const limits = pathway === "indoor" ? workerThresholds : thresholds;
-  const lines = pathway === "indoor"
-    ? workerThresholds ? workerLines(quantity, workerThresholds) : []
-    : thresholds ? thresholdLines(quantity, thresholds) : [];
+  const lines = bands ? bandLines(quantity, bands) : [];
   return (
     <div className="flex min-w-0 flex-col gap-1">
       <h3 className="m-0 text-xs font-medium">{title}</h3>
-      {limits && (
+      {bands && (
         <p className="m-0 text-[11px] text-fg2">
           Dashed lines: {lines.map((l) => l.text).join(", ")}
         </p>

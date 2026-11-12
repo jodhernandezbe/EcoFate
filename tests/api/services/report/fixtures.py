@@ -124,7 +124,7 @@ def facility(frs_id: str = "110000000001", *, defaults: bool = True) -> Facility
             cancer_risk_worst=Extreme(low=2.5e-5, high=2.5e-5, low_stack=1, high_stack=1),
             concentration_worst=Extreme(low=7.5, high=7.5, low_stack=1, high_stack=1),
         ),
-        status="near",
+        status="moderate",
         screening=Screening(outcome="full", value_hq=0.375, value_cancer_risk=2.5e-5),
     )
 
@@ -142,14 +142,14 @@ def assessed() -> WorkspaceState:
                 frs_id=plant.frs_id,
                 facility_name="Plant A",
                 stack_number=1,
-                status="near",
+                status="moderate",
             ),
             cancer_risk_worst=Extremum(
                 value=2.5e-5,
                 frs_id=plant.frs_id,
                 facility_name="Plant A",
                 stack_number=1,
-                status="near",
+                status="moderate",
             ),
         ),
         unattributed=[Unattributed(tool="some_tool", reason="two facilities matched")],

@@ -4,7 +4,7 @@ import { beforeAll, describe, expect, it, vi } from "vitest";
 
 import { installReactFlowStubs } from "../../test/fakeReactFlow";
 import { facility, workspace } from "../../test/fixtures";
-import { COMMUNITY_ONLY_GRAPH, FULL_GRAPH } from "../../test/graphs";
+import { COMMUNITY_ONLY_GRAPH, FULL_GRAPH, MONITORING_GRAPH } from "../../test/graphs";
 import type { ExposureGraph } from "../../types/api";
 import { ExposureChainTab } from "./ExposureChainTab";
 
@@ -32,7 +32,7 @@ describe("ExposureChainTab", () => {
     expect(await step(/Stack 2/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Residents aged 0-4.*Inhalation dose 0.3 mg\/\(kg·day\)/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Residents aged 18-64/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Worker, indoor air, Endpoint: Ratio to the occupational limit/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Worker, workplace air, Endpoint: Ratio to the occupational limit/ })).toBeInTheDocument();
   });
 
   it("lists every connection with what it carries for screen readers", () => {
@@ -46,7 +46,7 @@ describe("ExposureChainTab", () => {
   it("shows each lane's status in words, and an unavailable lane's reason", () => {
     draw(COMMUNITY_ONLY_GRAPH);
     const lanes = screen.getByRole("list", { name: "Pathways" });
-    expect(within(lanes).getByText("Above concern")).toBeInTheDocument();
+    expect(within(lanes).getByText("High")).toBeInTheDocument();
     expect(within(lanes).getByText("(no occupational result yet)")).toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Pathway" })).toBeNull();
   });
@@ -55,10 +55,10 @@ describe("ExposureChainTab", () => {
     draw();
     await userEvent.click(await step(/Endpoint: Ratio to the occupational limit/));
     const panel = screen.getByRole("region", { name: "Ratio to the occupational limit details" });
-    expect(within(panel).getByText("Source: synthetic limit")).toBeInTheDocument();
+    expect(within(panel).getByText("Source: OSHA PEL-TWA (PubChem)")).toBeInTheDocument();
     expect(within(panel).getAllByText("not reported by the tool").length).toBeGreaterThan(0); // the API's reason
     expect(within(panel).queryByText(/not reported \(/)).toBeNull(); // never the phrase and the reason both
-    expect(within(panel).getByText("Ratio to the limit (baseline ventilation)")).toBeInTheDocument();
+    expect(within(panel).getByText("Ratio to the limit (typical case)")).toBeInTheDocument();
     await userEvent.keyboard("{Escape}");
     expect(screen.queryByRole("region", { name: /details/ })).toBeNull();
   });
@@ -66,15 +66,15 @@ describe("ExposureChainTab", () => {
   it("dims the other lane while a step is hovered", async () => {
     draw();
     await userEvent.hover(await step(/Community, outdoor air, Pathway: Outdoor ambient air/));
-    const workerAir = screen.getByRole("button", { name: /Worker, indoor air, Pathway/ });
+    const workerAir = screen.getByRole("button", { name: /Worker, workplace air, Pathway/ });
     expect(workerAir.parentElement?.className).toContain("opacity-35");
   });
 
   it("isolates one pathway", async () => {
     draw();
     await step(/Stack 1/);
-    await userEvent.click(screen.getByRole("button", { name: "Worker, indoor air" }));
-    expect(await step(/Worker, indoor air, Release/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Worker, workplace air" }));
+    expect(await step(/Worker, workplace air, Release/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Stack 1/ })).toBeNull();
   });
 
@@ -86,6 +86,15 @@ describe("ExposureChainTab", () => {
     };
     draw(extra);
     expect(await step(/Dermal, .*Skin contact/)).toBeInTheDocument();
+  });
+
+  it("draws a worker lane resting on monitoring data with its evidence node, and the fugitive release as context", async () => {
+    draw(MONITORING_GRAPH);
+    await userEvent.click(await step(/Worker, workplace air, .*OSHA monitoring evidence/));
+    const panel = screen.getByRole("region", { name: "OSHA monitoring evidence details" });
+    expect(within(panel).getByText("OSHA CEHD (synthetic)")).toBeInTheDocument();
+    expect(within(panel).getByText("context only; no worker value uses it")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Driving worker activity/ })).toBeNull();
   });
 
   it("reports the facility the user picks", async () => {

@@ -53,9 +53,15 @@ export type {
   UserInfo,
   Usage,
   UsageTotals,
-  VentilationTier,
+  WorkerActivity,
+  WorkerCase,
   WorkerExtremum,
   WorkerRiskSummary,
+  MonitoringSummary,
+  StageRoute,
+  ScenarioRoute,
+  ActivityCase,
+  DrivingActivity,
   WorkspaceState,
   WorkspaceUpdate,
   WorstCaseScenario,
@@ -66,8 +72,8 @@ import type { Extremum, KeysStatusResponse, OccupationalExposure } from "./api";
 /** The data services an installation may provide (their keys belong to the operator). */
 export type ServiceName = keyof KeysStatusResponse["services"];
 
-/** Tier of the worker screening: how the 8-hour average, hazard quotient and cancer risk compare. */
+/** Screening band of the worker result: "high", "moderate" or "low". */
 export type OccupationalTier = NonNullable<OccupationalExposure["risk_tier"]>;
 
-/** Risk position against the thresholds of concern. */
+/** Screening band of a community result: "high", "moderate" or "low". */
 export type Status = Extremum["status"];

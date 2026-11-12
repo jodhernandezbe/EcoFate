@@ -125,33 +125,5 @@
     "warnings": []
    }
   }
- ],
- "find_tri_read_across_surrogate": [
-  {
-   "args": {
-    "cas_number": "107-02-8",
-    "require_toxicity_benchmarks": "False",
-    "sector_naics_prefix": null
-   },
-   "output": {
-    "query_smiles": "C=CC=O",
-    "query_mw": 56.064,
-    "surrogate_tri_cas": "107-02-8",
-    "surrogate_name": "Acrolein",
-    "surrogate_smiles": "C=CC=O",
-    "surrogate_mw": 56.064,
-    "moldeberta_cosine_sim": 1.0,
-    "morgan_tanimoto_sim": 1.0,
-    "hybrid_read_across_score": 1.0,
-    "mw_scaling_factor": 1.0,
-    "surrogate_category": null,
-    "query_cas": "107-02-8",
-    "is_direct_tri_match": true,
-    "within_applicability_domain": true,
-    "resolution_method": "direct_tri_catalog_match",
-    "query_categories": [],
-    "warnings": []
-   }
-  }
  ]
 }

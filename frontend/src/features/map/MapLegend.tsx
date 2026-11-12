@@ -1,26 +1,29 @@
 import type { Ref } from "react";
 
+import { BAND_LOOK, BANDS, isBand } from "../../lib/band";
 import type { Facility, OccupationalTier, ScenarioDriver, Status } from "../../types/workspace";
 
 export const SECTOR_CAPTION = "schematic downwind sector, not a modelled plume footprint";
 
 /** A marker's status key: its risk status, or "none" while no risk is computed. */
-export type StatusKey = NonNullable<Status> | "none";
+export type StatusKey = NonNullable<Status> | "none" | "worker_only";
 
 const ITEMS: { key: StatusKey; label: string; tone: string }[] = [
-  { key: "below", label: "Below concern", tone: "bg-ok" },
-  { key: "near", label: "Near concern", tone: "bg-warn" },
-  { key: "above", label: "Above concern", tone: "bg-bad" },
+  ...BANDS.map((band) => ({ key: band, label: BAND_LOOK[band].label, tone: BAND_LOOK[band].fill })),
   { key: "none", label: "Not computed", tone: "bg-fg2" },
+  { key: "worker_only", label: "No stack release", tone: "border-2 border-fg2" },
 ];
 
-const RINGS: { key: OccupationalTier; label: string; tone: string }[] = [
-  { key: "acceptable", label: "Acceptable", tone: "border-ok" },
-  { key: "elevated", label: "Elevated", tone: "border-warn" },
-  { key: "exceedance", label: "Exceedance", tone: "border-bad" },
-];
+const RINGS: { key: OccupationalTier; label: string; tone: string }[] = BANDS.map((band) => ({
+  key: band,
+  label: BAND_LOOK[band].label,
+  tone: BAND_LOOK[band].ring,
+}));
 
-export const statusKey = (facility: Facility): StatusKey => facility.status ?? "none";
+export const statusKey = (facility: Facility): StatusKey => {
+  if (facility.worker_only) return "worker_only";
+  return isBand(facility.status) ? facility.status : "none";
+};
 
 interface Props {
   facilities: Facility[];
@@ -37,7 +40,7 @@ function WorkerRings({ facilities }: { facilities: Facility[] }) {
   const counts = new Map<OccupationalTier, number>();
   for (const facility of facilities) {
     const tier = facility.occupational_exposure?.risk_tier;
-    if (tier) counts.set(tier, (counts.get(tier) ?? 0) + 1);
+    if (isBand(tier)) counts.set(tier, (counts.get(tier) ?? 0) + 1);
   }
   if (counts.size === 0) return null;
   return (
@@ -73,7 +76,7 @@ export function MapLegend({ facilities, hidden, onToggle, drivers = [], ref }: P
       className="glass absolute bottom-3 left-3 z-10 max-w-64 rounded-xl p-2.5 text-xs"
     >
       <ul className="m-0 grid list-none gap-0.5 p-0">
-        {ITEMS.map((item) => {
+        {ITEMS.filter((item) => item.key !== "worker_only" || (counts.get(item.key) ?? 0) > 0).map((item) => {
           const off = hidden.has(item.key);
           const count = counts.get(item.key) ?? 0;
           return (
@@ -96,6 +99,11 @@ export function MapLegend({ facilities, hidden, onToggle, drivers = [], ref }: P
       <WorkerRings facilities={facilities} />
       {empty && <p className="m-0 mt-1.5 text-fg2">No facilities mapped yet.</p>}
       <p className="m-0 mt-1.5 text-fg2">Marker size follows the emission rate (g/s).</p>
+      {(counts.get("worker_only") ?? 0) > 0 && (
+        <p className="m-0 mt-1 text-fg2">
+          Outlined marker: no stack release, so no community result and a fixed size; only the worker ring applies.
+        </p>
+      )}
       <p className="m-0 mt-1 text-fg2">Click an entry to hide or show its markers.</p>
       {drivers.length > 0 && (
         <p className="m-0 mt-1 text-accent">

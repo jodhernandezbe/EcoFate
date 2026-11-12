@@ -19,6 +19,7 @@ from api.services.projectors.payloads import (
     ReadAcrossPayload,
     SccMatchPayload,
     StackPayload,
+    WorkerOnlyFacilityPayload,
     WorstCaseScenarioPayload,
     decode_json,
     validate,
@@ -64,6 +65,13 @@ class Ledger:
     cas: str | None = None
     facilities: dict[str, EmissionPayload] = field(default_factory=dict[str, EmissionPayload])
     facility_cas: dict[str, str] = field(default_factory=dict[str, str])
+    # Fugitive-only facilities (no stack release): FRS ID -> record, and why each has no
+    # community result; plus how many the inventory left beyond its cap (latest report wins).
+    worker_only: dict[str, WorkerOnlyFacilityPayload] = field(
+        default_factory=dict[str, WorkerOnlyFacilityPayload],
+    )
+    community_reasons: dict[str, str] = field(default_factory=dict[str, str])
+    worker_only_left_out: int = 0
     industries: list[tuple[str, IndustryPayload]] = field(
         default_factory=list[tuple[str, IndustryPayload]],
     )

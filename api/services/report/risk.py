@@ -50,10 +50,10 @@ _OUTCOMES = {
 def _thresholds(ctx: ReportContext) -> str:
     t, number = ctx.thresholds, ctx.fmt.number
     return (
-        f"Hazard quotient: above {number(t.hq_concern)} is above the threshold of concern; "
-        f"from {number(t.hq_near_lower)} up to it is near. Lifetime cancer risk: below "
-        f"{number(t.cancer_lower)} is below, above {number(t.cancer_upper)} is above, and in "
-        "between is near."
+        "Screening priority bands, not findings. Hazard quotient: low below "
+        f"{number(t.hq_lower)}, moderate from {number(t.hq_lower)}, high from "
+        f"{number(t.hq_upper)}. Lifetime cancer risk: low below {number(t.cancer_risk_lower)}, "
+        f"moderate from {number(t.cancer_risk_lower)}, high from {number(t.cancer_risk_upper)}."
     )
 
 

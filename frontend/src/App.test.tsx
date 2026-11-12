@@ -144,7 +144,7 @@ describe("onboarding and clearing the workspace", () => {
 
   it("fills the summary from a workspace update and empties it when the workspace is cleared", async () => {
     const state = workspace({
-      risk: { ...EMPTY_WORKSPACE.risk, hq_worst: extremum(2.5, "above"), reason: null },
+      risk: { ...EMPTY_WORKSPACE.risk, hq_worst: extremum(2.5, "high"), reason: null },
     });
     stubWithChips([
       { type: "turn_started", seq: 0 },
@@ -154,8 +154,8 @@ describe("onboarding and clearing the workspace", () => {
     const user = userEvent.setup();
     await renderApp();
     await user.click(await screen.findByRole("button", { name: "Assess benzene" }));
-    expect(await screen.findByText("Above concern")).toBeInTheDocument();
+    expect(await screen.findByText("High")).toBeInTheDocument();
     await clearWorkspace(user);
-    await waitFor(() => expect(screen.queryByText("Above concern")).toBeNull());
+    await waitFor(() => expect(screen.queryByText("High")).toBeNull());
   });
 });

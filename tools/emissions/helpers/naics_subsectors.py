@@ -12,7 +12,7 @@ from collections.abc import Mapping, Sequence
 from config.industry import IndustrySettings
 from tools.digits import digit_string
 from tools.emissions.helpers.naics_titles import read_titles
-from tools.schemas import EmissionRecord
+from tools.schemas import FacilityRecord
 
 SUBSECTOR_DIGITS = 3
 
@@ -37,17 +37,19 @@ def subsector_of(naics_code: str | None) -> str | None:
     return code[:SUBSECTOR_DIGITS] if code is not None and len(code) >= SUBSECTOR_DIGITS else None
 
 
-def with_subsectors(
-    records: Sequence[EmissionRecord],
+def with_subsectors[R: FacilityRecord](
+    records: Sequence[R],
     titles: Mapping[str, str],
-) -> list[EmissionRecord]:
+) -> list[R]:
     """Copies of ``records`` with ``naics_subsector`` and its title filled in.
 
     A record without a usable code has neither; a subsector the table lacks keeps a null title.
     """
-    out: list[EmissionRecord] = []
+    out: list[R] = []
     for record in records:
         subsector = subsector_of(record["naics_code"])
-        title = titles.get(subsector) if subsector is not None else None
-        out.append({**record, "naics_subsector": subsector, "naics_subsector_title": title})
+        titled = record.copy()
+        titled["naics_subsector"] = subsector
+        titled["naics_subsector_title"] = titles.get(subsector) if subsector is not None else None
+        out.append(titled)
     return out

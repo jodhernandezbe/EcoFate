@@ -77,3 +77,30 @@ def test_asks_once_for_missing_values_and_labels_the_users_own() -> None:
     assert "ask once, in one message" in PROMPT
     assert "user-provided" in PROMPT
     assert "never estimate it in its place" in PROMPT
+
+
+def _flat() -> str:
+    return " ".join(PROMPT.split()).lower()
+
+
+def test_bands_are_screening_priorities_not_findings() -> None:
+    text = _flat()
+    assert "high, moderate and low" in text
+    assert "never a finding that a limit is exceeded or that an exposure is acceptable" in text
+
+
+def test_worker_evidence_is_named() -> None:
+    text = _flat()
+    assert "measured samples from inspections in the same industry come before a model" in text
+    assert "the answer says which one each figure rests on" in text
+
+
+def test_fugitive_release_is_context_not_worker_exposure() -> None:
+    assert "not a measure of what a worker breathes" in _flat()
+
+
+def test_workers_and_neighbours_side_by_side_and_not_compliance() -> None:
+    text = _flat()
+    assert "side by side" in text
+    assert "never as a compliance finding" in text
+    assert "reported as not computed, with the reason" in text

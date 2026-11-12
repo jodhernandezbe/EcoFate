@@ -41,25 +41,19 @@ class KeysStatusResponse(ContractModel):
     services: ServicesAvailability
 
 
-class Thresholds(ContractModel):
-    """Status thresholds (unitless HQ and lifetime cancer risk)."""
+class BandBoundaries(ContractModel):
+    """Boundaries of the screening bands, the same for community and worker results.
 
-    hq_concern: float
-    hq_near_lower: float
-    cancer_lower: float
-    cancer_upper: float
+    A value from `*_lower` is "moderate", from `*_upper` "high"; a value on a boundary goes to
+    the higher band. Hazard quotient and limit ratio are unitless; cancer risk is a probability.
+    """
 
-
-class WorkerThresholds(ContractModel):
-    """Tier boundaries of the worker screening: above `*_exceedance` is "exceedance", above
-    `*_elevated` is "elevated" (unitless; cancer risk is a probability)."""
-
-    ratio_exceedance: float
-    ratio_elevated: float
-    hq_exceedance: float
-    hq_elevated: float
-    cancer_exceedance: float
-    cancer_elevated: float
+    hq_lower: float
+    hq_upper: float
+    cancer_risk_lower: float
+    cancer_risk_upper: float
+    oel_ratio_lower: float
+    oel_ratio_upper: float
 
 
 class InitialView(ContractModel):
@@ -118,8 +112,7 @@ class ClientConfig(ContractModel):
     """Display settings the frontend needs (``GET /api/v1/settings/client``)."""
 
     model: str = Field(description="Chat model that drives the agent.")
-    thresholds: Thresholds
-    worker_thresholds: WorkerThresholds
+    bands: BandBoundaries
     map: MapConfig
     significant_digits: int
     narrow_breakpoint_px: int

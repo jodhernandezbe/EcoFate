@@ -53,7 +53,7 @@ def _scenario(value: float = 2.0, quantity: str = "hq", **over: object) -> dict[
         "quantity": quantity,
         "quantity_label": "Hazard quotient",
         "value": value,
-        "tier": "at or above threshold",
+        "tier": "high",
         "benchmark": 0.1,
         "factors": [_factor("stack_number", 2), _factor("stack_height", 30.0)],
         "receptors": [
@@ -121,7 +121,7 @@ def test_the_scenarios_reach_their_own_facility_as_the_tool_gave_them() -> None:
     by_id = {f.frs_id: f for f in state.facilities}
     (scenario,) = by_id["F1"].scenarios
     assert by_id["F2"].scenarios == []
-    assert scenario.value == 2.0 and scenario.tier == "at or above threshold"
+    assert scenario.value == 2.0 and scenario.tier == "high"
     assert [f.key for f in scenario.factors] == ["stack_number", "stack_height"]
     assert scenario.factors[1].value == 30.0 and scenario.factors[1].unit == "m"
     receptor = scenario.receptors[0]

@@ -1,4 +1,4 @@
-import { facility, scenario, worker } from "../../test/fixtures";
+import { facility, scenario, worker, workerOnly } from "../../test/fixtures";
 import type { ScenarioDriver, ScenarioReceptor } from "../../types/workspace";
 import {
   bufferCollection,
@@ -40,10 +40,10 @@ describe("facilityCollection", () => {
 
   it("colours by status and is neutral while no risk is computed", () => {
     const data = facilityCollection(
-      [facility({ frs_id: "A", status: "above" }), facility({ frs_id: "B", status: null })],
+      [facility({ frs_id: "A", status: "high" }), facility({ frs_id: "B", status: null })],
       scale,
     );
-    expect(data.features.map((f) => f.properties.status)).toEqual(["above", "none"]);
+    expect(data.features.map((f) => f.properties.status)).toEqual(["high", "none"]);
   });
 
   it("rings by the worker tier and draws no ring while it is not computed", () => {
@@ -51,7 +51,18 @@ describe("facilityCollection", () => {
       [facility({ frs_id: "A", occupational_exposure: worker() }), facility({ frs_id: "B" })],
       scale,
     );
-    expect(data.features.map((f) => f.properties.worker_tier)).toEqual(["elevated", "none"]);
+    expect(data.features.map((f) => f.properties.worker_tier)).toEqual(["moderate", "none"]);
+  });
+
+  it("draws a worker-only facility outlined, at a fixed size, with its worker ring", () => {
+    const data = facilityCollection(
+      [facility({ frs_id: "A", emission_rate_g_s: 1 }), facility({ frs_id: "B", emission_rate_g_s: 9 }), workerOnly()],
+      scale,
+    );
+    const [, , only] = data.features;
+    expect(only?.properties).toMatchObject({ worker_only: true, status: "none", worker_tier: "moderate", radius_px: 6 });
+    expect(data.features.map((f) => f.properties.radius_px).slice(0, 2)).toEqual([6, 22]);
+    expect(data.features.map((f) => f.properties.worker_only)).toEqual([false, false, true]);
   });
 
   it("marks the facilities that drive a result and no others", () => {

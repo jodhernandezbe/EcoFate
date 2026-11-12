@@ -52,6 +52,9 @@
     "worst_case_only_count": 0,
     "worst_case_only": [],
     "not_assessed": [],
+    "worker_only_count": 0,
+    "worker_only_left_out": 0,
+    "worker_only_highest": null,
     "note": "All 2 facilities were screened: 2 cannot reach HQ 0.1 or cancer risk 1e-06 even in the worst case (emission rate from TRI; EPA AirToxScreen global default stack; EPA SCREEN3 worst-case weather over its 54 stability and wind combinations; a person at the maximum) and were left out; 0 were fully assessed and 0 kept at the worst case with their own stacks.",
     "warnings": [],
     "drivers": []
@@ -77,14 +80,14 @@
      "molecular_weight": "CompTox",
      "vapor_pressure": "experimental",
      "density": "experimental",
-     "rfd": "PA DEP: Pennsylvania DEP ToxValues",
+     "rfd": "EPA RSL: RSL",
      "rfc": "EPA IRIS: IRIS (CompTox IRIS endpoint, last significant revision 1991-10-01)",
      "sf": "Cal OEHHA: Cal OEHHA",
      "iur": "Cal OEHHA: Cal OEHHA"
     },
     "toxicity_details": {
      "rfd": {
-      "source": "PA DEP: Pennsylvania DEP ToxValues",
+      "source": "EPA RSL: RSL",
       "exposure_route": "oral",
       "route_reported": "oral",
       "endpoint": null,
@@ -370,21 +373,6 @@
  "get_meteorological_boundary": [
   {
    "args": {
-    "latitude": "33.2044",
-    "longitude": "-92.6308",
-    "reporting_year": null
-   },
-   "output": {
-    "wind_speed": 2.78,
-    "wind_direction": 180.0,
-    "stability_class": "D",
-    "ambient_temperature": 291.85,
-    "source": "Open-Meteo era5 reanalysis 2022",
-    "warnings": []
-   }
-  },
-  {
-   "args": {
     "latitude": "40.631622",
     "longitude": "-80.54632",
     "reporting_year": null
@@ -394,6 +382,21 @@
     "wind_direction": 200.0,
     "stability_class": "D",
     "ambient_temperature": 285.01,
+    "source": "Open-Meteo era5 reanalysis 2022",
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "latitude": "33.2044",
+    "longitude": "-92.6308",
+    "reporting_year": null
+   },
+   "output": {
+    "wind_speed": 2.78,
+    "wind_direction": 180.0,
+    "stability_class": "D",
+    "ambient_temperature": 291.85,
     "source": "Open-Meteo era5 reanalysis 2022",
     "warnings": []
    }
@@ -714,7 +717,9 @@
       "zip_code": "43920"
      }
     ],
-    "note": null
+    "note": null,
+    "worker_only": [],
+    "worker_only_left_out": 0
    }
   }
  ]

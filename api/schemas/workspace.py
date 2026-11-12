@@ -12,6 +12,7 @@ from pydantic import Field
 
 from api.schemas.base import ContractModel
 from api.schemas.exposure_graph import ExposureGraph, GraphStatus
+from commons.bands import Band
 
 Status = GraphStatus
 Tier = Literal[1, 2, 3]
@@ -190,27 +191,146 @@ class ConditionOfUse(ContractModel):
     mapping_strength: str
 
 
-OccupationalTier = Literal["exceedance", "elevated", "acceptable"]
+OccupationalTier = Band
+WorkerEvidence = Literal["monitoring", "activity_model"]
+WorkerVolatility = Literal["below", "within", "above"]
+WorkerEstimator = Literal["mass_balance", "two_zone", "ecetoc_tra", "monitoring"]
 
 
-class VentilationTier(ContractModel):
-    """The worker screening for one ventilation tier of the box model; None = not computed.
+class ActivityCase(ContractModel):
+    """One output (typical or worst case) of a modelled worker activity.
 
     Attributes:
-        ventilation_m3_per_s: Room ventilation rate, m³/s.
+        estimator: What gave the 8-hour average.
+        airflow_m3_per_s: Ventilation Q of the mass balance, m³/s.
+        mixing_factor: Mixing factor k of the mass balance, unitless.
+        room_m3: Far-field room volume of the two-zone model, m³.
+        air_exchange_per_h: Far-field air changes of the two-zone model, 1/h.
+        generation_g_per_s: Vapor generation rate, g/s; None for a band estimate.
+        concentration_mg_m3: Concentration during the activity, mg/m³.
+        capped: Whether the saturation concentration set the concentration.
+        twa_mg_m3: 8-hour time-weighted average, mg/m³.
+    """
+
+    estimator: WorkerEstimator
+    airflow_m3_per_s: float | None = None
+    mixing_factor: float | None = None
+    room_m3: float | None = None
+    air_exchange_per_h: float | None = None
+    generation_g_per_s: float | None = None
+    concentration_mg_m3: float | None = None
+    capped: bool
+    twa_mg_m3: float
+
+
+class WorkerActivity(ContractModel):
+    """A modelled worker activity with its typical and worst-case outputs.
+
+    Attributes:
+        key: Activity key, e.g. "drum_loading".
+        model: "ap42_loading", "penetration" or "mass_transfer".
+        setting: "indoor" or "outdoor".
+        hours: Hours a day the activity is performed, h/day.
+        statement: The band estimate's statement, when it gave the values.
+    """
+
+    key: str
+    label: str
+    model: str
+    setting: str
+    hours: float
+    typical: ActivityCase
+    worst_case: ActivityCase
+    warnings: list[str] = Field(default_factory=list[str])
+    statement: str | None = None
+
+
+class DrivingActivity(ContractModel):
+    """The activity with the highest worst-case 8-hour average (hours in h/day)."""
+
+    key: str
+    label: str
+    model: str
+    setting: str
+    hours: float
+    estimator: WorkerEstimator
+    statement: str | None = None
+
+
+class ScenarioRoute(ContractModel):
+    """A generic scenario or emission scenario document that applied to a stage."""
+
+    title: str
+    category: str
+    pages: str
+    source: str
+    activities: list[str] = Field(default_factory=list[str])
+
+
+class StageRoute(ContractModel):
+    """How the activities of one life cycle stage were chosen (``note``: why no document)."""
+
+    stage: str
+    generic_operation: list[str] = Field(default_factory=list[str])
+    scenarios: list[ScenarioRoute] = Field(default_factory=list[ScenarioRoute])
+    note: str | None = None
+
+
+class MonitoringSummary(ContractModel):
+    """What OSHA's measured air samples say about the chemical in the facility's industry.
+
+    Attributes:
+        n_values: Samples; ``n_nondetect`` of them below detection.
+        median_mg_m3: Median, mg/m³; None when it is below detection (see ``reason``).
+        p95_mg_m3: 95th percentile, mg/m³.
+        first_year: First year of the samples; ``last_year`` the last.
+    """
+
+    imis_code: str | None = None
+    naics_level: str | None = None
+    level_note: str | None = None
+    n_values: int | None = None
+    n_nondetect: int | None = None
+    median_mg_m3: float | None = None
+    p95_mg_m3: float | None = None
+    original_unit: str | None = None
+    unit_note: str | None = None
+    first_year: int | None = None
+    last_year: int | None = None
+    reason: str | None = None
+    source: str
+    statements: list[str] = Field(default_factory=list[str])
+
+
+class WorkerCase(ContractModel):
+    """The worker screening for a baseline or worst case; None = not computed.
+
+    Attributes:
+        setting: "indoor" or "outdoor" (the driving activity).
+        estimator: What gave the 8-hour average.
+        airflow_m3_per_s: Ventilation rate of the mass balance, m³/s.
         mixing_factor: Mixing factor k, unitless.
-        workplace_concentration_mg_m3: Concentration while the plant runs, mg/m³.
+        room_m3: Far-field room volume of the two-zone model, m³.
+        air_exchange_per_h: Far-field air changes of the two-zone model, 1/h.
+        generation_g_per_s: Vapor generation rate, g/s.
+        workplace_concentration_mg_m3: Concentration during the driving activity, mg/m³.
+        capped: Whether the saturation concentration set the concentration.
         twa_mg_m3: 8-hour time-weighted average, mg/m³.
         oel_ratio: The average over the occupational limit (unitless); above 1 exceeds it.
         hq: Worker hazard quotient (unitless).
         cancer_risk: Worker lifetime excess cancer risk (unitless).
-        risk_tier: "exceedance", "elevated" or "acceptable"; None when nothing could be compared.
+        risk_tier: "high", "moderate" or "low"; None when nothing could be compared.
     """
 
-    label: str
-    ventilation_m3_per_s: float
-    mixing_factor: float
+    setting: str | None = None
+    estimator: WorkerEstimator | None = None
+    airflow_m3_per_s: float | None = None
+    mixing_factor: float | None = None
+    room_m3: float | None = None
+    air_exchange_per_h: float | None = None
+    generation_g_per_s: float | None = None
     workplace_concentration_mg_m3: float | None = None
+    capped: bool | None = None
     twa_mg_m3: float | None = None
     oel_ratio: float | None = None
     hq: float | None = None
@@ -219,37 +339,55 @@ class VentilationTier(ContractModel):
 
 
 class OccupationalExposure(ContractModel):
-    """Worker screening of a facility: EPA ChemSTEER box model and RAGS Part F dosimetry.
+    """Worker screening of a facility: OSHA measured samples, else EPA ChemSTEER activity models.
 
-    A screening that assumes generic ventilation, not an OSHA compliance determination.
+    A screening, not an OSHA compliance determination. The TRI fugitive release is context only.
 
     Attributes:
+        evidence: What the headline rests on; None when nothing could be computed.
+        molecular_weight: g/mol, with ``molecular_weight_source``.
+        vapor_pressure_mmhg: mmHg at about 25 °C, with ``vapor_pressure_source``.
+        volatility: Against ChemSTEER's preferred vapor pressure range.
         fugitive_release_kg_per_year: TRI fugitive air release, kg/yr (year in
-            ``fugitive_reporting_year``).
+            ``fugitive_reporting_year``); ``fugitive_statement`` says it enters no value.
         operating_days_per_year: Days a year the plant runs, d/yr.
         hours_per_day: Hours a day it runs, h/day.
         oel_twa_mg_m3: The 8-hour occupational limit used, mg/m³, with ``oel_source``.
         rfc: Reference concentration used, mg/m³.
         iur: Inhalation unit risk used, (µg/m³)⁻¹.
-        vapor_pressure_mmhg: Context only; never enters an equation. Its source is in
-            ``vapor_pressure_source``.
-        baseline: The baseline manufacturing ventilation tier.
-        worst_case: The enclosed-zone tier.
-        risk_tier: The baseline tier.
+        driving_activity: The activity with the highest worst-case average.
+        activities: Every modelled activity, highest worst case first (``activity_reason``
+            says why there are none).
+        routes: How each life cycle stage's activities were chosen.
+        monitoring: OSHA's measured samples (``monitoring_reason`` says why there are none).
+        baseline: The typical case.
+        worst_case: The worst case.
+        risk_tier: The baseline band.
     """
 
+    evidence: WorkerEvidence | None = None
+    molecular_weight: float | None = None
+    molecular_weight_source: str | None = None
+    vapor_pressure_mmhg: float | None = None
+    vapor_pressure_source: str | None = None
+    volatility: WorkerVolatility | None = None
     fugitive_release_kg_per_year: float | None = None
     fugitive_reporting_year: int | None = None
+    fugitive_statement: str | None = None
     operating_days_per_year: float | None = None
     hours_per_day: float | None = None
     oel_twa_mg_m3: float | None = None
     oel_source: str | None = None
     rfc: float | None = None
     iur: float | None = None
-    vapor_pressure_mmhg: float | None = None
-    vapor_pressure_source: str | None = None
-    baseline: VentilationTier
-    worst_case: VentilationTier
+    driving_activity: DrivingActivity | None = None
+    activities: list[WorkerActivity] = Field(default_factory=list[WorkerActivity])
+    activity_reason: str | None = None
+    routes: list[StageRoute] = Field(default_factory=list[StageRoute])
+    monitoring: MonitoringSummary | None = None
+    monitoring_reason: str | None = None
+    baseline: WorkerCase
+    worst_case: WorkerCase
     risk_tier: OccupationalTier | None = None
     assumptions: list[str] = Field(default_factory=list[str])
     warnings: list[str] = Field(default_factory=list[str])
@@ -386,8 +524,12 @@ class Facility(ContractModel):
 
     Attributes:
         doc_ctrl_num: TRI document control number (the inventory has no TRI facility ID).
-        total_release: Annual quantity in ``release_unit``, as reported.
-        emission_rate_g_s: Total release averaged over ``operating_hours_per_year``.
+        medium, total_release, release_unit, emission_rate_g_s: The stack release (annual quantity
+            in ``release_unit``, as reported; the rate is that quantity averaged over
+            ``operating_hours_per_year``); None for a worker-only facility, which has none.
+        worker_only: True for a facility with a fugitive air release and no stack release: it has
+            a worker result and no community one (its community values are absent, never zero).
+        community_reason: Why a worker-only facility has no community result; None otherwise.
         operating_hours_source: Where those hours came from (industry survey or default); None
             when the record predates the field.
         fugitive_release_kg_per_year: TRI fugitive air release, kg/yr; None when TRI has none.
@@ -424,11 +566,13 @@ class Facility(ContractModel):
     doc_ctrl_num: str | None = None
     naics_subsector: str | None = None
     naics_subsector_title: str | None = None
-    medium: str
+    medium: str | None = None
     reporting_year: int
-    total_release: float
-    release_unit: str
-    emission_rate_g_s: float
+    total_release: float | None = None
+    release_unit: str | None = None
+    emission_rate_g_s: float | None = None
+    worker_only: bool = False
+    community_reason: str | None = None
     operating_hours_per_year: float
     operating_hours_source: str | None = None
     fugitive_release_kg_per_year: float | None = None
@@ -482,13 +626,16 @@ class RiskSummary(ContractModel):
 class WorkerExtremum(ContractModel):
     """The highest value of one worker quantity over the assessed facilities.
 
-    ``risk_tier`` is the tier the tool gave that facility (baseline ventilation).
+    ``risk_tier`` is the band the tool gave that facility's case; ``evidence`` and
+    ``driving_activity`` (its label) say what the value rests on.
     """
 
     value: float
     frs_id: str
     facility_name: str | None = None
     risk_tier: OccupationalTier | None = None
+    evidence: WorkerEvidence | None = None
+    driving_activity: str | None = None
 
 
 class WorkerTierSummary(ContractModel):
@@ -500,7 +647,7 @@ class WorkerTierSummary(ContractModel):
 
 
 class WorkerRiskSummary(ContractModel):
-    """The worker screening across facilities, for both ventilation tiers; ``reason`` if none."""
+    """The worker screening across facilities, per case; ``reason`` when there is none."""
 
     baseline: WorkerTierSummary = Field(default_factory=WorkerTierSummary)
     worst_case: WorkerTierSummary = Field(default_factory=WorkerTierSummary)

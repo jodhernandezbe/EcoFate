@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from config.risk_bands import get_risk_bands
 from tests.tools.assessment.helpers.scenarios.items import HIGH, LOW, RATE, assessed, tract
 from tools.assessment.helpers.scenarios.community import community_inhalation
 from tools.schemas import StackParameters, Toxicity, WorstCaseScenario
@@ -57,11 +58,11 @@ def test_no_cancer_risk_scenario_without_a_unit_risk() -> None:
     assert {s["quantity"] for s in community_inhalation(assessed())} == {"hq", "cancer_risk"}
 
 
-def test_the_tier_is_the_assessments_threshold_comparison() -> None:
+def test_the_tier_is_the_band_of_the_quantity_alone() -> None:
     high = community_inhalation(assessed(toxicity=Toxicity(rfc=1e-9, iur=None)))
     low = community_inhalation(assessed(toxicity=Toxicity(rfc=1e9, iur=None)))
-    assert (high[0]["tier"], low[0]["tier"]) == ("at or above threshold", "below threshold")
-    assert high[0]["benchmark"] == 0.1
+    assert (high[0]["tier"], low[0]["tier"]) == ("high", "low")
+    assert high[0]["benchmark"] == get_risk_bands().hq_upper
 
 
 def test_a_worst_case_only_facility_has_a_scenario_without_receptors() -> None:

@@ -30,6 +30,21 @@ source = "Source"
 [ui.exposure_graph.tiers]
 {_table(graph.TIERS)}
 
+[ui.exposure_graph.settings]
+{_table(graph.SETTINGS)}
+
+[ui.exposure_graph.estimators]
+{_table(graph.ESTIMATORS)}
+
+[ui.exposure_graph.volatilities]
+{_table(graph.VOLATILITIES)}
+
+[ui.exposure_graph.evidences]
+{_table(graph.EVIDENCES)}
+
+[ui.exposure_graph.flags]
+{_table(graph.FLAGS)}
+
 [ui.exposure_graph.variants]
 {_table(graph.VARIANTS)}
 

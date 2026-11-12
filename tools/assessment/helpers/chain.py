@@ -12,7 +12,6 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 from config.assessment import AssessmentSettings
-from config.occupational import get_occupational_settings
 from tools.assessment.helpers.occupational import Workplace, occupational_exposure, unavailable
 from tools.assessment.helpers.scenarios import with_scenarios
 from tools.assessment.helpers.screening import Worst, worst_case
@@ -119,7 +118,7 @@ def _worker_view(
     profile = operational_profile(item.record)
     if workplace is None:
         reason = "the chemical's workplace information was not given"
-        return unavailable(get_occupational_settings(), reason), profile
+        return unavailable(reason), profile
     return occupational_exposure(item.record, profile, toxicity, workplace), profile
 
 

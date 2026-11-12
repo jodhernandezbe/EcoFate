@@ -102,3 +102,20 @@ def project_path(section: dict[str, object], key: str, name: str) -> Path:
     """Return a path value; a relative path is resolved against the project root."""
     path = Path(require_str(section, key, name).strip())
     return path if path.is_absolute() else PROJECT_ROOT / path
+
+
+def require_pair(
+    section: dict[str, object],
+    key: str,
+    *,
+    minimum: float,
+    name: str,
+) -> tuple[float, float]:
+    """Return a two-number list as a tuple, each finite and >= ``minimum`` (never a bool)."""
+    value = section.get(key)
+    items = cast(list[object], value) if isinstance(value, list) else None
+    if items is None or len(items) != 2:
+        raise ValueError(f"{name}.{key} must be a list of two numbers")
+    first = require_number({key: items[0]}, key, minimum=minimum, name=name)
+    second = require_number({key: items[1]}, key, minimum=minimum, name=name)
+    return first, second

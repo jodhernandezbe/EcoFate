@@ -16,23 +16,23 @@ describe("risk card", () => {
 
   it("shows the worst case with its status and where it came from", () => {
     const state = workspace({
-      risk: { ...EMPTY_WORKSPACE.risk, hq_worst: extremum(2.5, "above", 3), hq_representative: extremum(1.24, "above"), reason: null },
+      risk: { ...EMPTY_WORKSPACE.risk, hq_worst: extremum(2.5, "high", 3), hq_representative: extremum(1.24, "high"), reason: null },
     });
     render(<EpaOverviewRibbon workspace={state} digits={2} />);
     const risk = within(card("Hazard quotient & cancer risk"));
     expect(risk.getByText("2.5")).toBeInTheDocument();
     expect(risk.getByText("1.2")).toBeInTheDocument();
-    expect(risk.getByText("Above concern")).toBeInTheDocument();
+    expect(risk.getByText("High")).toBeInTheDocument();
     expect(risk.getByText("Plant F1 · stack 3")).toBeInTheDocument();
   });
 
   it("writes cancer risk in scientific notation", () => {
     const state = workspace({
-      risk: { ...EMPTY_WORKSPACE.risk, cancer_risk_worst: extremum(0.000012, "near"), reason: null },
+      risk: { ...EMPTY_WORKSPACE.risk, cancer_risk_worst: extremum(0.000012, "moderate"), reason: null },
     });
     render(<EpaOverviewRibbon workspace={state} digits={2} />);
     expect(screen.getByText("1.2 × 10⁻⁵")).toBeInTheDocument();
-    expect(screen.getByText("Near concern")).toBeInTheDocument();
+    expect(screen.getByText("Moderate")).toBeInTheDocument();
   });
 });
 
