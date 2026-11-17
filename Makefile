@@ -8,7 +8,7 @@ WARM := from huggingface_hub import snapshot_download; \
 	model = settings().model; snapshot_download(model.name, revision=model.revision)
 
 .DEFAULT_GOAL := help
-.PHONY: help up down build logs worker-logs shell warm test lint check eval catalogue migrate db test-db redis test-redis psql
+.PHONY: help up down build logs worker-logs shell warm test lint check audit eval catalogue migrate db test-db redis test-redis psql
 
 help: ## List the targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -47,6 +47,19 @@ check: lint ## Everything pre-commit enforces: lint, types, security, function l
 	uv run python scripts/check_function_length.py --max 18 $(PYTHON_FILES)
 	uv run pytest
 	npm --prefix frontend run check
+
+# Advisories accepted after review, each with its reason; anything else fails the audit. Revisit
+# when chromadb ships a fix (remove the ID) or the reason stops holding.
+# chromadb: all four concern the Chroma *server* (its HTTP API and RBAC provider); EcoFate uses
+# only the embedded PersistentClient (tools/emissions/rag/vectorstore.py) and runs no server.
+#   PYSEC-2026-311   pre-auth code injection via the collections HTTP endpoint (trust_remote_code)
+#   PYSEC-2026-3814  authenticated code injection via the collection HTTP endpoint
+#   PYSEC-2026-3813  cross-tenant data access for authenticated server users
+#   PYSEC-2026-3815  SimpleRBACAuthorizationProvider ignores the permission's scope
+AUDIT_ACCEPTED := PYSEC-2026-311 PYSEC-2026-3814 PYSEC-2026-3813 PYSEC-2026-3815
+
+audit: ## Dependency vulnerability audit (pip-audit; reviewed exceptions listed above)
+	uv run pip-audit --progress-spinner off $(foreach id,$(AUDIT_ACCEPTED),--ignore-vuln $(id))
 
 eval: ## Agent evaluations on recorded tool outputs (OpenAI key, costs tokens)
 	uv run pytest -m eval

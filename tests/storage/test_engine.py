@@ -16,6 +16,8 @@ SETTINGS = DatabaseSettings(
     turn_lease_seconds=300.0,
     thread_retention_days=30,
     purge_interval_minutes=60,
+    setup_lock_timeout_seconds=60.0,
+    setup_lock_poll_seconds=0.05,
 )
 URL = "postgresql://ecofate:s3cr3t@db:5432/ecofate"  # pragma: allowlist secret
 DRIVER_URL = "postgresql+psycopg://ecofate:s3cr3t@db:5432/ecofate"  # pragma: allowlist secret

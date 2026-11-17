@@ -43,8 +43,9 @@ jobs:
         run: uv run pre-commit run --all-files --show-diff-on-failure
       - name: Tests
         run: uv run pytest -q
+      # The reviewed exceptions live with their reasons in the Makefile (one list, local and CI).
       - name: Dependency vulnerability audit
-        run: uv run pip-audit
+        run: make audit
 
   frontend:
     name: frontend

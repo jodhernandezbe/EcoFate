@@ -929,6 +929,11 @@ turn_lease_seconds = 600.0
 thread_retention_days = 30
 # Minutes between purges of idle threads.
 purge_interval_minutes = 60
+# The checkpoint tables are set up by one process at a time (the API and every worker start
+# together on a fresh database). Seconds a process waits for its turn before start-up fails,
+# and seconds between its tries (it never blocks inside the database while waiting).
+setup_lock_timeout_seconds = 60.0
+setup_lock_poll_seconds = 0.25
 
 # Background worker of the web program (worker/): every chat turn runs as one Celery task in a
 # separate process pool, with Redis as broker and as the per-turn event stream the browser reads.

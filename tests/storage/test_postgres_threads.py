@@ -8,7 +8,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import timedelta
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
@@ -270,3 +270,20 @@ async def test_a_new_engine_and_checkpointer_see_the_thread_written_by_the_first
                 assert len(await store.messages(KEY)) == 6
         finally:
             await restarted.dispose()
+
+
+# --- concurrent start-up --------------------------------------------------------------------
+
+
+async def test_processes_starting_together_on_a_fresh_schema_all_set_up_the_checkpointer() -> None:
+    # No checkpoint tables yet, opened by several processes at once, as the API and the worker
+    # children do on a first `docker compose up` (unserialised, setup() deadlocks or collides).
+    url = test_url()
+    name = f"test_{uuid4().hex[:16]}"
+
+    async def start() -> None:
+        async with open_checkpointer(url, SETTINGS, search_path=name):
+            pass
+
+    async with migrated_schema(url, name):
+        await asyncio.gather(*(start() for _ in range(6)))
