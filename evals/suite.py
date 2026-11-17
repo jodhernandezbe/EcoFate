@@ -29,7 +29,13 @@ def cassette_path(scenario: Scenario) -> Path:
 def run_with(scenario: Scenario, tools: Sequence[BaseTool]) -> RunRecord:
     """Run ``scenario`` with the program's chat model and step limit over ``tools``."""
     settings = get_agent_settings()
-    return run_scenario(build_chat_model(settings), tools, (scenario.id, scenario.query), settings)
+    return run_scenario(
+        build_chat_model(settings),
+        tools,
+        (scenario.id, scenario.query),
+        settings,
+        follow_up=scenario.follow_up,
+    )
 
 
 def replayed(scenario: Scenario) -> RunRecord:

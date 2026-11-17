@@ -27,6 +27,9 @@ class Scenario:
     judges: tuple[Judge, ...] = ()
     blocked: str | None = None
     extra_calls: tuple[ExtraCall, ...] = ()
+    # The user's next message when the first turn ends by asking for missing values (the open
+    # entries then count as proceed without); None ends the scenario at the ask.
+    follow_up: str | None = None
 
 
 _NOT_WRITTEN = "checks and cassette not written yet"
@@ -96,6 +99,8 @@ CATEGORY_MEMBER = Scenario(
         "Assess the inhalation exposure and health risk from air releases of "
         f"CAS {CATEGORY_MEMBER_CAS}."
     ),
+    # 2-chlorophenol has no IUR or occupational limit, so the agent first asks for them.
+    follow_up="Proceed without them.",
     checks=(
         c.completed(),
         c.called_with("find_tri_category", cas_number=CATEGORY_MEMBER_CAS),
@@ -120,6 +125,14 @@ MISSING_BENCHMARK = Scenario(
         c.called_with(c.PROPERTIES, cas_number=ACROLEIN_CAS),
         c.not_called(c.EXPOSURE),
         c.asks_for_missing("iur"),
+    ),
+    # The agent may first look for a read-across surrogate carrying the missing benchmark
+    # (true and "True" share one recording key).
+    extra_calls=(
+        ExtraCall(
+            "find_tri_read_across_surrogate",
+            {"cas_number": ACROLEIN_CAS, "require_toxicity_benchmarks": True},
+        ),
     ),
 )
 
