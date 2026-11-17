@@ -104,6 +104,320 @@
    }
   }
  ],
+ "fetch_stack_parameters_from_nei": [
+  {
+   "args": {
+    "eis_ids": [
+     "994211"
+    ],
+    "frs_id": "110000521221"
+   },
+   "output": {
+    "eis_ids": [
+     "994211"
+    ],
+    "candidates": [
+     {
+      "stack_height": 1.5239999999999998,
+      "stack_diameter": 0.30479999999999996,
+      "exit_velocity": 4.419599999999999,
+      "exit_temperature": 922.038888888889,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 2.956559999999999,
+      "stack_diameter": 0.10058399999999999,
+      "exit_velocity": 31.318199999999997,
+      "exit_temperature": 403.15,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 3.0479999999999996,
+      "stack_diameter": 0.064008,
+      "exit_velocity": 27.431999999999995,
+      "exit_temperature": 938.7055555555556,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 3.6575999999999995,
+      "stack_diameter": 1.5239999999999998,
+      "exit_velocity": 9.143999999999998,
+      "exit_temperature": 310.9277777777778,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 7.315199999999999,
+      "stack_diameter": 0.6095999999999999,
+      "exit_velocity": 13.715999999999998,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 7.619999999999999,
+      "stack_diameter": 0.21335999999999997,
+      "exit_velocity": 11.887199999999998,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 7.619999999999999,
+      "stack_diameter": 0.18287999999999996,
+      "exit_velocity": 18.287999999999997,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 9.143999999999998,
+      "stack_diameter": 0.6858,
+      "exit_velocity": 62.864999999999995,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 10.9728,
+      "stack_diameter": 4.267199999999999,
+      "exit_velocity": 10.9728,
+      "exit_temperature": 305.37222222222226,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 12.191999999999998,
+      "stack_diameter": 0.45719999999999994,
+      "exit_velocity": 15.239999999999998,
+      "exit_temperature": 519.2611111111112,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     }
+    ],
+    "total_candidates": 20,
+    "warnings": [
+     "20 distinct stack combinations found (0 near-identical merged); the 10 lowest stacks are returned, 10 taller omitted"
+    ]
+   }
+  },
+  {
+   "args": {
+    "eis_ids": [
+     "7768011"
+    ],
+    "frs_id": "110041638458"
+   },
+   "output": {
+    "eis_ids": [
+     "7768011"
+    ],
+    "candidates": [
+     {
+      "stack_height": 25.51176,
+      "stack_diameter": 1.2496799999999997,
+      "exit_velocity": 11.155679999999998,
+      "exit_temperature": 519.2611111111112,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 42.672,
+      "stack_diameter": 1.0088879999999998,
+      "exit_velocity": 0.24536399999999997,
+      "exit_temperature": 416.48333333333335,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     }
+    ],
+    "total_candidates": 2,
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "eis_ids": [
+     "7428011"
+    ],
+    "frs_id": "110000906985"
+   },
+   "output": {
+    "eis_ids": [
+     "7428011"
+    ],
+    "candidates": [
+     {
+      "stack_height": 25.51176,
+      "stack_diameter": 1.2496799999999997,
+      "exit_velocity": 11.155679999999998,
+      "exit_temperature": 519.2611111111112,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 45.71999999999999,
+      "stack_diameter": 1.5239999999999998,
+      "exit_velocity": 19.964399999999998,
+      "exit_temperature": 335.9277777777778,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     }
+    ],
+    "total_candidates": 2,
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "eis_ids": [
+     "19129711"
+    ],
+    "frs_id": "110070801644"
+   },
+   "output": {
+    "eis_ids": [
+     "19129711"
+    ],
+    "candidates": [
+     {
+      "stack_height": 3.0479999999999996,
+      "stack_diameter": 0.9143999999999999,
+      "exit_velocity": 9.143999999999998,
+      "exit_temperature": 449.8166666666667,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 4.571999999999999,
+      "stack_diameter": 2.4383999999999997,
+      "exit_velocity": 7.924799999999999,
+      "exit_temperature": 449.8166666666667,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 9.143999999999998,
+      "stack_diameter": 3.0479999999999996,
+      "exit_velocity": 4.571999999999999,
+      "exit_temperature": 298.7055555555556,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 53.339999999999996,
+      "stack_diameter": 1.2191999999999998,
+      "exit_velocity": 9.143999999999998,
+      "exit_temperature": 338.7055555555556,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     }
+    ],
+    "total_candidates": 4,
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "eis_ids": [
+     "13429211"
+    ],
+    "frs_id": "110027242320"
+   },
+   "output": {
+    "eis_ids": [
+     "13429211"
+    ],
+    "candidates": [
+     {
+      "stack_height": 4.571999999999999,
+      "stack_diameter": 1.2191999999999998,
+      "exit_velocity": 4.9775668799999995,
+      "exit_temperature": 576.4833333333333,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 24.383999999999997,
+      "stack_diameter": 0.7619999999999999,
+      "exit_velocity": 8.79299232,
+      "exit_temperature": 283.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 25.51176,
+      "stack_diameter": 1.2496799999999997,
+      "exit_velocity": 11.155679999999998,
+      "exit_temperature": 519.2611111111112,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 30.479999999999997,
+      "stack_diameter": 0.24383999999999997,
+      "exit_velocity": 13.03190688,
+      "exit_temperature": 305.37222222222226,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 45.71999999999999,
+      "stack_diameter": 1.8287999999999998,
+      "exit_velocity": 18.857549279999997,
+      "exit_temperature": 360.9277777777778,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     }
+    ],
+    "total_candidates": 5,
+    "warnings": []
+   }
+  }
+ ],
+ "fetch_stack_parameters_from_scc": [
+  {
+   "args": {
+    "scc_code": null
+   },
+   "output": {
+    "stack_height": 3.0,
+    "stack_diameter": 0.2,
+    "exit_velocity": 4.0,
+    "exit_temperature": 295.4,
+    "source": "AirToxScreen global default",
+    "scc": null,
+    "warnings": [
+     "no SCC was given; using the AirToxScreen global default (generic, not facility-specific)"
+    ]
+   }
+  }
+ ],
  "find_tri_category": [
   {
    "args": {
@@ -118,6 +432,879 @@
      }
     ],
     "warnings": []
+   }
+  }
+ ],
+ "get_meteorological_boundary": [
+  {
+   "args": {
+    "latitude": "41.154424",
+    "longitude": "-103.659",
+    "reporting_year": "2024"
+   },
+   "output": {
+    "wind_speed": 4.62,
+    "wind_direction": 280.0,
+    "stability_class": "D",
+    "ambient_temperature": 284.13,
+    "source": "Open-Meteo era5 reanalysis 2024",
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "latitude": "40.7344",
+    "longitude": "-112.9681",
+    "reporting_year": "2024"
+   },
+   "output": {
+    "wind_speed": 2.65,
+    "wind_direction": 180.0,
+    "stability_class": "F",
+    "ambient_temperature": 287.05,
+    "source": "Open-Meteo era5 reanalysis 2024",
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "latitude": "40.631622",
+    "longitude": "-80.54632",
+    "reporting_year": "2024"
+   },
+   "output": {
+    "wind_speed": 2.93,
+    "wind_direction": 260.0,
+    "stability_class": "D",
+    "ambient_temperature": 286.39,
+    "source": "Open-Meteo era5 reanalysis 2024",
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "latitude": "33.2044",
+    "longitude": "-92.6308",
+    "reporting_year": "2024"
+   },
+   "output": {
+    "wind_speed": 2.75,
+    "wind_direction": 180.0,
+    "stability_class": "D",
+    "ambient_temperature": 292.48,
+    "source": "Open-Meteo era5 reanalysis 2024",
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "latitude": "30.053617",
+    "longitude": "-93.754431",
+    "reporting_year": "2024"
+   },
+   "output": {
+    "wind_speed": 3.61,
+    "wind_direction": 160.0,
+    "stability_class": "D",
+    "ambient_temperature": 295.25,
+    "source": "Open-Meteo era5 reanalysis 2024",
+    "warnings": []
+   }
+  }
+ ],
+ "get_population_receptors": [
+  {
+   "args": {
+    "latitude": "41.154424",
+    "longitude": "-103.659",
+    "radius_km": null
+   },
+   "output": {
+    "total_population": 11,
+    "age_distribution": {
+     "0-4": 3.97,
+     "5-17": 15.41,
+     "18-64": 53.38,
+     "65+": 27.24
+    },
+    "source": "Census ACS 2023 5-year (DP05), 1 tracts",
+    "warnings": [],
+    "tracts": [
+     {
+      "geoid": "31105954500",
+      "residents": 3348,
+      "age_distribution": {
+       "0-4": 3.97,
+       "5-17": 15.41,
+       "18-64": 53.38,
+       "65+": 27.24
+      },
+      "distance_m": 6206.953751400143,
+      "bearing_deg": 323.47656521288076,
+      "latitude": 41.1992736,
+      "longitude": -103.7031528,
+      "land_area_km2": 2465.517099
+     }
+    ],
+    "tracts_not_listed": 0
+   }
+  },
+  {
+   "args": {
+    "latitude": "33.2044",
+    "longitude": "-92.6308",
+    "radius_km": null
+   },
+   "output": {
+    "total_population": 162,
+    "age_distribution": {
+     "0-4": 7.09,
+     "5-17": 14.65,
+     "18-64": 61.01,
+     "65+": 17.25
+    },
+    "source": "Census ACS 2023 5-year (DP05), 4 tracts",
+    "warnings": [],
+    "tracts": [
+     {
+      "geoid": "05139951000",
+      "residents": 4215,
+      "age_distribution": {
+       "0-4": 7.0,
+       "5-17": 14.64,
+       "18-64": 64.08,
+       "65+": 14.28
+      },
+      "distance_m": 741.3322857388305,
+      "bearing_deg": 232.56976581761614,
+      "latitude": 33.2003477,
+      "longitude": -92.637127,
+      "land_area_km2": 12.203516
+     },
+     {
+      "geoid": "05139950600",
+      "residents": 3427,
+      "age_distribution": {
+       "0-4": 9.4,
+       "5-17": 12.28,
+       "18-64": 62.71,
+       "65+": 15.61
+      },
+      "distance_m": 3220.8937797395297,
+      "bearing_deg": 342.11044619486927,
+      "latitude": 33.2319652,
+      "longitude": -92.6414376,
+      "land_area_km2": 20.093389
+     },
+     {
+      "geoid": "05139950200",
+      "residents": 3489,
+      "age_distribution": {
+       "0-4": 5.04,
+       "5-17": 15.22,
+       "18-64": 58.7,
+       "65+": 21.04
+      },
+      "distance_m": 10292.66319756106,
+      "bearing_deg": 26.228814903203975,
+      "latitude": 33.2874237,
+      "longitude": -92.5818612,
+      "land_area_km2": 278.249476
+     },
+     {
+      "geoid": "05139950502",
+      "residents": 2614,
+      "age_distribution": {
+       "0-4": 6.92,
+       "5-17": 16.99,
+       "18-64": 56.96,
+       "65+": 19.13
+      },
+      "distance_m": 14781.953500054819,
+      "bearing_deg": 135.8152925280671,
+      "latitude": 33.1090223,
+      "longitude": -92.5201863,
+      "land_area_km2": 381.013061
+     }
+    ],
+    "tracts_not_listed": 0
+   }
+  },
+  {
+   "args": {
+    "latitude": "30.053617",
+    "longitude": "-93.754431",
+    "radius_km": null
+   },
+   "output": {
+    "total_population": 987,
+    "age_distribution": {
+     "0-4": 10.48,
+     "5-17": 18.49,
+     "18-64": 54.47,
+     "65+": 16.56
+    },
+    "source": "Census ACS 2023 5-year (DP05), 2 tracts",
+    "warnings": [],
+    "tracts": [
+     {
+      "geoid": "48361020300",
+      "residents": 2941,
+      "age_distribution": {
+       "0-4": 7.75,
+       "5-17": 19.59,
+       "18-64": 58.04,
+       "65+": 14.62
+      },
+      "distance_m": 1575.7914230107783,
+      "bearing_deg": 300.76601175680156,
+      "latitude": 30.0608654,
+      "longitude": -93.7685004,
+      "land_area_km2": 43.061381
+     },
+     {
+      "geoid": "48361020500",
+      "residents": 3272,
+      "age_distribution": {
+       "0-4": 12.93,
+       "5-17": 17.51,
+       "18-64": 51.25,
+       "65+": 18.31
+      },
+      "distance_m": 2611.460828885869,
+      "bearing_deg": 356.8809355909562,
+      "latitude": 30.0770676,
+      "longitude": -93.7559077,
+      "land_area_km2": 8.160178
+     }
+    ],
+    "tracts_not_listed": 0
+   }
+  },
+  {
+   "args": {
+    "latitude": "40.7344",
+    "longitude": "-112.9681",
+    "radius_km": null
+   },
+   "output": {
+    "total_population": 1,
+    "age_distribution": {
+     "0-4": 6.12,
+     "5-17": 20.07,
+     "18-64": 69.55,
+     "65+": 4.26
+    },
+    "source": "Census ACS 2023 5-year (DP05), 1 tracts",
+    "warnings": [],
+    "tracts": [
+     {
+      "geoid": "49045130600",
+      "residents": 1878,
+      "age_distribution": {
+       "0-4": 6.12,
+       "5-17": 20.07,
+       "18-64": 69.55,
+       "65+": 4.26
+      },
+      "distance_m": 58900.43353354718,
+      "bearing_deg": 244.13898325359452,
+      "latitude": 40.5016499,
+      "longitude": -113.5949635,
+      "land_area_km2": 14888.253074
+     }
+    ],
+    "tracts_not_listed": 0
+   }
+  },
+  {
+   "args": {
+    "latitude": "40.631622",
+    "longitude": "-80.54632",
+    "radius_km": null
+   },
+   "output": {
+    "total_population": 1383,
+    "age_distribution": {
+     "0-4": 3.13,
+     "5-17": 16.59,
+     "18-64": 56.21,
+     "65+": 24.07
+    },
+    "source": "Census ACS 2023 5-year (DP05), 4 tracts",
+    "warnings": [],
+    "tracts": [
+     {
+      "geoid": "39029952200",
+      "residents": 1587,
+      "age_distribution": {
+       "0-4": 1.7,
+       "5-17": 21.3,
+       "18-64": 62.13,
+       "65+": 14.87
+      },
+      "distance_m": 1151.1911129530763,
+      "bearing_deg": 65.02542064938065,
+      "latitude": 40.6359925,
+      "longitude": -80.533953,
+      "land_area_km2": 2.155055
+     },
+     {
+      "geoid": "39029952300",
+      "residents": 2591,
+      "age_distribution": {
+       "0-4": 6.52,
+       "5-17": 25.67,
+       "18-64": 54.03,
+       "65+": 13.78
+      },
+      "distance_m": 1816.7909170706798,
+      "bearing_deg": 256.0147754705078,
+      "latitude": 40.6276715,
+      "longitude": -80.5672098,
+      "land_area_km2": 1.888003
+     },
+     {
+      "geoid": "39029952400",
+      "residents": 3880,
+      "age_distribution": {
+       "0-4": 2.42,
+       "5-17": 12.4,
+       "18-64": 56.31,
+       "65+": 28.87
+      },
+      "distance_m": 4118.068945832625,
+      "bearing_deg": 7.853287188218297,
+      "latitude": 40.6683091,
+      "longitude": -80.5396485,
+      "land_area_km2": 33.197089
+     },
+     {
+      "geoid": "54029021500",
+      "residents": 4001,
+      "age_distribution": {
+       "0-4": 2.2,
+       "5-17": 12.9,
+       "18-64": 55.16,
+       "65+": 29.74
+      },
+      "distance_m": 4166.681968723888,
+      "bearing_deg": 202.48394657940008,
+      "latitude": 40.596997,
+      "longitude": -80.5651927,
+      "land_area_km2": 33.690503
+     }
+    ],
+    "tracts_not_listed": 0
+   }
+  }
+ ],
+ "query_emissions_inventory": [
+  {
+   "args": {
+    "cas_number": "N084",
+    "city": null,
+    "state": null
+   },
+   "output": {
+    "total_found": 8,
+    "matching": 8,
+    "shown": 8,
+    "facilities": [
+     {
+      "frs_id": "110000608771",
+      "facility_name": "ELEMENTAL ENVIRONMENTAL SOLUTIONS LLC",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324223075437",
+      "naics_code": "562211",
+      "naics_title": "Hazardous Waste Treatment and Disposal",
+      "naics_subsector": "562",
+      "naics_subsector_title": "Waste Management and Remediation Services",
+      "eis_ids": [],
+      "eis_note": "FRS ID 110000608771 has no EIS registration, and no other FRS record of the same site was found",
+      "total_release": 16.264,
+      "unit": "Pounds",
+      "emission_rate": 0.00023393031157026894,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 562211)",
+      "fugitive_release_kg_per_year": 0.05170953018000001,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Industrial use",
+        "cou_category": "Industrial function category and chemical sector",
+        "mapping_strength": "Direct (group)"
+       },
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Commercial use",
+        "cou_category": "Product category",
+        "mapping_strength": "Partial"
+       }
+      ],
+      "lifecycle_stages": [
+       "Industrial use",
+       "Commercial use"
+      ],
+      "conditions_note": null,
+      "latitude": 34.0403,
+      "longitude": -93.0448,
+      "address": "500 E REYNOLDS RD",
+      "city": "ARKADELPHIA",
+      "county": "CLARK",
+      "state": "AR",
+      "zip_code": "71923"
+     },
+     {
+      "frs_id": "110000417781",
+      "facility_name": "HENKEL US OPERATIONS CORP",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324222966044",
+      "naics_code": "325998",
+      "naics_title": "All Other Miscellaneous Chemical Product and Preparation Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [],
+      "eis_note": "FRS ID 110000417781 has no EIS registration, and no other FRS record of the same site was found",
+      "total_release": 1.0,
+      "unit": "Pounds",
+      "emission_rate": 3.2522176437208984e-05,
+      "operating_hours_per_year": 3874.214285714286,
+      "operating_hours_source": "Census QPC 2026Q2, NAICS 3259: 74.3 plant hours/week",
+      "fugitive_release_kg_per_year": 0.0,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "As a formulation component",
+        "tri_section": "3.2b",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Processing - incorporation into formulation, mixture, or reaction product",
+        "mapping_strength": "Direct"
+       }
+      ],
+      "lifecycle_stages": [
+       "Processing"
+      ],
+      "conditions_note": null,
+      "latitude": 42.909722,
+      "longitude": -87.92,
+      "address": "420 W MARQUETTE AVE",
+      "city": "OAK CREEK",
+      "county": "MILWAUKEE",
+      "state": "WI",
+      "zip_code": "53154"
+     },
+     {
+      "frs_id": "110041638458",
+      "facility_name": "CLEAN HARBORS ENVIRONMENTAL SERVICES INC",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324222659916",
+      "naics_code": "562211",
+      "naics_title": "Hazardous Waste Treatment and Disposal",
+      "naics_subsector": "562",
+      "naics_subsector_title": "Waste Management and Remediation Services",
+      "eis_ids": [
+       "7768011"
+      ],
+      "eis_note": null,
+      "total_release": 1.5,
+      "unit": "Pounds",
+      "emission_rate": 2.1574979547184177e-05,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 562211)",
+      "fugitive_release_kg_per_year": 0.0,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Repackaging",
+        "tri_section": "3.2d",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Repackaging",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Industrial use",
+        "cou_category": "Industrial function category and chemical sector",
+        "mapping_strength": "Direct (group)"
+       },
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Commercial use",
+        "cou_category": "Product category",
+        "mapping_strength": "Partial"
+       }
+      ],
+      "lifecycle_stages": [
+       "Processing",
+       "Industrial use",
+       "Commercial use"
+      ],
+      "conditions_note": null,
+      "latitude": 41.154424,
+      "longitude": -103.659,
+      "address": "2247 S HWY 71",
+      "city": "KIMBALL",
+      "county": "KIMBALL",
+      "state": "NE",
+      "zip_code": "69145"
+     },
+     {
+      "frs_id": "110027242320",
+      "facility_name": "HERITAGE THERMAL SERVICES",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324222530483",
+      "naics_code": "562213",
+      "naics_title": "Solid Waste Combustors and Incinerators",
+      "naics_subsector": "562",
+      "naics_subsector_title": "Waste Management and Remediation Services",
+      "eis_ids": [
+       "13429211"
+      ],
+      "eis_note": null,
+      "total_release": 0.13,
+      "unit": "Pounds",
+      "emission_rate": 1.8698315607559617e-06,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 562213)",
+      "fugitive_release_kg_per_year": 0.13154178730000002,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Industrial use",
+        "cou_category": "Industrial function category and chemical sector",
+        "mapping_strength": "Direct (group)"
+       },
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Commercial use",
+        "cou_category": "Product category",
+        "mapping_strength": "Partial"
+       }
+      ],
+      "lifecycle_stages": [
+       "Industrial use",
+       "Commercial use"
+      ],
+      "conditions_note": null,
+      "latitude": 40.631622,
+      "longitude": -80.54632,
+      "address": "1250 ST GEORGE ST",
+      "city": "EAST LIVERPOOL",
+      "county": "COLUMBIANA",
+      "state": "OH",
+      "zip_code": "43920"
+     },
+     {
+      "frs_id": "110000906985",
+      "facility_name": "CLEAN HARBORS ARAGONITE LLC",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324222778944",
+      "naics_code": "562211",
+      "naics_title": "Hazardous Waste Treatment and Disposal",
+      "naics_subsector": "562",
+      "naics_subsector_title": "Waste Management and Remediation Services",
+      "eis_ids": [
+       "7428011"
+      ],
+      "eis_note": null,
+      "total_release": 0.059,
+      "unit": "Pounds",
+      "emission_rate": 8.486158621892442e-07,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 562211)",
+      "fugitive_release_kg_per_year": 0.0,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Repackaging",
+        "tri_section": "3.2d",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Repackaging",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Industrial use",
+        "cou_category": "Industrial function category and chemical sector",
+        "mapping_strength": "Direct (group)"
+       },
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Commercial use",
+        "cou_category": "Product category",
+        "mapping_strength": "Partial"
+       }
+      ],
+      "lifecycle_stages": [
+       "Processing",
+       "Industrial use",
+       "Commercial use"
+      ],
+      "conditions_note": null,
+      "latitude": 40.7344,
+      "longitude": -112.9681,
+      "address": "11600 NORTH APTUS ROAD",
+      "city": "GRANTSVILLE",
+      "county": "TOOELE",
+      "state": "UT",
+      "zip_code": "84029"
+     },
+     {
+      "frs_id": "110000521221",
+      "facility_name": "CLEAN HARBORS EL DORADO LLC",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324222756417",
+      "naics_code": "562211",
+      "naics_title": "Hazardous Waste Treatment and Disposal",
+      "naics_subsector": "562",
+      "naics_subsector_title": "Waste Management and Remediation Services",
+      "eis_ids": [
+       "994211"
+      ],
+      "eis_note": null,
+      "total_release": 0.016,
+      "unit": "Pounds",
+      "emission_rate": 2.3013311516996453e-07,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 562211)",
+      "fugitive_release_kg_per_year": 0.0,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Import the chemical",
+        "tri_section": "3.1b",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Importing",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "For on-site use/processing",
+        "tri_section": "3.1c",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Partial"
+       },
+       {
+        "tri_activity": "Repackaging",
+        "tri_section": "3.2d",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Repackaging",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "Processed, recycling",
+        "tri_section": "3.2f",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Recycling",
+        "mapping_strength": "Partial"
+       },
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Industrial use",
+        "cou_category": "Industrial function category and chemical sector",
+        "mapping_strength": "Direct (group)"
+       },
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Commercial use",
+        "cou_category": "Product category",
+        "mapping_strength": "Partial"
+       }
+      ],
+      "lifecycle_stages": [
+       "Manufacturing",
+       "Processing",
+       "Industrial use",
+       "Commercial use"
+      ],
+      "conditions_note": null,
+      "latitude": 33.2044,
+      "longitude": -92.6308,
+      "address": "309 AMERICAN CIR UNION",
+      "city": "EL DORADO",
+      "county": "UNION",
+      "state": "AR",
+      "zip_code": "71730"
+     },
+     {
+      "frs_id": "110070801644",
+      "facility_name": "ARCWOOD ENVIRONMENTAL - ORANGE LLC",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324223150804",
+      "naics_code": "562211",
+      "naics_title": "Hazardous Waste Treatment and Disposal",
+      "naics_subsector": "562",
+      "naics_subsector_title": "Waste Management and Remediation Services",
+      "eis_ids": [
+       "19129711"
+      ],
+      "eis_note": null,
+      "total_release": 0.01,
+      "unit": "Pounds",
+      "emission_rate": 1.4383319698122783e-07,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 562211)",
+      "fugitive_release_kg_per_year": 0.0,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Industrial use",
+        "cou_category": "Industrial function category and chemical sector",
+        "mapping_strength": "Direct (group)"
+       },
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Commercial use",
+        "cou_category": "Product category",
+        "mapping_strength": "Partial"
+       }
+      ],
+      "lifecycle_stages": [
+       "Industrial use",
+       "Commercial use"
+      ],
+      "conditions_note": null,
+      "latitude": 30.053617,
+      "longitude": -93.754431,
+      "address": "2735 FM 1006 B-4000",
+      "city": "ORANGE",
+      "county": "ORANGE",
+      "state": "TX",
+      "zip_code": "77630"
+     },
+     {
+      "frs_id": "110035783658",
+      "facility_name": "VEOLIA ES TECHNICAL SOLUTIONS LLC PORT ARTHUR FACILITY",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324223144231",
+      "naics_code": "562211",
+      "naics_title": "Hazardous Waste Treatment and Disposal",
+      "naics_subsector": "562",
+      "naics_subsector_title": "Waste Management and Remediation Services",
+      "eis_ids": [],
+      "eis_note": "FRS ID 110035783658 has no EIS registration, and no other FRS record of the same site was found",
+      "total_release": 0.0,
+      "unit": "Pounds",
+      "emission_rate": 0.0,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 562211)",
+      "fugitive_release_kg_per_year": 28.576319310000006,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Industrial use",
+        "cou_category": "Industrial function category and chemical sector",
+        "mapping_strength": "Direct (group)"
+       },
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Commercial use",
+        "cou_category": "Product category",
+        "mapping_strength": "Partial"
+       }
+      ],
+      "lifecycle_stages": [
+       "Industrial use",
+       "Commercial use"
+      ],
+      "conditions_note": null,
+      "latitude": 29.853056,
+      "longitude": -94.095278,
+      "address": "7665 HWY 73",
+      "city": "BEAUMONT",
+      "county": "JEFFERSON",
+      "state": "TX",
+      "zip_code": "77705"
+     }
+    ],
+    "note": "releases are reported for the whole TRI category N084 (CHLOROPHENOLS), not for one member chemical",
+    "worker_only": [
+     {
+      "frs_id": "110000397874",
+      "facility_name": "TRADEBE TREATMENT & RECYCLING LLC",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324222885699",
+      "naics_code": "562211",
+      "naics_title": "Hazardous Waste Treatment and Disposal",
+      "naics_subsector": "562",
+      "naics_subsector_title": "Waste Management and Remediation Services",
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 562211)",
+      "fugitive_release_kg_per_year": 0.3946253619000001,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Repackaging",
+        "tri_section": "3.2d",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Repackaging",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "As a process impurity",
+        "tri_section": "3.2e",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Not a COU category (process impurity)",
+        "mapping_strength": "None (CDR exempt)"
+       },
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Industrial use",
+        "cou_category": "Industrial function category and chemical sector",
+        "mapping_strength": "Direct (group)"
+       },
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Commercial use",
+        "cou_category": "Product category",
+        "mapping_strength": "Partial"
+       }
+      ],
+      "lifecycle_stages": [
+       "Processing",
+       "Industrial use",
+       "Commercial use"
+      ],
+      "conditions_note": null,
+      "latitude": 41.633441,
+      "longitude": -87.461568,
+      "address": "4343 KENNEDY AVE",
+      "city": "EAST CHICAGO",
+      "county": "LAKE",
+      "state": "IN",
+      "zip_code": "46312"
+     }
+    ],
+    "worker_only_left_out": 0
    }
   }
  ]
