@@ -21,5 +21,5 @@
 ## 5. Verification
 
 - [x] 5.1 `actionlint` (via `uvx` or the Docker image) passes on both workflows; `uv run pre-commit run --all-files` passes (check-yaml covers the new files).
-- [ ] 5.2 Push a branch and confirm the three CI jobs pass on GitHub; confirm a deliberately failing ruff error fails the `python` job, then revert it.
+- [x] 5.2 Push a branch and confirm the three CI jobs pass on GitHub; confirm a deliberately failing ruff error fails the `python` job, then revert it. (All three passed on PR #1 after fixes. The deliberate ruff check was waived by the owner: CI had already failed the `python` job on real pip-audit advisories and the `docker` job on a real start-up race, so blocking was shown.)
 - [x] 5.3 Start the evals workflow once with `scenarios` (owner approves the token cost) and confirm the report artifact downloads and that no secret value appears in the log.
