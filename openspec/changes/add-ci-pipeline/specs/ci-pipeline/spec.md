@@ -34,7 +34,7 @@ the API health endpoint, and stop the stack and remove its volumes whatever the 
 
 ### Requirement: Evaluations run only on demand
 The repository SHALL have a separate evaluation workflow that runs only when started by hand,
-offers the scripted scenarios, the catalogue run and the judge of a named run, uses the
+offers the scripted scenarios and the catalogue run, uses the
 OpenAI key (and, for the catalogue, the CompTox and Census keys) from repository secrets, and
 uploads the evaluation reports as a downloadable artifact even when the evaluation fails.
 User-supplied inputs SHALL reach commands only through environment variables and SHALL be
@@ -48,9 +48,9 @@ validated before use.
 - **WHEN** the owner starts the workflow with the scenarios choice
 - **THEN** the run's `evals/reports/<timestamp>/` folder is attached to the run as an artifact
 
-#### Scenario: Malicious run directory
-- **WHEN** the judge choice is started with a run directory that does not match the timestamp pattern
-- **THEN** the workflow fails before running any command with that value
+#### Scenario: Unknown evaluation
+- **WHEN** the workflow is dispatched through the API with an evaluation outside the offered choices
+- **THEN** the workflow fails before running any evaluation command
 
 ### Requirement: Secret hygiene and least privilege in workflows
 Workflows SHALL default to read-only repository permissions, SHALL pin every third-party

@@ -48,9 +48,11 @@ See proposal.md for motivation. What shapes the approach:
    file holding throwaway values (no real keys), then `curl --fail` on the health endpoint,
    then `docker compose down -v`. Alternative: build only; rejected because it does not
    prove the stack starts (the "docker compose up starts everything" criterion).
-5. **Evals are `workflow_dispatch` only**, inputs validated by a `choice` input and a
-   run-directory pattern (`^[0-9]{8}-[0-9]{6}$`), passed through an environment variable,
-   never interpolated into a shell line (prevents script injection). The step uses the
+5. **Evals are `workflow_dispatch` only**, the input validated by a `choice` input and again
+   in the shell (an API dispatch is not limited to the list), passed through an environment
+   variable, never interpolated into a shell line (prevents script injection). No `judge`
+   choice: it needs a catalogue run and its hand-written `labels.json`, and `evals/reports/` is
+   gitignored, so they never exist on the runner; judging stays local on a downloaded run. The step uses the
    `OPENAI_API_KEY` secret and a GitHub `environment: evals` so the owner can require
    approval.
 6. **Pinned actions and least privilege**: `permissions: contents: read` at workflow level,

@@ -1,0 +1,75 @@
+# Agent evaluations, started by hand only (Actions -> Evaluations -> Run workflow): they call the
+# real chat model and cost tokens, so they never run on push or pull request. The `evals`
+# environment lets the owner require an approval before a run gets the secrets.
+name: Evaluations
+
+on:
+  workflow_dispatch:
+    inputs:
+      evaluation:
+        description: "What to run"
+        type: choice
+        required: true
+        default: scenarios
+        options:
+          - scenarios
+          - catalogue
+      # No `judge` choice: it needs a catalogue run and its hand-written labels.json, and
+      # evals/reports/ is gitignored, so they never exist on the runner. Judge locally.
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evals-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    name: evaluate (${{ inputs.evaluation }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    environment: evals
+    env:
+      # Inputs reach the shell only as environment variables, never interpolated into a script.
+      EVALUATION: ${{ inputs.evaluation }}
+      # No OS keychain on the runner: lookups find nothing and fall back to the environment.
+      PYTHON_KEYRING_BACKEND: keyring.backends.null.Keyring
+    steps:
+      # A dispatch through the API is not limited to the choice list: check it again here.
+      - name: Validate the input
+        run: |
+          case "$EVALUATION" in
+            scenarios|catalogue) ;;
+            *) echo "::error::unknown evaluation"; exit 1 ;;
+          esac
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          python-version-file: .python-version
+      - name: Install the locked environment
+        run: uv sync --locked
+      - name: Scripted scenarios (recorded tool outputs)
+        if: inputs.evaluation == 'scenarios'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: uv run python -m evals run
+      - name: Catalogue (live services)
+        if: inputs.evaluation == 'catalogue'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          COMPTOX_API_KEY: ${{ secrets.COMPTOX_API_KEY }}
+          CENSUS_API_KEY: ${{ secrets.CENSUS_API_KEY }}
+        run: uv run python -m evals catalogue
+      - name: Upload the reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: eval-reports-${{ inputs.evaluation }}-${{ github.run_id }}
+          path: evals/reports/
+          retention-days: 30
+          if-no-files-found: warn

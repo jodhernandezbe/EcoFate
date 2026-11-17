@@ -22,7 +22,8 @@ independent of one laptop.
     `add-docker-compose-stack`) with BuildKit cache, without pushing, and runs a
     `docker compose up --wait` smoke test that calls the API health endpoint.
 - Add a manual workflow `.github/workflows/evals.yml` (`workflow_dispatch`, with a choice of
-  `scenarios`, `catalogue` or `judge <run-dir>`) that runs the agent evaluations with the
+  `scenarios` or `catalogue`; `judge` stays local, since its hand-written labels never reach
+  the runner) that runs the agent evaluations with the
   `OPENAI_API_KEY` repository secret (plus `COMPTOX_API_KEY` and `CENSUS_API_KEY` for the
   catalogue) and uploads `evals/reports/<timestamp>/` as a workflow artifact. It never runs
   on push or pull request, because it costs tokens.
