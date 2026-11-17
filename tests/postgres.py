@@ -36,6 +36,8 @@ SETTINGS = DatabaseSettings(
     turn_lease_seconds=600.0,
     thread_retention_days=30,
     purge_interval_minutes=60,
+    setup_lock_timeout_seconds=60.0,
+    setup_lock_poll_seconds=0.05,
 )
 
 

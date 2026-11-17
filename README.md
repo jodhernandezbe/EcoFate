@@ -1,5 +1,7 @@
 # EcoFate
 
+[![CI](https://github.com/jodhernandezbe/EcoFate/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jodhernandezbe/EcoFate/actions/workflows/ci.yml)
+
 EcoFate turns fragmented environmental data into screening-level chemical exposure risk profiles.
 
 ## Overview
@@ -345,7 +347,13 @@ Tool names must be unique; the registry raises `ValueError` on duplicates.
     uv run pre-commit install        # one-time: enable git hooks
     uv run pre-commit run --all-files
 
-Pre-commit runs on every commit: file hygiene, ruff (lint + format), `uv lock` check, detect-secrets, strict pyright, bandit (security lint) and pytest. If detect-secrets flags a false positive, review it and update the baseline with `uv run detect-secrets scan > .secrets.baseline` (after checking the diff). Dependency CVEs: `uv run pip-audit`.
+Pre-commit runs on every commit: file hygiene, ruff (lint + format), `uv lock` check, detect-secrets, strict pyright, bandit (security lint) and pytest. If detect-secrets flags a false positive, review it and update the baseline with `uv run detect-secrets scan > .secrets.baseline` (after checking the diff). Dependency CVEs: `make audit` (pip-audit; the few reviewed exceptions are listed with their reasons in the `Makefile`).
+
+### Continuous integration
+
+GitHub Actions runs `.github/workflows/ci.yml` on every pull request and every push to `main`, in three jobs: `python` (the pre-commit hooks from `.pre-commit-config.yaml`, then `pytest` and `make audit`), `frontend` (`npm ci`, `run check`, `run build`) and `docker` (builds the `api` and `worker` images, starts the compose stack with the placeholder `.github/ci.env` plus a throwaway database password, key-encryption key and session secret, calls `/api/health`, tears it down). It needs no secret and never runs the `eval` marker. Actions are pinned to commit SHAs; Dependabot (`.github/dependabot.yml`) proposes updates weekly for the actions, `uv.lock` and the frontend.
+
+The agent evaluations cost tokens, so they run only by hand: **Actions -> Evaluations -> Run workflow**, choose `scenarios` or `catalogue`. The reports are attached to the run as an artifact for 30 days; label a downloaded catalogue run and run `judge` on it locally (its `labels.json` never reaches GitHub). The owner sets the repository secrets `OPENAI_API_KEY` (both) and `COMPTOX_API_KEY` and `CENSUS_API_KEY` (catalogue), and can require an approval before each run in the `evals` environment (Settings -> Environments). Recommended: protect `main` with the `python`, `frontend` and `docker` checks required (Settings -> Branches).
 
 ## License and citation
 

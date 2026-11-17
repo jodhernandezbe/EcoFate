@@ -25,6 +25,8 @@ class DatabaseSettings:
         turn_lease_seconds: Seconds a turn holds its thread before another process may claim it.
         thread_retention_days: Days a thread may sit idle before it is purged.
         purge_interval_minutes: Minutes between purges of idle threads.
+        setup_lock_timeout_seconds: Seconds to wait for the checkpoint setup lock.
+        setup_lock_poll_seconds: Seconds between tries for the checkpoint setup lock.
     """
 
     url_env_var: str
@@ -35,6 +37,8 @@ class DatabaseSettings:
     turn_lease_seconds: float
     thread_retention_days: int
     purge_interval_minutes: int
+    setup_lock_timeout_seconds: float
+    setup_lock_poll_seconds: float
 
 
 def _seconds(table: dict[str, object], key: str) -> float:
@@ -76,6 +80,8 @@ def load_database_settings(path: Path | None = None) -> DatabaseSettings:
         turn_lease_seconds=_lease(table, load_agent_settings(path).timeout_seconds),
         thread_retention_days=require_int(table, "thread_retention_days", minimum=1, name=_NAME),
         purge_interval_minutes=require_int(table, "purge_interval_minutes", minimum=1, name=_NAME),
+        setup_lock_timeout_seconds=_seconds(table, "setup_lock_timeout_seconds"),
+        setup_lock_poll_seconds=_seconds(table, "setup_lock_poll_seconds"),
     )
 
 

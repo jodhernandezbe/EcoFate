@@ -27,6 +27,8 @@ health_timeout_seconds = 1.5
 turn_lease_seconds = 300.0
 thread_retention_days = 14
 purge_interval_minutes = 30
+setup_lock_timeout_seconds = 45.0
+setup_lock_poll_seconds = 0.5
 """
 
 
@@ -48,6 +50,8 @@ def test_values(tmp_path: Path) -> None:
     assert (settings.pool_timeout_seconds, settings.statement_timeout_seconds) == (5.0, 20.0)
     assert (settings.health_timeout_seconds, settings.turn_lease_seconds) == (1.5, 300.0)
     assert settings.purge_interval_minutes == 30
+    assert settings.setup_lock_timeout_seconds == 45.0
+    assert settings.setup_lock_poll_seconds == 0.5
 
 
 def test_shipped_settings_load_without_a_url() -> None:
@@ -73,6 +77,10 @@ def test_shipped_settings_load_without_a_url() -> None:
         ("thread_retention_days", "thread_retention_days = true"),
         ("purge_interval_minutes", "purge_interval_minutes = -5"),
         ("purge_interval_minutes", "purge_interval_minutes = true"),
+        ("setup_lock_timeout_seconds", "setup_lock_timeout_seconds = 0"),
+        ("setup_lock_timeout_seconds", "setup_lock_timeout_seconds = true"),
+        ("setup_lock_poll_seconds", "setup_lock_poll_seconds = -1"),
+        ("setup_lock_poll_seconds", 'setup_lock_poll_seconds = "fast"'),
     ],
 )
 def test_invalid_entry_names_the_key(tmp_path: Path, line_start: str, new_line: str) -> None:

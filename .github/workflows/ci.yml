@@ -1,0 +1,118 @@
+# Continuous integration: the pre-commit gates, the frontend check and build, and the container
+# stack, on every pull request and every push to main. Needs no secret (fork pull requests get
+# none); the agent evaluations cost tokens and run only by hand (evals.yml).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: python
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+          python-version-file: .python-version
+      - name: Install the locked environment
+        run: uv sync --locked
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+      # The same list of gates as a local commit; frontend-check and pytest run as their own
+      # steps (pytest below, the frontend in its own job) so their output is readable.
+      - name: Pre-commit hooks
+        env:
+          SKIP: frontend-check,pytest
+        run: uv run pre-commit run --all-files --show-diff-on-failure
+      - name: Tests
+        run: uv run pytest -q
+      # The reviewed exceptions live with their reasons in the Makefile (one list, local and CI).
+      - name: Dependency vulnerability audit
+        run: make audit
+
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: frontend/.nvmrc
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        run: npm --prefix frontend ci
+      - name: Check (contract, tsc, eslint, vitest)
+        run: npm --prefix frontend run check
+      - name: Build
+        run: npm --prefix frontend run build
+
+  docker:
+    name: docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      # Tags match the `image:` names in compose.yaml, so `up --no-build` starts these builds.
+      - name: Build the api image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: api
+          tags: ecofate-api:local
+          load: true
+          push: false
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+      - name: Build the worker image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: worker
+          tags: ecofate-worker:local
+          load: true
+          push: false
+          cache-from: type=gha,scope=worker
+          cache-to: type=gha,mode=max,scope=worker
+      # compose.yaml reads `.env`: placeholder values from .github/ci.env, plus a throwaway
+      # database password (hex: safe in the URL), key-encryption key and session secret generated
+      # here (never printed, gone with the runner).
+      - name: Write the throwaway .env
+        run: |
+          cp .github/ci.env .env
+          python3 -c 'import secrets; print("POSTGRES_PASSWORD=" + secrets.token_hex(24))' >> .env
+          python3 -c 'import base64, secrets; print("ECOFATE_KEY_ENCRYPTION_KEY=" + base64.urlsafe_b64encode(secrets.token_bytes(32)).decode())' >> .env
+          python3 -c 'import secrets; print("ECOFATE_SESSION_SECRET=" + secrets.token_urlsafe(48))' >> .env
+      - name: Start the stack
+        run: docker compose up --no-build --wait --wait-timeout 240
+      - name: Call the health endpoint
+        run: curl --fail --silent --show-error --max-time 10 http://127.0.0.1:8000/api/health
+      - name: Service logs
+        if: failure()
+        run: docker compose logs --no-color --tail 200
+      - name: Stop the stack and remove its volumes
+        if: always()
+        run: docker compose down -v
