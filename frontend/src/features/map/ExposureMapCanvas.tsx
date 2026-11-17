@@ -6,12 +6,20 @@ import { Map as MapLibreMap, type StyleSpecification } from "maplibre-gl";
 import "./maplibreWorker";
 import { useEffect, useRef, useState } from "react";
 
+import { PATHWAYS, pathwayInfo, type Pathway } from "../../lib/pathways";
 import { DARK_MODE, REDUCED_MOTION, matches, usePrefers } from "../../lib/usePrefers";
 import type { ClientConfig, Facility, ScenarioDriver, WorkspaceState } from "../../types/workspace";
 import { SOURCES, addOverlays, readPalette, setSourceData } from "./layers";
 import { FacilityInspector } from "./FacilityInspector";
-import { MapLegend, statusKey, type StatusKey } from "./MapLegend";
-import { bufferCollection, facilityCollection, receptorCollection, sectorCollection } from "./mapData";
+import { MapLegend } from "./MapLegend";
+import {
+  bufferCollection,
+  facilityCollection,
+  receptorCollection,
+  sectorCollection,
+  statusKey,
+  type StatusKey,
+} from "./mapData";
 
 const FIT_PADDING_PX = 64;
 const FIT_MAX_ZOOM = 14;
@@ -43,14 +51,34 @@ function useOverlayData(
   config: Props["config"],
   drivers: ScenarioDriver[],
   pinnedId: string | null,
+  pathway: Pathway,
 ) {
   const scale = { minPx: config.marker_min_px, maxPx: config.marker_max_px };
   return {
-    [SOURCES.facilities]: facilityCollection(shown, scale, drivers),
+    [SOURCES.facilities]: facilityCollection(shown, scale, drivers, pathway),
     [SOURCES.buffers]: bufferCollection(shown),
     [SOURCES.sectors]: sectorCollection(shown),
-    [SOURCES.receptors]: receptorCollection(shown, drivers, pinnedId),
+    // Receptors are tracts around a stack: only the outdoor pathway has them.
+    [SOURCES.receptors]: receptorCollection(shown, pathway === "outdoor" ? drivers : [], pinnedId),
   };
+}
+
+/** The pathway dropdown: the same choices and labels as Risk by group. */
+function PathwayPicker({ pathway, onPathway }: { pathway: Pathway; onPathway: (pathway: Pathway) => void }) {
+  return (
+    <select
+      aria-label="Map pathway (medium, route, receptor)"
+      value={pathway}
+      onChange={(event) => onPathway(event.target.value as Pathway)}
+      className="max-w-full rounded-lg bg-fg2/10 px-2 py-1 text-[11px] text-fg"
+    >
+      {PATHWAYS.map(({ key, label }) => (
+        <option key={key} value={key}>
+          {label}
+        </option>
+      ))}
+    </select>
+  );
 }
 
 /**
@@ -101,9 +129,17 @@ export function ExposureMapCanvas({ workspace, config, digits, viewEpoch = 0, on
   const styleUrl = dark ? config.dark_style : config.light_style;
   // Statuses the user switched off in the legend; their markers and shapes leave the map.
   const [hidden, setHidden] = useState<ReadonlySet<StatusKey>>(new Set<StatusKey>());
-  const shown = workspace.facilities.filter((f) => !hidden.has(statusKey(f)));
+  // The pathway whose band colours the markers; local to the map, outdoor until the user chooses.
+  const [pathway, setPathway] = useState<Pathway>("outdoor");
+  const shown = workspace.facilities.filter((f) => !hidden.has(statusKey(f, pathway)));
   const [pinnedId, setPinnedId] = useState<string | null>(null);
-  const data = useOverlayData(shown, config, workspace.scenario_drivers, pinnedId);
+  const drivers = workspace.scenario_drivers.filter((d) => d.pathway_key === pathwayInfo(pathway).pathwayKey);
+  const data = useOverlayData(shown, config, drivers, pinnedId, pathway);
+  // A status hidden on one pathway must not silently hide markers on the other.
+  const choosePathway = (next: Pathway) => {
+    setPathway(next);
+    setHidden(new Set<StatusKey>());
+  };
   const latest = useRef({ data, styleUrl, start: config.initial_view, bounds: workspace.bounds });
   useEffect(() => {
     latest.current = { data, styleUrl, start: config.initial_view, bounds: workspace.bounds };
@@ -215,6 +251,7 @@ export function ExposureMapCanvas({ workspace, config, digits, viewEpoch = 0, on
           map={instance}
           facilities={shown}
           scale={{ minPx: config.marker_min_px, maxPx: config.marker_max_px }}
+          pathway={pathway}
           digits={digits}
           onPin={onPin}
           onPinned={setPinnedId}
@@ -233,7 +270,9 @@ export function ExposureMapCanvas({ workspace, config, digits, viewEpoch = 0, on
       <MapLegend
         ref={legend}
         facilities={workspace.facilities}
-        drivers={workspace.scenario_drivers}
+        pathway={pathway}
+        picker={<PathwayPicker pathway={pathway} onPathway={choosePathway} />}
+        drivers={drivers}
         hidden={hidden}
         onToggle={(key) =>
           setHidden((now) => {

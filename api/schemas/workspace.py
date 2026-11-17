@@ -533,6 +533,9 @@ class Facility(ContractModel):
         operating_hours_source: Where those hours came from (industry survey or default); None
             when the record predates the field.
         fugitive_release_kg_per_year: TRI fugitive air release, kg/yr; None when TRI has none.
+        total_air_release_kg_per_year: Stack release (converted to kg/yr) plus fugitive release,
+            kg/yr; each part counts only when reported; None when it cannot be established.
+        total_air_release_reason: Why the total is None; None when it is set.
         exposure: The community (ambient fenceline) result.
         occupational_exposure: The worker screening; None when no assessment produced it.
         operational_profile: Schedule, life cycle stage, condition of use and CDR sector.
@@ -577,6 +580,8 @@ class Facility(ContractModel):
     operating_hours_source: str | None = None
     fugitive_release_kg_per_year: float | None = None
     fugitive_reporting_year: int | None = None
+    total_air_release_kg_per_year: float | None = None
+    total_air_release_reason: str | None = None
     conditions_of_use: list[ConditionOfUse] = Field(default_factory=list[ConditionOfUse])
     lifecycle_stages: list[str] = Field(default_factory=list[str])
     conditions_note: str | None = None
@@ -725,6 +730,8 @@ class WorkspaceState(ContractModel):
         risk: Highest risk values across the attributed facilities.
         worker_risk: Highest worker (occupational) values across the assessed facilities.
         scenario_drivers: For each pathway and quantity, the facility with the highest value.
+        worst_case_chain: The run-wide worst-case exposure chain (one lane per pathway, from the
+            facility that drives it, naming no facility); empty before any assessment.
         receptors: Receptors of the selected facility.
         meteorology: Meteorology of the selected facility, else the latest result.
         unattributed: Results not attached to any facility.
@@ -739,6 +746,7 @@ class WorkspaceState(ContractModel):
     risk: RiskSummary = Field(default_factory=RiskSummary)
     worker_risk: WorkerRiskSummary = Field(default_factory=WorkerRiskSummary)
     scenario_drivers: list[ScenarioDriver] = Field(default_factory=list[ScenarioDriver])
+    worst_case_chain: ExposureGraph = Field(default_factory=ExposureGraph)
     receptors: Receptors | None = None
     meteorology: Meteorology | None = None
     unattributed: list[Unattributed] = Field(default_factory=list[Unattributed])

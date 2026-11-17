@@ -51,5 +51,16 @@ source = "Source"
 [ui.exposure_graph.reasons]
 {_table(graph.REASONS)}
 
+[ui.exposure_graph.worst_case]
+source_title = "Release of {{chemical}}"
+unknown_chemical = "the chemical"
+other_driver_note = "Elsewhere higher: {{quantity}}"
+withheld_title = "Withheld step"
+caption = "Fixed width"
+
+[ui.exposure_graph.worst_case.headline]
+community_inhalation = "hq"
+worker_inhalation = "oel_ratio"
+
 [ui.exposure_graph.quantities]
 """ + "\n".join(f'{k} = {{ label = "L {k}", unit = "u" }}' for k in graph.QUANTITIES)

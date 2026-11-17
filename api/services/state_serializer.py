@@ -11,6 +11,7 @@ from collections.abc import Mapping, Sequence
 from langchain_core.messages import AIMessage, BaseMessage, ToolMessage
 
 from api.schemas.workspace import Facility, RiskSummary, WorkspaceState
+from api.services.exposure_graph.worst_case import build_worst_case_chain
 from api.services.projectors import PROJECTORS
 from api.services.projectors.facilities import build_facilities, meteorology_view
 from api.services.projectors.framing import bounds, framing_key, next_version
@@ -77,6 +78,17 @@ def _framing(facilities: Sequence[Facility], previous: WorkspaceState | None) ->
     return {"framing_version": next_version(before, facilities), "bounds": bounds(facilities)}
 
 
+def _scenarios(
+    facilities: Sequence[Facility],
+    ledger: Ledger,
+    rules: WorkspaceRules,
+) -> dict[str, object]:
+    """The scenario drivers and the worst-case chain built from them (drivers computed once)."""
+    drivers = scenario_drivers(facilities)
+    chain = build_worst_case_chain(facilities, drivers, rules.graph, chemical(ledger))
+    return {"scenario_drivers": drivers, "worst_case_chain": chain}
+
+
 def build_workspace(
     messages: Sequence[BaseMessage],
     rules: WorkspaceRules,
@@ -101,9 +113,9 @@ def build_workspace(
     return WorkspaceState.model_validate(
         {
             **_ribbon(select(facilities, summary), summary, ledger),
+            **_scenarios(facilities, ledger, rules),
             **_framing(facilities, previous),
             "worker_risk": worker_summary(facilities),
-            "scenario_drivers": scenario_drivers(facilities),
             "facilities": facilities,
             "unattributed": lost,
             "warnings": [*ledger.warnings, *left_out_notes(ledger)],

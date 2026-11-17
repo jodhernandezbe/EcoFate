@@ -40,6 +40,7 @@ FACTS = (
     "stability_class",
     "weather_source",
     "population_source",
+    "receptors_note",
     "ventilation",
     "benchmark",
     "schedule_source",
@@ -69,6 +70,9 @@ QUANTITIES = (
     "residents",
     "radius",
     "band_share",
+    "tract_residents",
+    "tract_distance",
+    "tract_fraction",
     "band_dose",
     "hq",
     "cancer_risk",
@@ -102,6 +106,7 @@ FLAGS = ("capped", "not_capped")
 TIERS = ("low", "moderate", "high")
 VARIANTS = ("worst_case", "baseline")
 REASONS = ("community", "worker", "worker_only", "missing")
+PATHWAYS = ("community_inhalation", "worker_inhalation")
 _PLACEHOLDERS = {"stack": "{number}", "age_band": "{band}"}
 
 
@@ -111,6 +116,28 @@ class QuantityText:
 
     label: str
     unit: str
+
+
+@dataclass(frozen=True)
+class WorstCaseText:
+    """Fixed text of the run-wide worst-case chain.
+
+    Attributes:
+        source_title: Title of its source node (``{chemical}``).
+        unknown_chemical: Words for ``{chemical}`` when neither a name nor a CAS number is known.
+        other_driver_note: Note for an endpoint whose other quantity is driven by another facility
+            (``{quantity}``); it never names the facility.
+        withheld_title: Title of a step whose own title quoted the facility (it names no one).
+        caption: Text shown under the diagram (every band has the same width).
+        headline: Pathway key -> the graph quantity key whose driving facility feeds the lane.
+    """
+
+    source_title: str
+    unknown_chemical: str
+    other_driver_note: str
+    withheld_title: str
+    caption: str
+    headline: Mapping[str, str]
 
 
 @dataclass(frozen=True)
@@ -132,6 +159,7 @@ class GraphText:
         variants: Worker case -> words appended to the worker quantities.
         reasons: Why a lane is unavailable (by lane id, or ``worker_only`` for the community lane of
             a facility with no stack release) or a value is absent (``missing``).
+        worst_case: Text of the run-wide worst-case chain.
     """
 
     source: str
@@ -147,6 +175,7 @@ class GraphText:
     flags: Mapping[str, str]
     variants: Mapping[str, str]
     reasons: Mapping[str, str]
+    worst_case: WorstCaseText
 
 
 def _text(table: dict[str, object], key: str, name: str) -> str:
@@ -185,6 +214,34 @@ def _quantities(table: dict[str, object]) -> Mapping[str, QuantityText]:
     return MappingProxyType({key: _quantity(sub, key) for key in QUANTITIES})
 
 
+def _placeholder(value: str, placeholder: str, name: str) -> str:
+    if value.count(placeholder) != 1:
+        raise ValueError(f"{name} must contain {placeholder} once")
+    return value
+
+
+def _headline(table: dict[str, object]) -> Mapping[str, str]:
+    name = f"{_NAME}.worst_case.headline"
+    headline = _strings(table, "headline", PATHWAYS)
+    for pathway, key in headline.items():
+        if key not in QUANTITIES:
+            raise ValueError(f"{name}.{pathway} must name a graph quantity, got {key!r}")
+    return headline
+
+
+def _worst_case(table: dict[str, object]) -> WorstCaseText:
+    name = f"{_NAME}.worst_case"
+    sub = subtable(table, "worst_case", _NAME)
+    return WorstCaseText(
+        source_title=_placeholder(_text(sub, "source_title", name), "{chemical}", name),
+        unknown_chemical=_text(sub, "unknown_chemical", name),
+        other_driver_note=_placeholder(_text(sub, "other_driver_note", name), "{quantity}", name),
+        withheld_title=_text(sub, "withheld_title", name),
+        caption=_text(sub, "caption", name),
+        headline=_headline(sub),
+    )
+
+
 def parse_exposure_graph(ui_table: dict[str, object]) -> GraphText:
     """Validate the ``exposure_graph`` table of an already-read ``[ui]`` table.
 
@@ -206,4 +263,5 @@ def parse_exposure_graph(ui_table: dict[str, object]) -> GraphText:
         flags=_strings(table, "flags", FLAGS),
         variants=_strings(table, "variants", VARIANTS),
         reasons=_strings(table, "reasons", REASONS),
+        worst_case=_worst_case(table),
     )

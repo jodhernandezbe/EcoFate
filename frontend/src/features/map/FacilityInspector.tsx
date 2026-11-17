@@ -1,6 +1,7 @@
 import type { Map as MapLibreMap } from "maplibre-gl";
 import { useEffect, useId, useReducer, useRef, useState } from "react";
 
+import { pathwayInfo, type Pathway } from "../../lib/pathways";
 import type { Facility } from "../../types/workspace";
 import { FacilityHoverCard } from "./FacilityHoverCard";
 import { type MarkerScale, facilityCollection } from "./mapData";
@@ -38,18 +39,19 @@ function useMapMoves(map: MapLibreMap): void {
  * folded and it can be read at leisure. Escape closes it; leaving or blurring closes an
  * unpinned one; a click on the map closes a pinned one.
  */
-/** Name, community status and, when computed, the worker tier: what a marker announces. */
-function markerLabel(facility: Facility): string {
+/** Name and the band on the chosen pathway (or that it has no result there): what a marker announces. */
+function markerLabel(facility: Facility, pathway: Pathway): string {
   const name = facility.name ?? `FRS ${facility.frs_id}`;
-  const tier = facility.occupational_exposure?.risk_tier;
-  const community = facility.worker_only ? "reports no stack release" : (facility.status ?? "risk not computed");
-  return `${name}, ${community}${tier ? `, worker ${tier}` : ""}`;
+  const info = pathwayInfo(pathway);
+  const band = info.band(facility);
+  return `${name}, ${band ?? "no result"} on ${info.label}`;
 }
 
 export function FacilityInspector({
   map,
   facilities,
   scale,
+  pathway = "outdoor",
   digits,
   onPin,
   onPinned,
@@ -57,6 +59,8 @@ export function FacilityInspector({
   map: MapLibreMap;
   facilities: Facility[];
   scale: MarkerScale;
+  /** The pathway whose band a marker announces. */
+  pathway?: Pathway;
   digits: number;
   /** Told which facility a click pinned (not when it is unpinned, hovered or focused). */
   onPin?: (frsId: string) => void;
@@ -92,7 +96,7 @@ export function FacilityInspector({
     return () => document.removeEventListener("keydown", onKey);
   }, [active]);
 
-  const radii = facilityCollection(facilities, scale).features;
+  const radii = facilityCollection(facilities, scale, [], pathway).features;
   const placed = (facility: Facility, x: number, y: number, pinned: boolean): Active => {
     const box = overlay.current?.getBoundingClientRect();
     if (!box) {
@@ -134,7 +138,7 @@ export function FacilityInspector({
           <div key={facility.frs_id}>
             <button
               type="button"
-              aria-label={markerLabel(facility)}
+              aria-label={markerLabel(facility, pathway)}
               aria-describedby={isActive ? cardId : undefined}
               className="pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full bg-transparent"
               style={{ left: x, top: y, width: radius * 2, height: radius * 2 }}

@@ -20,6 +20,7 @@ from api.schemas.workspace import (
 )
 from api.services.exposure_graph import build_exposure_graph
 from api.services.geometry import circle, sector
+from api.services.projectors.air_release import with_total_air_release
 from api.services.projectors.attribution import (
     Finder,
     at_facility,
@@ -281,9 +282,10 @@ def _attached(
 
 
 def _with_graph(facility: Facility, rules: WorkspaceRules) -> Facility:
-    """The facility with its exposure graph, built from its own validated values."""
-    return facility.model_copy(
-        update={"exposure_graph": build_exposure_graph(facility, rules.graph)},
+    """The facility with its total air release and exposure graph, from its own values."""
+    sized = with_total_air_release(facility, rules.air_release)
+    return sized.model_copy(
+        update={"exposure_graph": build_exposure_graph(sized, rules.graph)},
     )
 
 

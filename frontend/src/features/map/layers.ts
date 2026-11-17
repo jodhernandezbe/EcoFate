@@ -9,7 +9,6 @@ export const SOURCES = {
   receptors: "receptors",
 } as const;
 export const MARKER_LAYER = "facility-markers";
-export const WORKER_RING_LAYER = "facility-worker-rings";
 export const DRIVER_RING_LAYER = "facility-driver-rings";
 export const RECEPTOR_LAYER = "scenario-receptors";
 
@@ -89,35 +88,10 @@ function addMarkerLayer(map: MapLibreMap, palette: Palette): void {
         palette.bad,
         palette.neutral,
       ],
-      // A worker-only facility has no community result: outlined, never filled.
-      "circle-opacity": ["case", ["get", "worker_only"], 0, 0.85],
-      "circle-stroke-color": ["case", ["get", "worker_only"], palette.neutral, palette.halo],
-      "circle-stroke-width": ["case", ["get", "worker_only"], 2, 1.5],
-    },
-  });
-}
-
-/** A ring just outside each marker, coloured by the worker tier (no ring while it is not computed). */
-function addWorkerRingLayer(map: MapLibreMap, palette: Palette): void {
-  map.addLayer({
-    id: WORKER_RING_LAYER,
-    type: "circle",
-    source: SOURCES.facilities,
-    paint: {
-      "circle-radius": ["+", ["get", "radius_px"], 3],
-      "circle-opacity": 0,
-      "circle-stroke-width": ["match", ["get", "worker_tier"], "none", 0, 2.5],
-      "circle-stroke-color": [
-        "match",
-        ["get", "worker_tier"],
-        "low",
-        palette.ok,
-        "moderate",
-        palette.warn,
-        "high",
-        palette.bad,
-        palette.neutral,
-      ],
+      // No result on the chosen pathway: outlined and neutral, never filled.
+      "circle-opacity": ["case", ["==", ["get", "status"], "none"], 0, 0.85],
+      "circle-stroke-color": ["case", ["==", ["get", "status"], "none"], palette.neutral, palette.halo],
+      "circle-stroke-width": ["case", ["==", ["get", "status"], "none"], 2, 1.5],
     },
   });
 }
@@ -160,7 +134,6 @@ export function addOverlays(map: MapLibreMap, palette: Palette): void {
   if (map.getLayer(MARKER_LAYER)) return;
   addPlumeLayers(map, palette);
   addMarkerLayer(map, palette);
-  addWorkerRingLayer(map, palette);
   addDriverRingLayer(map, palette);
   addReceptorLayer(map, palette);
 }

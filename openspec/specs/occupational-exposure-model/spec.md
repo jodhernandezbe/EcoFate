@@ -7,44 +7,52 @@ The deterministic equations that screen a worker's exposure to a chemical releas
 ## Requirements
 
 ### Requirement: Workplace box-model concentration
-The system SHALL compute the generation rate in mg/s as the annual fugitive release in kg/yr times 10^6 over the operating days per year times the operating hours per day times 3,600, and the workplace concentration in mg/m^3 as the generation rate over the ventilation rate in m^3/s times the mixing factor. It SHALL reject a non-finite or negative release, and non-positive operating days, hours, ventilation rate or mixing factor, and a mixing factor above 1, with a `ValueError`.
+The system SHALL compute the workplace concentration in mg/m^3 as the vapor generation rate of a worker activity in g/s times 1,000 over the ventilation rate in m^3/s times the mixing factor (the EPA/OPPT Mass Balance Inhalation Model), and SHALL cap it at the chemical's saturation concentration in mg/m^3, reporting whether the cap applied. It SHALL reject a non-finite or negative generation rate or saturation concentration, a non-positive ventilation rate or mixing factor, and a mixing factor above 1, with a `ValueError`. The generation rate SHALL NOT be derived from an annual release.
 
 #### Scenario: Worked example
-- **WHEN** the release is 1,000 kg/yr, the plant runs 250 days/yr and 16 h/day, the ventilation is 1.416 m^3/s and the mixing factor 0.5
-- **THEN** the generation rate is 1,000 x 10^6 over 250 x 16 x 3,600 mg/s and the concentration is that rate over 0.708 m^3/s
+- **WHEN** the generation rate is 0.01 g/s, the ventilation is 1.416 m^3/s, the mixing factor 0.5 and the saturation concentration is far higher
+- **THEN** the concentration is 10 mg/s over 0.708 m^3/s and the cap did not apply
 
 #### Scenario: Doubled release
-- **WHEN** the release is doubled and nothing else changes
+- **WHEN** the generation rate is doubled and nothing else changes, below saturation
 - **THEN** the concentration is doubled
 
 #### Scenario: Smaller ventilation
-- **WHEN** only the ventilation rate or the mixing factor is lowered
+- **WHEN** only the ventilation rate or the mixing factor is lowered, below saturation
 - **THEN** the concentration is higher
 
+#### Scenario: Capped at saturation
+- **WHEN** the mass balance gives 5,000 mg/m^3 and the saturation concentration is 1,200 mg/m^3
+- **THEN** the concentration is 1,200 mg/m^3 and the result says the cap applied
+
 #### Scenario: Invalid input
-- **WHEN** the hours per day are zero, the mixing factor is 1.5 or the release is NaN
+- **WHEN** the ventilation rate is zero, the mixing factor is 1.5 or the generation rate is NaN
 - **THEN** a `ValueError` is raised
 
 ### Requirement: Two ventilation tiers
-The system SHALL evaluate the box model for a baseline tier and a worst-case (enclosed zone) tier whose ventilation rates and mixing factors come from configuration (baseline 3,000 ft^3/min and 0.5; worst case 500 ft^3/min and 0.1), converting ft^3/min to m^3/s with the shared unit conversion, and SHALL return both with the tier values used.
+The system SHALL evaluate the mass balance for a baseline (typical) tier and a worst-case tier whose ventilation rates and mixing factors come from configuration and depend on whether the activity is indoor or outdoor, with the EPA ChemSTEER defaults: indoor 3,000 ft^3/min and 0.5 baseline, 500 ft^3/min and 0.1 worst case; outdoor 237,600 ft^3/min and 0.5 baseline, and 26,400 x (60 x vz / 5,280) ft^3/min and 0.1 worst case, where vz is the activity's air speed in ft/min (440 ft/min when its model has none). It SHALL convert ft^3/min to m^3/s with the shared unit conversion and SHALL return both tiers with the values used.
 
 #### Scenario: Worst case is higher
-- **WHEN** both tiers are evaluated for one release and schedule
+- **WHEN** both tiers are evaluated for one generation rate, below saturation
 - **THEN** the worst-case concentration is greater than the baseline one
+
+#### Scenario: Outdoor worst case
+- **WHEN** an outdoor activity has an air speed of 440 ft/min
+- **THEN** its worst-case ventilation is 132,000 ft^3/min
 
 #### Scenario: Configured tiers
 - **WHEN** a tier's ventilation rate is changed in the configuration
 - **THEN** its concentration changes with no code change
 
 ### Requirement: Eight-hour TWA and limit ratio
-The system SHALL compute the 8-hour time-weighted average in mg/m^3 as the workplace concentration times the smaller of the hours per day and 8, over 8, and the limit ratio as that average over the occupational exposure limit in mg/m^3, rejecting a non-positive limit.
+The system SHALL compute the 8-hour time-weighted average in mg/m^3 as the workplace concentration times the smaller of the activity's hours per day and 8, over 8, and the limit ratio as that average over the occupational exposure limit in mg/m^3, rejecting a non-positive limit.
 
 #### Scenario: Long shift is capped
-- **WHEN** the plant runs 16 h/day
+- **WHEN** the activity lasts 8 h/day or more
 - **THEN** the TWA equals the workplace concentration
 
 #### Scenario: Short shift is diluted
-- **WHEN** the plant runs 4 h/day
+- **WHEN** the activity lasts 4 h/day
 - **THEN** the TWA is half the workplace concentration
 
 #### Scenario: Ratio
@@ -73,22 +81,3 @@ The system SHALL compute the worker average daily concentration as the TWA times
 #### Scenario: Missing toxicity value
 - **WHEN** the IUR is not given
 - **THEN** the cancer risk is null and the hazard quotient is still computed from the RfC
-
-### Requirement: Occupational risk tier
-The system SHALL classify the result as "exceedance" when the limit ratio is above 1, the hazard quotient above 1 or the cancer risk above 1e-4; otherwise "elevated" when the ratio is above 0.1, the hazard quotient above 0.1 or the cancer risk above 1e-6; otherwise "acceptable". A quantity that is null SHALL not count, and when all three are null the tier SHALL be null, not "acceptable". Thresholds come from configuration.
-
-#### Scenario: Exceedance by the limit
-- **WHEN** the ratio is 1.2 and the others are below their thresholds
-- **THEN** the tier is "exceedance"
-
-#### Scenario: Elevated by cancer risk
-- **WHEN** the cancer risk is 5e-6 and the ratio and hazard quotient are below 0.1
-- **THEN** the tier is "elevated"
-
-#### Scenario: Acceptable
-- **WHEN** all three are present and below their lower thresholds
-- **THEN** the tier is "acceptable"
-
-#### Scenario: Nothing to compare
-- **WHEN** there is no limit, RfC or IUR
-- **THEN** the tier is null

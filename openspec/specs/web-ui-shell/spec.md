@@ -69,11 +69,16 @@ Cards whose data comes from a screening default SHALL show a "screening default"
 ### Requirement: Interactive facility map
 The analysis area SHALL show a vector basemap (light and dark styles from configuration) as soon
 as the page loads, framed on the configured initial view (the contiguous United States), even
-when no facility has been placed. It SHALL draw one marker per placed facility, coloured by its
-risk status (or neutral when not computed) and sized by emission rate on a configured scale,
-with a legend whose entries (below, near, above concern, not computed) each show how many
-facilities have that status and hide or show the markers of that status, with their circles,
-sectors and cards, when pressed. When the framing version changes, the camera SHALL animate to fit the bounding
+when no facility has been placed. It SHALL draw one marker per placed facility, sized by its total annual air release (kg/yr, as the
+API sent it) on a square-root scale between the configured smallest and largest sizes, with the smallest
+size when the total is absent. The marker SHALL be coloured by the screening band of the pathway chosen
+in the map's pathway dropdown, or drawn as "No result on this pathway" when the facility has none. The
+dropdown SHALL offer the same pathways, with the same labels, as Risk by group ("Outdoor Air → Inhalation
+→ General Population", the default, and "Indoor Air → Inhalation → Worker"). The legend's entries ("High",
+"Moderate", "Low", "No result on this pathway") SHALL each show how many facilities have that band on the
+chosen pathway, and SHALL hide or show those markers, with their circles, sectors and cards, when pressed.
+The legend SHALL say that size is the total annual air release, and SHALL say how many facilities have
+none reported. Markers SHALL carry no ring for any other pathway. When the framing version changes, the camera SHALL animate to fit the bounding
 box, with padding that keeps the framed facilities clear of the legend. The map SHALL redraw at
 its new size whenever its container changes size (splitter drag, rail or chat collapse, panel
 fullscreen, window resize), leaving no blank or stretched area. A "Reset to USA view" control
@@ -88,12 +93,12 @@ receptor radius circle. With meteorology it SHALL draw a sector toward
 - **THEN** the basemap is visible, framed on the contiguous United States, with no markers
 
 #### Scenario: Hide and show a status
-- **WHEN** the user presses the "Above concern" legend entry and later presses it again
-- **THEN** the markers of facilities above concern leave the map, with their circles, sectors and cards, and the entry reads as off with its count unchanged; pressing it again brings them back
+- **WHEN** the user presses the "High" legend entry and later presses it again
+- **THEN** the markers of facilities in the high band leave the map, with their circles, sectors and cards, and the entry reads as off with its count unchanged; pressing it again brings them back
 
 #### Scenario: Legend counts
-- **WHEN** the workspace holds one facility below concern, two above and one not computed
-- **THEN** the legend entries show 1, 0, 2 and 1
+- **WHEN** on the outdoor pathway the workspace holds one low facility, two high and one with no community result
+- **THEN** the legend entries show High 2, Moderate 0, Low 1 and No result on this pathway 1
 
 #### Scenario: Fit to facilities
 - **WHEN** a dashboard event raises the framing version
@@ -110,6 +115,18 @@ receptor radius circle. With meteorology it SHALL draw a sector toward
 #### Scenario: Downwind sector
 - **WHEN** the wind blows from 270°
 - **THEN** the sector points toward 90°
+
+#### Scenario: Worker pathway chosen
+- **WHEN** a facility is "low" for the community and "high" for workers, and the user chooses the indoor pathway
+- **THEN** its marker turns to the high look, the legend counts it under High, and no ring is drawn
+
+#### Scenario: Size from the total release
+- **WHEN** two facilities have totals of 100 and 400 kg/yr
+- **THEN** the second marker is larger, on a square-root scale, whichever pathway is chosen
+
+#### Scenario: Total not reported
+- **WHEN** a facility's total annual air release is absent
+- **THEN** its marker has the smallest size and the legend counts it as release not reported
 
 ### Requirement: Facility inspector popover
 Hovering or keyboard-focusing a marker SHALL open a translucent inspector anchored to it, and
@@ -496,52 +513,41 @@ The interface SHALL show the worker (occupational) screening wherever it shows t
 - **THEN** every worker value of it reads "not reported" and no zero is shown
 
 ### Requirement: Worker card in the summary ribbon
-The Overview summary ribbon SHALL include a "Worker exposure" card with the highest 8-hour TWA to limit ratio, worker hazard quotient and worker lifetime cancer risk over the assessed facilities, each for the baseline ventilation and the enclosed-zone worst case, with the facility each comes from and its tier in words, in the way the hazard quotient and cancer risk card names its facility. Where nothing is available it SHALL say why.
+The Overview summary ribbon SHALL include a "Worker exposure" card with the highest 8-hour TWA to limit ratio, worker hazard quotient and worker lifetime cancer risk over the assessed facilities, each for the baseline and the worst case, with the facility each comes from, its band in words and the evidence it rests on ("OSHA monitoring" or the driving activity), in the way the hazard quotient and cancer risk card names its facility. Where nothing is available it SHALL say why.
 
 #### Scenario: Highest values
 - **WHEN** several facilities have worker results
-- **THEN** each figure is the highest among them and names its facility
+- **THEN** each figure is the highest among them and names its facility, its band and its evidence
 
 #### Scenario: Nothing yet
 - **WHEN** no facility has a worker result
 - **THEN** the card shows "not reported" for each figure and the reason
 
 ### Requirement: Worker section in the facility inspector
-The facility inspector (hover and pinned card) SHALL show a compact badge with the community hazard quotient and the worker tier with its limit ratio, so a user can see whether the concern comes from the stack plume or from indoor fugitive release, and a "Worker exposure" section with the facility's operating schedule (days per year, hours per day, hours per year), life cycle stage and condition of use, CDR industrial sector, fugitive release, occupational limit and its source, and for both ventilation tiers the 8-hour TWA, limit ratio, worker hazard quotient and worker cancer risk and the tier, with the warnings. The tier SHALL be written as text as well as coloured.
+The facility inspector (hover and pinned card) SHALL show a compact badge with the community band and hazard quotient and the worker band with its limit ratio, so a user can see whether the concern comes from the stack plume or from the workplace, and a "Worker exposure" section with the evidence the result rests on, the facility's operating schedule (days per year, hours per day, hours per year), life cycle stage and condition of use, CDR industrial sector, the chemical's vapor pressure against the range of the vapor models, the occupational limit and its source, the OSHA monitoring summary when there is one (industry level, samples, non-detects, years, median and 95th percentile), each evaluated activity with its estimator and its baseline and worst-case 8-hour averages with the driving one marked, for the baseline and the worst case the 8-hour TWA, limit ratio, worker hazard quotient and worker cancer risk and the band, the TRI fugitive release as context, and the warnings. The band SHALL be written as text as well as coloured.
 
 #### Scenario: Both results
 - **WHEN** a facility has a community and a worker result
-- **THEN** the badge shows both and the section lists both tiers
+- **THEN** the badge shows both bands and the section lists the baseline and the worst case
+
+#### Scenario: Monitoring evidence
+- **WHEN** a facility's worker result rests on OSHA monitoring data
+- **THEN** the section says so, shows the monitoring summary and still lists the modelled activities
 
 #### Scenario: Tier not by colour alone
-- **WHEN** a tier is shown
+- **WHEN** a band is shown
 - **THEN** it is written in words
 
-### Requirement: Worker tier on the map
-The map SHALL draw a ring around each facility marker coloured by the worker tier (none while it is not computed), keeping the marker fill for the community status and its size for the emission rate; the legend SHALL explain the ring and count the facilities of each tier, and the marker's accessible name SHALL include the worker tier.
-
-#### Scenario: Ring and fill
-- **WHEN** a facility is above concern in the community result and elevated for workers
-- **THEN** its marker is filled for the community status and ringed for the elevated tier
-
-#### Scenario: No worker result
-- **WHEN** no facility has a worker result
-- **THEN** no ring is drawn and the legend has no ring entry
-
-#### Scenario: Accessible name
-- **WHEN** a marker has a worker tier
-- **THEN** its accessible name includes it
-
 ### Requirement: Risk by group has an exposure pathway dropdown
-The Risk by group view SHALL have one dropdown, above its three sections, that chooses the exposure pathway as medium, route and receptor: "Outdoor Air → Inhalation → General Population" (the default, the community result) or "Indoor Air → Inhalation → Worker" (the worker result). The choice SHALL apply to the three sections and be kept while the user goes to the summary and back. On the indoor pathway the quantity switch SHALL offer the worker hazard quotient, the worker lifetime cancer risk and the 8-hour average over the occupational limit, each bar being the highest value among the group's assessed facilities at the baseline ventilation, and the dashed lines SHALL be the worker tier boundaries from the client settings; the tooltip SHALL give the facility and its 8-hour average. A bar's tooltip SHALL name the facility and stack that drive it. A facility with no worker value SHALL not be ranked, and a chart with nothing to rank SHALL say why. Leaving the indoor pathway while the limit ratio is shown SHALL return to the hazard quotient.
+The Risk by group view SHALL have one dropdown, above its three sections, that chooses the exposure pathway as medium, route and receptor: "Outdoor Air → Inhalation → General Population" (the default, the community result) or "Indoor Air → Inhalation → Worker" (the worker result). The choice SHALL apply to the three sections and be kept while the user goes to the summary and back. On the indoor pathway the quantity switch SHALL offer the worker hazard quotient, the worker lifetime cancer risk and the 8-hour average over the occupational limit, each bar being the highest value among the group's assessed facilities at the baseline. On both pathways the dashed lines SHALL be the band boundaries of the shown quantity from the client settings, labelled "moderate" and "high"; the indoor tooltip SHALL give the facility, its 8-hour average and its evidence. A bar's tooltip SHALL name the facility and stack that drive it. A facility with no worker value SHALL not be ranked, and a chart with nothing to rank SHALL say why. Leaving the indoor pathway while the limit ratio is shown SHALL return to the hazard quotient.
 
 #### Scenario: Default
 - **WHEN** the Risk by group view opens
-- **THEN** it has one pathway dropdown, on the outdoor air pathway, and every section shows what it showed before
+- **THEN** it has one pathway dropdown, on the outdoor air pathway, with the band boundaries of the hazard quotient drawn
 
 #### Scenario: Indoor air
 - **WHEN** the user chooses the indoor air pathway
-- **THEN** all three sections rank the worker values, with the worker boundaries drawn
+- **THEN** all three sections rank the worker values, with the same band boundaries drawn
 
 #### Scenario: Limit ratio only for workers
 - **WHEN** the outdoor air pathway is chosen
@@ -557,8 +563,9 @@ The Risk by group view SHALL have one dropdown, above its three sections, that c
 
 ### Requirement: Overview has an Exposure chain tab
 The Overview SHALL offer a third tab, "Exposure chain", beside Summary and Risk by group, showing the
-exposure diagram of the focused facility. Summary and Risk by group SHALL be unchanged, and the diagram
-SHALL keep its selection while the user switches tabs.
+run's worst-case chain (one lane per pathway, no facility named). Risk by group SHALL be unchanged; the
+Summary SHALL no longer hold the worst-case scenarios card, whose content the chain now carries. The
+diagram SHALL keep its selection while the user switches tabs.
 
 #### Scenario: Third tab
 - **WHEN** the user opens the Overview
@@ -568,33 +575,6 @@ SHALL keep its selection while the user switches tabs.
 - **WHEN** the user opens a node's detail, switches to Summary and back
 - **THEN** the same node's detail is still open
 
-### Requirement: Pinning a facility focuses it
-Pinning a facility on the map (a click on its marker) SHALL report that facility to the application so the
-Exposure chain tab can show it. Hovering and unpinning SHALL NOT change the focus.
-
-#### Scenario: Pin
-- **WHEN** a marker is clicked
-- **THEN** the Exposure chain tab shows that facility
-
-#### Scenario: Hover only
-- **WHEN** a marker is only hovered
-- **THEN** the diagram does not change
-
-### Requirement: The summary ribbon shows the driving scenario
-For each pathway and quantity that has a scenario the ribbon SHALL show the driving scenario by rendering its generic shape: the value and tier, the facility, its factors grouped as source, release, conditions and receptor model, and its most affected receptors (or the reason there are none), instead of listing every facility, stack or population. A pathway added later SHALL be shown without display code of its own. Other facilities SHALL be reachable through an explicit control that is closed by default. An absent factor SHALL read "not reported" with its reason.
-
-#### Scenario: Driver shown
-- **WHEN** a run has assessed facilities
-- **THEN** each result shows only its driving scenario and a closed control for the others
-
-#### Scenario: Nobody at the maximum
-- **WHEN** a community scenario has no receptors
-- **THEN** the reason it gives is shown in place of the receptors
-
-#### Scenario: Others on request
-- **WHEN** the user opens the control for the others
-- **THEN** the other facilities are listed by value, each selectable
-
 ### Requirement: The facility inspector shows the worst-case scenario first
 The inspector SHALL show a facility's worst-case scenarios before any list of stacks, with the stack that drives each marked in that list, and SHALL show the receptors of the community scenario with their age bands, distance and bearing. The other stacks SHALL stay in a section that is closed when the scenario names one.
 
@@ -603,7 +583,7 @@ The inspector SHALL show a facility's worst-case scenarios before any list of st
 - **THEN** the scenario names stack 2 and the stack list marks it
 
 ### Requirement: The map marks the driving facility and its receptors
-The map SHALL mark the driving facility of the selected result, and when that facility is selected SHALL draw its listed receptors at their bearing and distance, without drawing the receptors of other facilities. Receptors SHALL be drawn at the coordinates the tool returned, never at a position computed in the browser, only for the results the pinned facility drives, and a tract several results name SHALL be drawn once.
+The map SHALL mark with an outer ring each facility that drives a worst-case result of the pathway chosen in the map's dropdown, and only those, and when that facility is selected SHALL draw its listed receptors at their bearing and distance, without drawing the receptors of other facilities. Receptors SHALL be drawn at the coordinates the tool returned, never at a position computed in the browser, only for the results the pinned facility drives, and a tract several results name SHALL be drawn once.
 
 #### Scenario: Receptors drawn
 - **WHEN** the driving facility is pinned
@@ -613,18 +593,22 @@ The map SHALL mark the driving facility of the selected result, and when that fa
 - **WHEN** the facility is unpinned or closed
 - **THEN** no receptor is drawn
 
+#### Scenario: Driver of the chosen pathway
+- **WHEN** facility A drives the community hazard quotient, facility B drives the worker limit ratio, and the indoor pathway is chosen
+- **THEN** only B carries the outer ring
+
 ### Requirement: Empty sections take their content height
 A section of the executive summary that has no data SHALL occupy only the height of its content;
-grid rows SHALL grow to share the panel only when they hold data. At first load the five summary
+grid rows SHALL grow to share the panel only when they hold data. At first load the summary
 cards SHALL be visible without scrolling at the default panel size.
 
 #### Scenario: First load
-- **WHEN** the workspace has no scenario drivers
-- **THEN** the worst-case section is one line high and the risk, worker, chemical, population and meteorology cards follow directly beneath it
+- **WHEN** the workspace has no facilities
+- **THEN** the risk, worker, chemical, population and meteorology cards are visible without scrolling, with no worst-case section above them
 
 #### Scenario: Scenarios present
 - **WHEN** the workspace has scenario drivers
-- **THEN** the worst-case section grows with its content as before
+- **THEN** the summary shows no worst-case section; the worst cases are in the Exposure chain tab
 
 ### Requirement: Map overlays never escape the map
 The map SHALL be its own stacking context: its basemap control, legend, notices and inspector
@@ -673,9 +657,10 @@ reported" beneath it; it SHALL NOT render as a 0 % share.
 
 ### Requirement: Resume an interrupted turn from the chat
 When a turn is interrupted, the chat SHALL keep the assistant's partial text and tool pills,
-show the interruption's fixed message beneath them, and, when the turn can be resumed, a
-**Resume** button that resumes it in place: the resumed events SHALL continue the same
-assistant message. For a rejected key the chat SHALL also offer to open Settings. While a turn
+mark the place it stopped with the word "Stopped", and show the interruption's fixed message in
+the turn controls at the top of the chat, under its header, never inside the thread. When the turn
+can be resumed, the controls SHALL offer a **Resume** button that resumes it in place: the resumed events SHALL continue the same
+assistant message. For a rejected key the controls SHALL also offer to open Settings. While a turn
 is running the Resume button SHALL be disabled and say why. A turn that cannot be resumed SHALL
 show its message without a Resume button. The composer SHALL stay usable, and sending a new
 message SHALL replace the Resume button with the new turn. When the chat restores a held thread
@@ -702,6 +687,10 @@ SHALL show that the turn stopped. No dashboard panel SHALL change.
 #### Scenario: Cap reached
 - **WHEN** an interrupted turn is no longer resumable
 - **THEN** its message is shown without a Resume button
+
+#### Scenario: Controls above the thread
+- **WHEN** the latest turn is interrupted and resumable
+- **THEN** Resume and the fixed message are in the bar under the chat header, and the thread shows only "Stopped" after the partial answer, with no button
 
 ### Requirement: Account screens before the workspace
 When the server reports no signed-in user, the interface SHALL show the account screens
@@ -755,10 +744,10 @@ or an exempt admin), no quota figure SHALL be shown.
 - **THEN** no quota figure is shown and the chat input is enabled
 
 ### Requirement: Live turn status in the chat
-While a turn is queued or running the chat SHALL show, under the streaming assistant message, a
-one-line status from the latest `turn_status` event: waiting for a worker with the approximate
+While a turn is queued or running the chat SHALL show, in the turn controls at the top of the
+chat under its header (never inside the thread), a one-line status from the latest `turn_status` event: waiting for a worker with the approximate
 number of turns ahead, thinking, or the label of the step that is running. The header status
-indicator SHALL include the queued state. A **Stop** control SHALL be shown while the turn runs;
+indicator SHALL include the queued state. A **Stop** control SHALL be shown beside that status while the turn runs;
 it cancels the turn, after which the chat shows the interruption with its Resume button. When
 the page is reloaded during a turn the chat SHALL reattach to it and continue from the last
 event it had, without duplicating messages or tool pills (a reloaded page restores its current
@@ -780,3 +769,33 @@ reattach from the last event received. No dashboard panel SHALL change.
 #### Scenario: Reload during a turn
 - **WHEN** the page is reloaded while a turn runs
 - **THEN** the chat shows the messages so far and keeps streaming the same turn, with each tool pill shown once
+
+#### Scenario: Stop above the thread
+- **WHEN** a turn runs
+- **THEN** its status and Stop are in the bar under the chat header, and no status line or Stop is drawn under the streaming message
+
+### Requirement: Worker-only facilities are shown as such
+A facility with a worker result and no stack release SHALL appear on the map sized by its total annual air release (its fugitive release) like any other facility. On the outdoor pathway it SHALL be drawn as "No result on this pathway" (outlined, no fill); on the indoor pathway it SHALL be filled by its worker band. No ring SHALL show its worker band. Its accessible name SHALL say it reports no stack release. Its inspector SHALL show the worker section and SHALL say the community result does not apply because the facility reports no stack release, never "not reported" alone and never zero. It SHALL be ranked on the indoor pathway of Risk by group and absent from the outdoor pathway.
+
+#### Scenario: Marker
+- **WHEN** a worker-only facility is on the map
+- **THEN** on the outdoor pathway its marker is outlined with no fill and no worker ring, and on the indoor pathway it is filled by its worker band
+
+#### Scenario: Inspector
+- **WHEN** a worker-only facility is inspected
+- **THEN** the community part says the facility reports no stack release and the worker section is shown
+
+#### Scenario: Risk by group
+- **WHEN** the outdoor pathway is chosen
+- **THEN** worker-only facilities are not ranked, and on the indoor pathway they are
+
+### Requirement: Risk by group ranks every worker result on the indoor pathway
+On the indoor pathway, Risk by group SHALL rank every facility that has a worker result, whether it was fully assessed, kept at the worst case, screened out on the community screen or worker-only, and its "assessed" count SHALL count the facilities with a worker result. The outdoor pathway SHALL be unchanged: screened-out facilities are counted as such and are never a bar.
+
+#### Scenario: Screened-out facility indoors
+- **WHEN** a screened-out facility has a worker result and the indoor pathway is chosen
+- **THEN** its worker values can be its group's bars and it is counted as assessed, not as screened out
+
+#### Scenario: Screened-out facility outdoors
+- **WHEN** the outdoor pathway is chosen
+- **THEN** the screened-out facility is counted as screened out and is not a bar

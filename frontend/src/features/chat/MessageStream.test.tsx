@@ -1,5 +1,4 @@
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 
 import type { ChatMessage } from "../../hooks/chatState";
 import { MessageStream } from "./MessageStream";
@@ -38,7 +37,7 @@ describe("MessageStream", () => {
     expect(link).toHaveAttribute("rel", "noopener noreferrer");
   });
 
-  it("shows an inline alert for an error and a waiting hint while streaming", () => {
+  it("shows an inline alert for an error (the waiting status is in the controls above)", () => {
     render(
       <MessageStream
         messages={[
@@ -47,7 +46,7 @@ describe("MessageStream", () => {
         ]}
       />,
     );
-    expect(screen.getByText("Thinking…")).toBeInTheDocument();
+    expect(screen.queryByText("Thinking…")).toBeNull();
     expect(screen.getByRole("alert")).toHaveTextContent("Add your OpenAI API key");
   });
 
@@ -90,90 +89,21 @@ describe("MessageStream", () => {
   });
 });
 
-describe("interrupted turn", () => {
-  type Reason = "out_of_credits" | "rate_limited" | "bad_key" | "provider_down" | "step_limit" | "worker_lost";
-  const stopped = (reason: Reason, resumable = true): ChatMessage =>
-    assistant("Partial answer", { interrupted: { reason, resumable, message: `Stopped: ${reason}.` } });
+describe("MessageStream with an interrupted turn", () => {
+  const interrupted = { reason: "rate_limited" as const, resumable: true, message: "Stopped: rate_limited." };
 
-  it.each<Reason>(["out_of_credits", "rate_limited", "provider_down", "step_limit", "worker_lost"])(
-    "shows the fixed text and a Resume button for %s, without Settings",
-    (reason) => {
-      const onResume = vi.fn();
-      render(<MessageStream messages={[stopped(reason)]} onResume={onResume} onOpenSettings={vi.fn()} />);
-      expect(screen.getByText("Partial answer")).toBeInTheDocument();
-      expect(screen.getByRole("status")).toHaveTextContent(`Stopped: ${reason}.`);
-      screen.getByRole("button", { name: "Resume" }).click();
-      expect(onResume).toHaveBeenCalledOnce();
-      expect(screen.queryByRole("button", { name: "Open Settings" })).toBeNull();
-    },
-  );
-
-  it("offers Resume and Open Settings for a rejected key", () => {
-    const onOpenSettings = vi.fn();
-    render(<MessageStream messages={[stopped("bad_key")]} onResume={vi.fn()} onOpenSettings={onOpenSettings} />);
-    expect(screen.getByRole("button", { name: "Resume" })).toBeEnabled();
-    screen.getByRole("button", { name: "Open Settings" }).click();
-    expect(onOpenSettings).toHaveBeenCalledOnce();
+  it("keeps the stop note in the thread without any control", () => {
+    render(<MessageStream messages={[assistant("Partial answer", { interrupted })]} />);
+    expect(screen.getByText("Partial answer")).toBeInTheDocument();
+    expect(screen.getByText("Stopped")).toBeInTheDocument();
+    expect(screen.queryByText("Stopped: rate_limited.")).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
   });
 
-  it("disables Resume and says why while a turn runs", () => {
-    render(<MessageStream messages={[stopped("rate_limited")]} busy onResume={vi.fn()} />);
-    const button = screen.getByRole("button", { name: "Resume" });
-    expect(button).toBeDisabled();
-    expect(button).toHaveAttribute("aria-description", expect.stringContaining("A turn is running"));
-    expect(button).toHaveAttribute("title", expect.stringContaining("A turn is running"));
-  });
-
-  it("shows the message without a Resume button when it can no longer be resumed", () => {
-    render(<MessageStream messages={[stopped("out_of_credits", false)]} onResume={vi.fn()} />);
-    expect(screen.getByRole("status")).toHaveTextContent("Stopped: out_of_credits.");
-    expect(screen.queryByRole("button", { name: "Resume" })).toBeNull();
-  });
-
-  it("does not say Thinking under a stop with no text", () => {
-    const interrupted = { reason: "worker_lost" as const, resumable: true, message: "Server stopped." };
-    render(<MessageStream messages={[assistant("", { streaming: true, interrupted })]} onResume={vi.fn()} />);
-    expect(screen.queryByText("Thinking…")).toBeNull();
-  });
-});
-
-describe("MessageStream while a turn runs", () => {
-  const streaming = assistant("Partial answer", { streaming: true });
-
-  it("shows the turn's status under the streaming answer", () => {
-    render(
-      <MessageStream
-        messages={[streaming]}
-        busy
-        status={{ phase: "running_tool", label: "Fetching chemical properties", position: null }}
-      />,
-    );
-    expect(screen.getByRole("status")).toHaveTextContent("Running: Fetching chemical properties…");
-  });
-
-  it("says how many turns are ahead while it waits for a worker", () => {
-    render(<MessageStream messages={[streaming]} busy status={{ phase: "queued", label: null, position: 2 }} />);
-    expect(screen.getByRole("status")).toHaveTextContent("Waiting for a worker (about 2 ahead)…");
-  });
-
-  it("offers Stop, which asks the turn to stop", async () => {
-    const onStop = vi.fn();
-    render(<MessageStream messages={[streaming]} busy onStop={onStop} />);
-    await userEvent.click(screen.getByRole("button", { name: "Stop" }));
-    expect(onStop).toHaveBeenCalledOnce();
-  });
-
-  it("disables Stop with its reason once a stop was asked for", () => {
-    render(<MessageStream messages={[streaming]} busy stopping onStop={() => {}} />);
-    const stop = screen.getByRole("button", { name: "Stop" });
-    expect(stop).toBeDisabled();
-    expect(stop).toHaveAttribute("aria-description", "Stopping after the current step");
-    expect(screen.getByRole("status")).toHaveTextContent("Stopping after the current step…");
-  });
-
-  it("shows no status line or Stop once the answer is complete", () => {
-    render(<MessageStream messages={[assistant("Done.")]} onStop={() => {}} />);
-    expect(screen.queryByRole("button", { name: "Stop" })).toBeNull();
+  it("shows no live status or Stop in the thread while a turn runs", () => {
+    const status = { phase: "queued" as const, label: null, position: 2 };
+    render(<MessageStream messages={[assistant("Partial", { streaming: true })]} status={status} />);
     expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Stop" })).toBeNull();
   });
 });

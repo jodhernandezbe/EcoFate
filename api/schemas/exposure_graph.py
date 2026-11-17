@@ -80,8 +80,14 @@ class GraphLane(ContractModel):
 
 
 class ExposureGraph(ContractModel):
-    """The source facility, then each lane's steps, joined by labelled edges."""
+    """The source facility, then each lane's steps, joined by labelled edges.
 
+    Attributes:
+        caption: Configured text to show under the diagram (the run-wide chain says its bands
+            have a fixed width); None for a facility's graph.
+    """
+
+    caption: str | None = None
     lanes: list[GraphLane] = Field(default_factory=list[GraphLane])
     nodes: list[GraphNode] = Field(default_factory=list[GraphNode])
     edges: list[GraphEdge] = Field(default_factory=list[GraphEdge])

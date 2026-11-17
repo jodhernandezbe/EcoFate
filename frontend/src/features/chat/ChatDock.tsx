@@ -1,6 +1,6 @@
 import { TopHeaderBar, type AssistantStatus } from "../../components/layout/TopHeaderBar";
 import type { ChatMessage, LiveStatus, UsageView } from "../../hooks/chatState";
-import type { ConfirmationAnswers, ConfirmationPrompt, QuotaStatus } from "../../types/workspace";
+import type { ConfirmationAnswers, ConfirmationPrompt, QuotaStatus, TurnInterruption } from "../../types/workspace";
 import { ChatComposer } from "./ChatComposer";
 import { ClearChatButton } from "./ClearChatButton";
 import { clearBlockedReason } from "./clearBlockedReason";
@@ -8,6 +8,7 @@ import { ConfirmationCard } from "./ConfirmationCard";
 import { MessageStream } from "./MessageStream";
 import { QuotaMeter } from "./QuotaMeter";
 import { limitReachedReason } from "./quotaText";
+import { TurnControls } from "./TurnControls";
 import { UsageMeter } from "./UsageMeter";
 
 interface ChatDockProps {
@@ -47,7 +48,13 @@ function statusOf(messages: ChatMessage[], busy: boolean, live: LiveStatus | nul
   return last?.interrupted ? "stopped" : "idle";
 }
 
-/** The chat dock: header, conversation and composer. */
+/** The interruption the conversation ends on, if any (only the latest turn can be resumed). */
+function lastInterruption(messages: ChatMessage[]): TurnInterruption | null {
+  const last = messages[messages.length - 1];
+  return last?.role === "assistant" ? (last.interrupted ?? null) : null;
+}
+
+/** The chat dock: header, the turn's controls, conversation and composer. */
 export function ChatDock({
   messages,
   busy,
@@ -81,17 +88,21 @@ export function ChatDock({
         <UsageMeter usage={usage} />
         <ClearChatButton blocked={clearBlockedReason(busy, messages.length)} onClear={onClear} />
       </TopHeaderBar>
+      <TurnControls
+        busy={busy}
+        status={status}
+        stopping={stopping}
+        interrupted={lastInterruption(messages)}
+        onStop={onStop}
+        onResume={onResume}
+        onOpenSettings={onOpenSettings}
+      />
       <MessageStream
         messages={messages}
         suggestions={suggestions ?? []}
         canSend={hasKey && !busy && limitReachedReason(quota ?? null) === null}
         onSend={onSend}
-        busy={busy}
-        onResume={onResume}
         status={status}
-        stopping={stopping}
-        onStop={onStop}
-        onOpenSettings={onOpenSettings}
       />
       {confirmation && onAnswer ? (
         <ConfirmationCard prompt={confirmation} busy={busy} onConfirm={onAnswer} />

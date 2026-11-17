@@ -26,6 +26,7 @@ RULES = WorkspaceRules(
     sector_half_angle_deg=20.0,
     vertex_spacing_deg=10.0,
     graph=get_ui_settings().exposure_graph,
+    air_release=get_ui_settings().air_release,
 )
 _ids = itertools.count(1)
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from config.risk_bands import get_risk_bands
 from tests.tools.assessment.factories import (
     PEOPLE,
     SCREENING,
@@ -16,7 +17,13 @@ from tests.tools.assessment.factories import (
 )
 from tools.assessment.helpers.chain import Refined, assess_all, refine_one, worst_case_only
 from tools.assessment.helpers.tiers import split
-from tools.assessment.helpers.view import MAX_NOTES, Findings, assessment_view, summarize
+from tools.assessment.helpers.view import (
+    CANCER_RISK_BAND,
+    MAX_NOTES,
+    Findings,
+    assessment_view,
+    summarize,
+)
 from tools.schemas import FacilityAssessment, NotAssessed
 
 
@@ -67,6 +74,21 @@ def test_notes_are_deduplicated_and_capped() -> None:
     item["notes"] = [f"note {i}" for i in range(MAX_NOTES + 3)] + ["note 0"]
     notes = summarize(item)["notes"]
     assert len(notes) == MAX_NOTES + 1 and notes[-1].startswith("(+") and notes.count("note 0") == 1
+
+
+def test_a_worker_band_lifted_by_cancer_risk_is_explained() -> None:
+    b, item = get_risk_bands(), _full("F1", 1)
+    baseline = item["occupational_exposure"]["baseline"]
+    item["occupational_exposure"]["baseline"] = {
+        **baseline,
+        "oel_ratio": b.oel_ratio_lower / 2,
+        "cancer_risk": b.cancer_risk_upper,
+    }
+    assert CANCER_RISK_BAND in summarize(item)["notes"]
+
+
+def test_a_worker_band_from_its_ratio_needs_no_note() -> None:
+    assert CANCER_RISK_BAND not in summarize(_full("F1", 1))["notes"]
 
 
 def test_the_view_ranks_by_worst_hq_and_counts_tiers_and_gaps() -> None:

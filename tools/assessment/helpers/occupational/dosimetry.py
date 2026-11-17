@@ -80,15 +80,31 @@ def _hazards(
 
 
 def band_of(ratio: float | None, hq: float | None, risk: float | None) -> Band | None:
-    """The highest band of the three quantities; None when none could be computed."""
+    """The worker band: the higher of the limit ratio and the cancer risk.
+
+    The hazard quotient compares a worker's exposure with a general-population value (the RfC,
+    for lifelong continuous exposure of sensitive people), so it sets the band only when there is
+    no occupational limit; otherwise it is reported as context. None when nothing was computed.
+    """
     b = get_risk_bands()
-    return highest_band(
-        [
-            (ratio, b.oel_ratio_lower, b.oel_ratio_upper),
-            (hq, b.hq_lower, b.hq_upper),
-            (risk, b.cancer_risk_lower, b.cancer_risk_upper),
-        ],
-    )
+    found = [
+        (ratio, b.oel_ratio_lower, b.oel_ratio_upper),
+        (risk, b.cancer_risk_lower, b.cancer_risk_upper),
+    ]
+    if ratio is None:
+        found.append((hq, b.hq_lower, b.hq_upper))
+    return highest_band(found)
+
+
+def cancer_risk_sets_band(case: WorkerCase) -> bool:
+    """Whether the cancer risk lifts ``case``'s band above the one its limit ratio gives.
+
+    False when either is missing: then nothing needs explaining beside the band.
+    """
+    ratio, risk = case["oel_ratio"], case["cancer_risk"]
+    if ratio is None or risk is None:
+        return False
+    return band_of(ratio, None, risk) != band_of(ratio, None, None)
 
 
 def with_risks(case: WorkerCase, b: Benchmarks, s: OccupationalSettings) -> WorkerCase:

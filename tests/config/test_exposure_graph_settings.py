@@ -76,3 +76,36 @@ def test_empty_label_rejected() -> None:
 def test_missing_table_rejected() -> None:
     with pytest.raises(ValueError, match="ui.exposure_graph must be a table"):
         parse_exposure_graph({})
+
+
+def test_worst_case_text_is_read() -> None:
+    worst = _parse(GRAPH).worst_case
+    assert worst.headline == {"community_inhalation": "hq", "worker_inhalation": "oel_ratio"}
+    assert "{chemical}" in worst.source_title and worst.caption == "Fixed width"
+
+
+def test_shipped_worst_case_headlines() -> None:
+    worst = get_ui_settings().exposure_graph.worst_case
+    assert dict(worst.headline) == {"community_inhalation": "hq", "worker_inhalation": "oel_ratio"}
+
+
+def test_a_missing_headline_pathway_is_named() -> None:
+    bad = GRAPH.replace('worker_inhalation = "oel_ratio"', "")
+    with pytest.raises(ValueError, match="headline.worker_inhalation"):
+        _parse(bad)
+
+
+def test_an_unknown_headline_quantity_is_rejected() -> None:
+    bad = GRAPH.replace('community_inhalation = "hq"', 'community_inhalation = "nonsense"')
+    with pytest.raises(ValueError, match="headline.community_inhalation"):
+        _parse(bad)
+
+
+def test_the_source_title_needs_its_placeholder() -> None:
+    with pytest.raises(ValueError, match=r"must contain \{chemical\}"):
+        _parse(GRAPH.replace("Release of {chemical}", "Release"))
+
+
+def test_the_note_needs_its_placeholder() -> None:
+    with pytest.raises(ValueError, match=r"must contain \{quantity\}"):
+        _parse(GRAPH.replace("Elsewhere higher: {quantity}", "Elsewhere higher"))

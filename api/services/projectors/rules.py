@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from api.schemas.workspace import Status
 from commons.bands import BANDS, Band, band_of
+from config.air_release import AirReleaseRules
 from config.exposure_graph import GraphText
 from config.risk_bands import RiskBands
 
@@ -21,6 +22,7 @@ class WorkspaceRules:
         sector_half_angle_deg: Half-angle of the schematic downwind sector, degrees.
         vertex_spacing_deg: Angular spacing of the vertices of the drawn shapes, degrees.
         graph: Fixed text and units of the exposure graph.
+        air_release: How a facility's total annual air release is computed.
     """
 
     thresholds: RiskBands
@@ -29,6 +31,7 @@ class WorkspaceRules:
     sector_half_angle_deg: float
     vertex_spacing_deg: float
     graph: GraphText
+    air_release: AirReleaseRules
 
 
 def hq_status(value: float, thresholds: RiskBands) -> Status:

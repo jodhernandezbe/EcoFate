@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { page, userEvent } from "vitest/browser";
 
-import { facility, workspace } from "../../test/fixtures";
 import { COMMUNITY_ONLY_GRAPH, FULL_GRAPH, MONITORING_GRAPH } from "../../test/graphs";
 import type { ExposureGraph } from "../../types/api";
 import { ExposureChainTab } from "./ExposureChainTab";
@@ -18,25 +17,29 @@ afterEach(() => {
 
 function Frame({ width, children }: { width: number; children: ReactNode }) {
   return (
-    <div data-testid="frame" style={{ width, height: 820, padding: 16, display: "flex", flexDirection: "column", background: "var(--bg)", color: "var(--fg)" }}>
+    <div data-testid="frame" style={{ width, padding: 16, display: "flex", flexDirection: "column", background: "var(--bg)", color: "var(--fg)" }}>
       {children}
     </div>
   );
 }
 
-function draw(graph: ExposureGraph = FULL_GRAPH, width = 1280) {
-  const f = facility({ name: "Plant F1", exposure_graph: graph });
+/** In a panel narrower than the diagram it opens at the end; this scrolls to the start. */
+function scrollDiagram(to: "start" | "end") {
+  const box = document.querySelector<HTMLElement>(".overflow-x-auto");
+  if (box) box.scrollLeft = to === "start" ? 0 : box.scrollWidth;
+}
+
+function draw(chain: ExposureGraph = FULL_GRAPH, width = 1280) {
   render(
     <Frame width={width}>
-      <ExposureChainTab facility={f} workspace={workspace({ facilities: [f] })} digits={2} onPick={() => {}} />
+      <ExposureChainTab chain={chain} digits={2} />
     </Frame>,
   );
 }
 
-/** Waits for the layout and the fitted view, then freezes the flowing dots at one instant. */
+/** Waits for the diagram, then freezes the moving dots at one instant. */
 async function settle() {
-  await screen.findByRole("button", { name: /Source: Plant F1/ });
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  await new Promise((resolve) => setTimeout(resolve, 100));
   for (const svg of document.querySelectorAll("svg")) {
     svg.pauseAnimations();
     svg.setCurrentTime(0.8);
@@ -47,40 +50,68 @@ const frame = () => page.getByTestId("frame");
 /** Light and dark run as two projects; each keeps its own references. */
 const shot = (name: string) => `${name}-${realMatchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"}`;
 
+/** The same chain with values the tools did not report, as the API would send them. */
+const WITHOUT_VALUES: ExposureGraph = {
+  ...FULL_GRAPH,
+  nodes: FULL_GRAPH.nodes.map((n) =>
+    n.id === "community:air" || n.id === "community:endpoint"
+      ? { ...n, quantities: n.quantities.map((q) => ({ ...q, value: null, reason: "not reported by the tool" })) }
+      : n,
+  ),
+  edges: FULL_GRAPH.edges.map((e) =>
+    e.id === "community:inhale->community:band:0-4" && e.quantity ? { ...e, quantity: { ...e.quantity, value: null, reason: "no dose reported" } } : e,
+  ),
+};
+
+const EMPTY: ExposureGraph = { lanes: [], nodes: [], edges: [], caption: null };
+
 describe("exposure chain, in a real browser", () => {
-  it("draws both lanes with every connection flowing", async () => {
+  it("draws both lanes with a flowing marker on every band", async () => {
     draw();
     await settle();
-    expect(document.querySelectorAll(".react-flow__edge")).toHaveLength(FULL_GRAPH.edges.length);
-    expect(document.querySelectorAll("[data-testid=flow-particle]").length).toBe(FULL_GRAPH.edges.length * 3);
+    expect(document.querySelectorAll("[data-testid=band]")).toHaveLength(FULL_GRAPH.edges.length);
+    expect(document.querySelectorAll("[data-testid=flow-marker]").length).toBe(FULL_GRAPH.edges.length * 2);
     await expect.element(frame()).toMatchScreenshot(shot("both-lanes-wide"));
   });
 
-  it("fits a narrow panel without overlapping steps", async () => {
+  it("keeps its legible size in a narrow panel, opens at the result and scrolls back", async () => {
     draw(FULL_GRAPH, 600);
     await settle();
-    await expect.element(frame()).toMatchScreenshot(shot("both-lanes-narrow"));
+    await expect.element(frame()).toMatchScreenshot(shot("both-lanes-narrow-end"));
+    scrollDiagram("start");
+    await settle();
+    await expect.element(frame()).toMatchScreenshot(shot("both-lanes-narrow-start"));
+  });
+
+  it("draws missing values with their reasons", async () => {
+    draw(WITHOUT_VALUES);
+    await expect.element(frame()).toMatchScreenshot(shot("missing-values"));
   });
 
   it("draws a worker lane resting on OSHA monitoring in the high band", async () => {
     draw(MONITORING_GRAPH);
-    await settle();
-    await expect.element(frame()).toMatchScreenshot(shot("worker-monitoring-high-wide"));
+    await expect.element(frame()).toMatchScreenshot(shot("worker-monitoring-high"));
   });
 
-  it("fits the monitoring lane in a narrow panel", async () => {
-    draw(MONITORING_GRAPH, 600);
-    await settle();
-    await expect.element(frame()).toMatchScreenshot(shot("worker-monitoring-high-narrow"));
-  });
-
-  it("shows an unavailable lane's reason", async () => {
+  it("shows an unavailable lane's reason with no bands for it", async () => {
     draw(COMMUNITY_ONLY_GRAPH);
-    await settle();
     await expect.element(frame()).toMatchScreenshot(shot("community-only"));
   });
 
-  it("opens the worker endpoint with its band, both tiers and absent reasons", async () => {
+  it("says what to do when the chain is empty", async () => {
+    draw(EMPTY, 900);
+    await expect.element(frame()).toMatchScreenshot(shot("empty"));
+  });
+
+  it("opens the community receptor with its most affected residents", async () => {
+    draw();
+    await settle();
+    await userEvent.click(page.getByRole("button", { name: /Residents aged 0-4/ }));
+    await settle();
+    await expect.element(frame()).toMatchScreenshot(shot("receptor-detail"));
+  });
+
+  it("opens the worker endpoint with its band and absent reasons", async () => {
     draw();
     await settle();
     await userEvent.click(page.getByRole("button", { name: /Endpoint: Ratio to the occupational limit/ }));
@@ -88,20 +119,20 @@ describe("exposure chain, in a real browser", () => {
     await expect.element(frame()).toMatchScreenshot(shot("worker-endpoint-detail"));
   });
 
-  it("isolates one pathway", async () => {
+  it("highlights one lane and dims the other", async () => {
     draw();
     await settle();
-    await userEvent.click(page.getByRole("button", { name: "Worker, workplace air", exact: true }));
+    await userEvent.hover(page.getByRole("button", { name: /Worker, workplace air, Pathway/ }));
     await settle();
-    await expect.element(frame()).toMatchScreenshot(shot("worker-lane-only"));
+    await expect.element(frame()).toMatchScreenshot(shot("worker-lane-highlighted"));
   });
 
-  it("stops the flow when the user prefers reduced motion", async () => {
+  it("stops the flow when the user prefers reduced motion, keeping the arrowheads", async () => {
     window.matchMedia = (query: string) =>
       ({ ...realMatchMedia(query), matches: query.includes("reduce"), media: query, addEventListener() {}, removeEventListener() {} }) as MediaQueryList;
     draw();
-    await settle();
-    expect(document.querySelectorAll("[data-testid=flow-particle]")).toHaveLength(0);
-    expect(document.querySelectorAll(".react-flow__edge")).toHaveLength(FULL_GRAPH.edges.length);
+    await screen.findByRole("button", { name: /Source/ });
+    expect(document.querySelectorAll("[data-testid=flow-marker]")).toHaveLength(0);
+    expect(document.querySelectorAll("[data-testid=band-arrow]")).toHaveLength(FULL_GRAPH.edges.length);
   });
 });

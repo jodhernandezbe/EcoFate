@@ -11,7 +11,7 @@ their units and their status, then looks at where the plume lands. The visual la
 Apple's Human Interface Guidelines: quiet translucent surfaces separated by hairlines, the system
 typeface, tabular figures, and motion only when it answers an action. Status is always said in
 words next to its colour. The memorable elements are the facility map and the exposure-chain
-canvas; cards, chat and chrome stay quiet so they recede behind the data. One typeface family (the
+Sankey diagram; cards, chat and chrome stay quiet so they recede behind the data. One typeface family (the
 system stack: SF Pro, then Inter) in two weights, medium for values and semibold for titles.
 
 ## Tokens
@@ -24,7 +24,7 @@ use the tokens, never a literal colour, shadow, easing or font.
 | --- | --- | --- | --- | --- | --- |
 | `--bg` | `#f5f5f7` | `#000000` | Page and canvas background | `body`, panel wells, hover fill of solid controls | Card fills |
 | `--surface` | `rgba(255,255,255,.72)` | `rgba(30,30,32,.72)` | Translucent material behind blur | `.glass` cards, panel frames, drawers | Text, borders |
-| `--surface-solid` | `#ffffff` | `#1c1c1e` | Solid material | `.glass` fallback without blur, popovers, minimap, flow controls | Decorative blocks |
+| `--surface-solid` | `#ffffff` | `#1c1c1e` | Solid material | `.glass` fallback without blur, popovers, chain step cards | Decorative blocks |
 | `--fg` | `#1d1d1f` | `#f5f5f7` | Primary text and icons | Values, body copy, titles of content | Captions |
 | `--fg-2` | `#6e6e73` | `#a1a1a6` | Secondary text | Captions, metric labels, panel titles, "not reported", loading status | Values that matter |
 | `--hairline` | `rgba(0,0,0,.08)` | `rgba(255,255,255,.1)` | The one line | 1px borders, dividers, splitters, hover fill of icon buttons | Text |
@@ -48,7 +48,7 @@ reads in both schemes; the words carry the meaning, the colour confirms it.
 | Micro badge | `text-[11px] font-medium` | `px-1.5 py-0.5`, `rounded-full` | "screening default", provenance badges; `text-[10px]` only inside the collapsed rail |
 | Caption, label | `text-xs text-fg2` | `gap-1` between label and value | Metric labels (`<dt>`), legends, hints |
 | Panel and card title | `text-xs font-semibold uppercase tracking-wider text-fg2` | `px-4 py-2` header | The only uppercase text (`PanelHeader`, `CardFrame`) |
-| Sub-label, column head | `text-xs font-semibold text-fg2` (`text-[11px]` inside dense popovers and chain nodes) | | Sentence case; table column heads and section sub-titles are not panel titles |
+| Sub-label, column head | `text-xs font-semibold text-fg2` (`text-[11px]` inside dense popovers, chain step cards and band labels) | | Sentence case; table column heads and section sub-titles are not panel titles |
 | Body, value | `text-sm` (`font-medium tabular-nums` for values) | rows `px-3 py-2`, `gap-2` | Metric values (`<dd>`), list rows, pills |
 | Chat body | `text-[15px]` | `px-5` | Assistant and user messages only |
 | Drawer section heading | `text-sm font-semibold` | `gap-2` below it | A section inside a drawer (Settings, Account), under the drawer's `text-lg` title |
@@ -70,8 +70,8 @@ the client configuration, never from a constant.
   `--shadow`. Cards in the flow do not.
 - **Motion**: `--ease` everywhere, `.spring` on hover and state transitions, `.sheet-in` (420 ms)
   for a sheet or drawer appearing. Motion answers the user's action (open, expand, confirm,
-  camera fly to a pin); nothing moves on its own except the exposure chain's flowing edges, which
-  show direction. Under `prefers-reduced-motion` all animation collapses to 0.01 ms and camera
+  camera fly to a pin); nothing moves on its own except the exposure chain's flow dots along its bands (the
+  arrowheads show direction and stay still). Under `prefers-reduced-motion` all animation collapses to 0.01 ms and camera
   moves jump instead of fly.
 - **Focus**: `:focus-visible` is a 2px `--accent` outline with 2px offset, never removed.
 - **Layering ladder**: panel content < overlays inside their own region (the map is `isolate`,
@@ -125,8 +125,8 @@ Icons are Lucide, sized `size-4` inline and `size-7` as icon buttons; icon-only 
 | Error | `role="alert"`, `text-bad`, inside a hairline `rounded-xl` box (or a plain line in the rail) | What failed and what to do; never a raw exception |
 | Ready | Value in `text-sm font-medium tabular-nums` with its unit; status as a pill with words | Scientific notation as `1.2 × 10⁻⁵`; digits from configuration |
 | Streaming or partial | `aria-live="polite"` text in `text-fg2` while the assistant works | What the assistant is doing (tool pill) |
-| Running (live status) | Under the streaming answer, one `text-xs text-fg2` line with `role="status"`, and a hairline **Stop** pill (Lucide stop icon and the word; disabled with its reason once asked). The header status reads "Queued" while the turn waits for a worker, then "Thinking". A reload or a dropped connection continues the same answer, nothing shown twice | "Waiting for a worker (about N ahead)", "Thinking", "Running: <step label>" (the server's label), "Stopping after the current step"; a stopped turn then shows the Interrupted state |
-| Interrupted | Under the partial answer, `role="status"` in a hairline `rounded-xl` box with a `text-fg2` pause icon; an accent **Resume** (disabled with its reason while a turn runs) and, for a rejected key, a hairline **Open Settings**; the header status reads "Stopped" | The server's fixed message only: why the turn stopped and what to do before resuming |
+| Running (live status) | In the turn controls bar under the chat header (a hairline-bottom row, never inside the thread), one `text-xs text-fg2` line with `role="status"`, and a hairline **Stop** pill (Lucide stop icon and the word; disabled with its reason once asked). The header status reads "Queued" while the turn waits for a worker, then "Thinking". A reload or a dropped connection continues the same answer, nothing shown twice | "Waiting for a worker (about N ahead)", "Thinking", "Running: <step label>" (the server's label), "Stopping after the current step"; a stopped turn then shows the Interrupted state |
+| Interrupted | In the turn controls bar under the chat header, `role="status"` with a `text-fg2` pause icon and the message; the thread marks the partial answer with a `text-xs text-fg2` pause icon and "Stopped" only; an accent **Resume** (disabled with its reason while a turn runs) and, for a rejected key, a hairline **Open Settings**; the header status reads "Stopped" | The server's fixed message only: why the turn stopped and what to do before resuming |
 | Interactive | Visible focus ring, `aria-pressed` on toggles, disabled controls dimmed and inert | Labels on every icon-only control; a disabled control says why (tooltip and `aria-description`) |
 
 ## Copy

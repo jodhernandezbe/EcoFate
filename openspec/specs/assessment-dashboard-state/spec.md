@@ -188,11 +188,11 @@ The state SHALL carry, for each facility, the `occupational_exposure` and `opera
 - **THEN** the TypeScript types include the two new objects and the contract test passes
 
 ### Requirement: Highest worker values across facilities
-The state SHALL carry a worker risk summary with the highest limit ratio, worker hazard quotient and worker cancer risk over the assessed facilities, for the baseline and the enclosed-zone tiers, each naming the facility it comes from and that facility's tier; each is a selection among the values the tools returned, never a sum, mean or conversion. When no facility has a worker result the summary SHALL be empty with a reason.
+The state SHALL carry a worker risk summary with the highest limit ratio, worker hazard quotient and worker cancer risk over the assessed facilities, for the baseline and the worst case, each naming the facility it comes from, that facility's band and the evidence its value rests on (monitoring or activity model, with the driving activity); each is a selection among the values the tools returned, never a sum, mean or conversion. When no facility has a worker result the summary SHALL be empty with a reason.
 
 #### Scenario: Highest value
 - **WHEN** two facilities have worker results
-- **THEN** each figure of the summary is the larger of the two and names its facility
+- **THEN** each figure of the summary is the larger of the two and names its facility, its band and its evidence
 
 #### Scenario: Nothing yet
 - **WHEN** no facility has a worker result
@@ -200,12 +200,12 @@ The state SHALL carry a worker risk summary with the highest limit ratio, worker
 
 ### Requirement: Each facility carries its exposure graph
 The state SHALL carry, for each facility, an exposure graph: lanes (one per pathway, with whether it is
-available and why not, and its status), nodes (source facility, each evaluated stack, the pathway, the
-route, each receptor group and the endpoint) and edges (each with the quantity it carries). Every
-quantity SHALL carry its value as the tools reported it, its unit and its source, or no value and a
-reason; no value SHALL be computed, converted or estimated to build the graph. Fixed text and units SHALL
-come from configuration. The graph SHALL be sent in `workspace_update` and described in the generated
-schema and types.
+available and why not, and its band), nodes (source facility, each evaluated stack or the driving worker
+activity, the pathway, the route, each receptor group and the endpoint) and edges (each with the quantity
+it carries). Every quantity SHALL carry its value as the tools reported it, its unit and its source, or no
+value and a reason; no value SHALL be computed, converted or estimated to build the graph. Fixed text and
+units SHALL come from configuration. The graph SHALL be sent in `workspace_update` and described in the
+generated schema and types.
 
 #### Scenario: Community branches
 - **WHEN** a facility has two evaluated stacks and residents in four age bands
@@ -213,7 +213,7 @@ schema and types.
 
 #### Scenario: Worker lane
 - **WHEN** a facility has an occupational result
-- **THEN** the worker lane carries the fugitive release, the worst-case and baseline concentrations, the TWA, the limit and its source, the ratio and the tier
+- **THEN** the worker lane carries the evidence, the driving activity and its generation rate, the worst-case and baseline concentrations, whether the saturation cap applied, the TWA, the limit and its source, the ratio and the band, with the fugitive release as context
 
 #### Scenario: Unavailable lane
 - **WHEN** a facility has no occupational result
@@ -241,3 +241,69 @@ The workspace SHALL carry, for each pathway and quantity that has a scenario, th
 #### Scenario: Older server
 - **WHEN** the server sends no scenarios
 - **THEN** the workspace has none and the dashboard shows the results it showed before
+
+### Requirement: Band boundaries in the client settings
+The client settings SHALL carry the boundaries of the screening bands (lower and upper, for the hazard quotient, the cancer risk and the limit ratio) from the one configuration block that defines them, for both pathways, in place of the worker-only tier boundaries.
+
+#### Scenario: Settings read
+- **WHEN** the client settings are requested
+- **THEN** they hold the band boundaries and no worker-only tier boundaries
+
+#### Scenario: Contract
+- **WHEN** the schema is exported
+- **THEN** the TypeScript types include the band boundaries and the contract check passes
+
+### Requirement: Screened-out facilities show their worker result
+The workspace SHALL attach a screened-out facility's occupational result and operating profile to that facility, beside its screening outcome, and SHALL leave its community exposure absent. A screened-out entry without a worker result (an earlier saved form) SHALL give the facility no worker result, and an invalid worker result SHALL leave out only itself, with a warning.
+
+#### Scenario: Worker result of a screened-out facility
+- **WHEN** the batch assessment screened a facility out and gave it a worker result
+- **THEN** the facility has its screening outcome, no community exposure, and the worker result and profile
+
+#### Scenario: Earlier saved form
+- **WHEN** a saved screened-out entry has no worker result
+- **THEN** the facility has no worker result and nothing else changes
+
+### Requirement: Total annual air release of each facility
+Each facility SHALL carry its total annual air release in kg/yr: the stack release, converted from the
+unit TRI reported to kg/yr by the shared unit converter, plus the TRI fugitive air release, which is
+already in kg/yr. A part that is absent SHALL count as absent, never as zero. The total SHALL be the
+sum of the parts that are present. It SHALL be absent, with a configured reason, when no part is present
+or when the stack unit cannot be converted. When the stack unit cannot be converted, the fugitive part
+alone SHALL NOT be passed off as the total. The target unit, the unit aliases and the reasons SHALL come
+from configuration.
+
+#### Scenario: Stack and fugitive
+- **WHEN** a facility reports a stack release in pounds and a fugitive release in kg/yr
+- **THEN** its total is the stack release converted to kg/yr plus the fugitive release
+
+#### Scenario: Worker-only facility
+- **WHEN** a facility has a fugitive release and no stack release
+- **THEN** its total is its fugitive release
+
+#### Scenario: Unknown unit
+- **WHEN** the stack release's unit cannot be converted
+- **THEN** the total is absent with the configured reason, even if a fugitive release exists
+
+#### Scenario: Nothing reported
+- **WHEN** a facility has neither release
+- **THEN** the total is absent with the configured reason
+
+#### Scenario: Contract
+- **WHEN** the schema is exported
+- **THEN** the TypeScript types include the total and its reason, and the contract check passes
+
+### Requirement: The workspace carries the run's worst-case chain
+The workspace state SHALL carry `worst_case_chain`, the run-wide worst-case graph, in the same graph shape as a facility's exposure graph (lanes, nodes, edges). It SHALL be rebuilt from the facilities and the scenario drivers every time either changes, and it SHALL be sent in `workspace_update` and described in the generated schema and types. When no facility has been assessed, it SHALL be an empty graph, never absent. The per-facility exposure graphs SHALL be unchanged.
+
+#### Scenario: Rebuilt on update
+- **WHEN** a later tool result changes which facility drives the hazard quotient
+- **THEN** the next `workspace_update` carries a chain whose outdoor-air lane holds the new driver's values
+
+#### Scenario: Before any assessment
+- **WHEN** the workspace has facilities but no scenario drivers
+- **THEN** `worst_case_chain` has no lanes, nodes or edges
+
+#### Scenario: Contract
+- **WHEN** the schema is exported
+- **THEN** the TypeScript types include `worst_case_chain` and the contract check passes

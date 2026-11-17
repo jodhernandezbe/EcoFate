@@ -2,53 +2,14 @@ import { useId, useState, type KeyboardEvent } from "react";
 
 import { GlassCard } from "../../components/ui/GlassCard";
 import { StatusPill } from "../../components/ui/StatusPill";
-import type { Facility, WorkspaceState } from "../../types/workspace";
-import { ChainCanvas } from "./ChainCanvas";
 import { DetailPanel } from "./DetailPanel";
-import { drawnLanes, formatQuantity, visibleGraph, type ExposureGraph } from "./graph";
-import { useGraphLayout } from "./useGraphLayout";
+import { EMPTY_CHAIN, formatQuantity, type ExposureGraph } from "./graph";
+import { SankeyDiagram } from "./SankeyDiagram";
 
 interface Props {
-  /** The facility being looked at (a map pin, the picker, or the chat's selection). */
-  facility: Facility | null;
-  workspace: WorkspaceState;
+  /** The run's worst-case chain; absent (an older server) reads as empty. */
+  chain?: ExposureGraph | null;
   digits: number;
-  onPick: (frsId: string) => void;
-}
-
-function LanePicker({ graph, value, onChange }: { graph: ExposureGraph; value: string; onChange: (lane: string) => void }) {
-  const items = [{ id: "all", label: "All pathways" }, ...drawnLanes(graph)];
-  if (items.length <= 2) return null;
-  return (
-    <div role="group" aria-label="Pathway" className="inline-flex rounded-full bg-fg2/10 p-0.5 text-xs">
-      {items.map((item) => (
-        <button
-          key={item.id}
-          type="button"
-          aria-pressed={item.id === value}
-          onClick={() => onChange(item.id)}
-          className={`spring rounded-full px-3 py-1 ${item.id === value ? "bg-solid font-medium text-fg shadow-sm" : "text-fg2 hover:text-fg"}`}
-        >
-          {item.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function FacilityPicker({ workspace, facility, onPick }: { workspace: WorkspaceState; facility: Facility; onPick: (id: string) => void }) {
-  return (
-    <label className="flex items-center gap-1.5 text-xs text-fg2">
-      Facility
-      <select value={facility.frs_id} onChange={(e) => onPick(e.target.value)} className="max-w-64 rounded-lg bg-fg2/10 px-2 py-1 text-xs text-fg">
-        {workspace.facilities.map((f) => (
-          <option key={f.frs_id} value={f.frs_id}>
-            {f.name ?? f.frs_id}
-          </option>
-        ))}
-      </select>
-    </label>
-  );
 }
 
 function LaneStatus({ graph }: { graph: ExposureGraph }) {
@@ -72,31 +33,30 @@ function Connections({ graph, digits }: { graph: ExposureGraph; digits: number }
       {graph.edges.map((e) => (
         <li key={e.id}>
           {`${title.get(e.source) ?? e.source} to ${title.get(e.target) ?? e.target}`}
-          {e.quantity ? `: ${e.quantity.label} ${formatQuantity(e.quantity, digits)}` : ""}
+          {e.quantity ? `: ${e.quantity.label} ${e.quantity.value === null ? (e.quantity.reason ?? "not reported") : formatQuantity(e.quantity, digits)}` : ""}
         </li>
       ))}
     </ol>
   );
 }
 
-function Empty({ text }: { text: string }) {
-  return <GlassCard className="p-4 text-sm text-fg2">{text}</GlassCard>;
+function Empty() {
+  return (
+    <GlassCard className="p-4 text-sm text-fg2">
+      No worst-case chain yet. Run an assessment to see how the worst exposure of each route arises, from the release to the value compared with a benchmark.
+    </GlassCard>
+  );
 }
 
 /**
- * The Exposure chain tab: the facility's exposure graph as the API built it, laid out left to right
- * (source, releases, pathways, routes, receptors, endpoints) with flowing, labelled connections.
+ * The Exposure chain tab: the run's worst-case chain as the API built it, drawn as a Sankey diagram
+ * (source, release, pathway, route, receptor, endpoint) with one lane per pathway and no facility named.
  */
-export function ExposureChainTab({ facility, workspace, digits, onPick }: Props) {
+export function ExposureChainTab({ chain, digits }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [hoveredLane, setHoveredLane] = useState<string | null>(null);
-  const [lane, setLane] = useState("all");
   const detailId = useId();
-  const full = facility?.exposure_graph ?? null;
-  const graph = full ? visibleGraph(full, full.lanes.some((l) => l.id === lane) ? lane : "all") : null;
-  const { positions, key } = useGraphLayout(graph);
-  if (!facility) return <Empty text="No facility selected. Run an assessment, or click a facility on the map, to see its exposure chain." />;
-  if (!full || !graph) return <Empty text="This facility has no exposure chain yet; it appears once the facility is assessed." />;
+  const graph = chain ?? EMPTY_CHAIN;
   const selected = graph.nodes.find((n) => n.id === selectedId) ?? null;
   const activeLane = hoveredLane ?? selected?.lane ?? null;
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
@@ -107,17 +67,13 @@ export function ExposureChainTab({ facility, workspace, digits, onPick }: Props)
   };
   return (
     <section aria-label="Exposure chain" className="flex min-h-0 flex-1 flex-col gap-3" onKeyDown={onKeyDown}>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <FacilityPicker workspace={workspace} facility={facility} onPick={onPick} />
-        <LanePicker graph={full} value={lane} onChange={setLane} />
-        <LaneStatus graph={full} />
-      </div>
-      <div className="relative min-h-[440px] flex-1 overflow-hidden rounded-xl border border-hairline bg-fg2/5">
-        {positions ? (
-          <ChainCanvas
+      {graph.lanes.length > 0 && <LaneStatus graph={graph} />}
+      {graph.nodes.length === 0 ? (
+        <Empty />
+      ) : (
+        <div className="rounded-xl border border-hairline bg-fg2/5 p-3">
+          <SankeyDiagram
             graph={graph}
-            positions={positions}
-            layoutKey={key}
             digits={digits}
             selectedId={selected?.id ?? null}
             activeLane={activeLane}
@@ -125,17 +81,18 @@ export function ExposureChainTab({ facility, workspace, digits, onPick }: Props)
             onSelect={(id) => setSelectedId((now) => (now === id ? null : id))}
             onHover={setHoveredLane}
           />
-        ) : (
-          <p className="m-0 p-4 text-xs text-fg2">Laying out the chain…</p>
-        )}
-      </div>
-      <DetailPanel
-        node={selected}
-        laneLabel={full.lanes.find((l) => l.id === selected?.lane)?.label ?? null}
-        digits={digits}
-        id={detailId}
-        onClose={() => setSelectedId(null)}
-      />
+          {graph.caption && <p className="m-0 mt-3 text-xs text-fg2">{graph.caption}</p>}
+        </div>
+      )}
+      {graph.nodes.length > 0 && (
+        <DetailPanel
+          node={selected}
+          laneLabel={graph.lanes.find((l) => l.id === selected?.lane)?.label ?? null}
+          digits={digits}
+          id={detailId}
+          onClose={() => setSelectedId(null)}
+        />
+      )}
       <Connections graph={graph} digits={digits} />
     </section>
   );

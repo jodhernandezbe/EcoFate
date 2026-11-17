@@ -1,6 +1,7 @@
 import { Maximize2, Minimize2 } from "lucide-react";
 import { useMemo } from "react";
 
+import type { Pathway } from "../../lib/pathways";
 import type { BandBoundaries } from "../../types/api";
 import type { Facility } from "../../types/workspace";
 import { isAssessed } from "./assessment";
@@ -8,7 +9,6 @@ import { RiskGroupChart } from "./RiskGroupChart";
 import {
   groupFacilities,
   type GroupBy,
-  type Pathway,
   type Quantity,
   topGroups,
   TOP_N,

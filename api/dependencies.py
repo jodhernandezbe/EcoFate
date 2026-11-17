@@ -50,6 +50,7 @@ def _workspace_rules(ui: UiSettings) -> WorkspaceRules:
         sector_half_angle_deg=ui.map.sector_half_angle_deg,
         vertex_spacing_deg=ui.map.vertex_spacing_deg,
         graph=ui.exposure_graph,
+        air_release=ui.air_release,
     )
 
 

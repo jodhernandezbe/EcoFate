@@ -15,8 +15,7 @@
     "test:visual": "vitest run --config vitest.visual.config.ts"
   },
   "dependencies": {
-    "@xyflow/react": "12.12.0",
-    "elkjs": "0.12.0",
+    "d3-sankey": "0.12.3",
     "lucide-react": "1.60.0",
     "maplibre-gl": "6.15.0",
     "react": "19.3.1",
@@ -34,6 +33,7 @@
     "@testing-library/jest-dom": "7.0.1",
     "@testing-library/react": "16.3.3",
     "@testing-library/user-event": "14.6.8",
+    "@types/d3-sankey": "0.12.5",
     "@types/geojson": "7946.0.16",
     "@types/node": "24.19.2",
     "@types/react": "19.3.0",

@@ -1,20 +1,11 @@
 import { formatNumber, NOT_REPORTED } from "../../lib/format";
+import type { Pathway } from "../../lib/pathways";
 import { evidenceText } from "../../lib/worker";
 import type { Facility } from "../../types/workspace";
 import { isAssessed, isScreenedOut } from "./assessment";
 
 /** What facilities are grouped by: NAICS subsector, TSCA condition of use, TSCA life cycle stage. */
 export type GroupBy = "subsector" | "condition" | "stage";
-/**
- * The exposure pathway: the medium, the route and the receptors. Outdoor air reaches the general
- * population by inhalation (the stack result); indoor air reaches the workers by inhalation (the
- * fugitive release in the plant).
- */
-export type Pathway = "outdoor" | "indoor";
-export const PATHWAYS: { key: Pathway; label: string }[] = [
-  { key: "outdoor", label: "Outdoor Air → Inhalation → General Population" },
-  { key: "indoor", label: "Indoor Air → Inhalation → Worker" },
-];
 /**
  * The quantities, each with a chart of its own: hazard quotient, lifetime cancer risk and, for
  * workers only, the 8-hour average over the occupational limit.

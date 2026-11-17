@@ -5,9 +5,10 @@ import type { ReactNode } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { page } from "vitest/browser";
 
-import type { ChatMessage } from "../../hooks/chatState";
+import type { ChatMessage, LiveStatus } from "../../hooks/chatState";
 import type { TurnInterruption } from "../../types/workspace";
 import { MessageStream } from "./MessageStream";
+import { TurnControls, type TurnControlsProps } from "./TurnControls";
 
 afterEach(cleanup);
 
@@ -57,62 +58,44 @@ const message = (interrupted: TurnInterruption): ChatMessage[] => [
 
 const noop = () => undefined;
 
-describe("interrupted turn notice, in a real browser", () => {
-  it("offers Resume under the partial answer", async () => {
+/** The dock's turn controls above the conversation, as `ChatDock` composes them. */
+function Dock({ messages, ...controls }: Partial<TurnControlsProps> & { messages: ChatMessage[] }) {
+  const last = messages[messages.length - 1];
+  return (
+    <Frame>
+      <TurnControls
+        busy={false}
+        status={null}
+        stopping={false}
+        interrupted={last?.interrupted ?? null}
+        onStop={noop}
+        onResume={noop}
+        onOpenSettings={noop}
+        {...controls}
+      />
+      <MessageStream messages={messages} status={controls.status ?? null} />
+    </Frame>
+  );
+}
+
+describe("interrupted turn, in a real browser", () => {
+  it("offers Resume above the conversation, with the reason", async () => {
     const stop = {
       reason: "out_of_credits" as const,
       resumable: true,
-      message:
-        "Your account has no credits left. Add credits, then press Resume.",
+      message: "Your account has no credits left. Add credits, then press Resume.",
     };
-    render(
-      <Frame>
-        <MessageStream
-          messages={message(stop)}
-          onResume={noop}
-          onOpenSettings={noop}
-        />
-      </Frame>,
-    );
+    render(<Dock messages={message(stop)} />);
     await expect.element(frame()).toMatchScreenshot(shot("stop-resumable"));
-  });
-
-  it("dims Resume while a turn runs", async () => {
-    const stop = {
-      reason: "rate_limited" as const,
-      resumable: true,
-      message:
-        "Requests are limited right now. Wait a moment, then press Resume.",
-    };
-    render(
-      <Frame>
-        <MessageStream
-          messages={message(stop)}
-          busy
-          onResume={noop}
-          onOpenSettings={noop}
-        />
-      </Frame>,
-    );
-    await expect.element(frame()).toMatchScreenshot(shot("stop-busy"));
   });
 
   it("adds Open Settings for a rejected key", async () => {
     const stop = {
       reason: "bad_key" as const,
       resumable: true,
-      message:
-        "The API key was rejected. Replace it in Settings, then press Resume.",
+      message: "The API key was rejected. Replace it in Settings, then press Resume.",
     };
-    render(
-      <Frame>
-        <MessageStream
-          messages={message(stop)}
-          onResume={noop}
-          onOpenSettings={noop}
-        />
-      </Frame>,
-    );
+    render(<Dock messages={message(stop)} />);
     await expect.element(frame()).toMatchScreenshot(shot("stop-bad-key"));
   });
 
@@ -120,14 +103,9 @@ describe("interrupted turn notice, in a real browser", () => {
     const stop = {
       reason: "step_limit" as const,
       resumable: false,
-      message:
-        "This turn stopped and cannot be resumed again. Send a new message.",
+      message: "This turn stopped and cannot be resumed again. Send a new message.",
     };
-    render(
-      <Frame>
-        <MessageStream messages={message(stop)} onResume={noop} />
-      </Frame>,
-    );
+    render(<Dock messages={message(stop)} />);
     await expect.element(frame()).toMatchScreenshot(shot("stop-final"));
   });
 });
@@ -154,56 +132,22 @@ const answering: ChatMessage = {
   interrupted: null,
 };
 const running: ChatMessage[] = [question, answering];
+const reading: LiveStatus = { phase: "running_tool", label: "Read toxicity", position: null };
 
 describe("live turn status, in a real browser", () => {
   it("says how many turns are ahead while it waits for a worker", async () => {
-    render(
-      <Frame>
-        <MessageStream
-          messages={[question, { ...answering, text: "", tools: [] }]}
-          busy
-          status={{ phase: "queued", label: null, position: 2 }}
-          onStop={noop}
-        />
-      </Frame>,
-    );
+    const queued: LiveStatus = { phase: "queued", label: null, position: 2 };
+    render(<Dock messages={[question, { ...answering, text: "", tools: [] }]} busy status={queued} />);
     await expect.element(frame()).toMatchScreenshot(shot("live-queued"));
   });
 
-  it("names the running step and offers Stop", async () => {
-    render(
-      <Frame>
-        <MessageStream
-          messages={running}
-          busy
-          status={{
-            phase: "running_tool",
-            label: "Read toxicity",
-            position: null,
-          }}
-          onStop={noop}
-        />
-      </Frame>,
-    );
+  it("names the running step and offers Stop above the conversation", async () => {
+    render(<Dock messages={running} busy status={reading} />);
     await expect.element(frame()).toMatchScreenshot(shot("live-running"));
   });
 
   it("dims Stop once a stop was asked for", async () => {
-    render(
-      <Frame>
-        <MessageStream
-          messages={running}
-          busy
-          stopping
-          status={{
-            phase: "running_tool",
-            label: "Read toxicity",
-            position: null,
-          }}
-          onStop={noop}
-        />
-      </Frame>,
-    );
+    render(<Dock messages={running} busy stopping status={reading} />);
     await expect.element(frame()).toMatchScreenshot(shot("live-stopping"));
   });
 });

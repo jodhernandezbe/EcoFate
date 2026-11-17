@@ -46,23 +46,30 @@ describe("facilityCollection", () => {
     expect(data.features.map((f) => f.properties.status)).toEqual(["high", "none"]);
   });
 
-  it("rings by the worker tier and draws no ring while it is not computed", () => {
-    const data = facilityCollection(
-      [facility({ frs_id: "A", occupational_exposure: worker() }), facility({ frs_id: "B" })],
-      scale,
-    );
-    expect(data.features.map((f) => f.properties.worker_tier)).toEqual(["moderate", "none"]);
+  it("colours by the band of the chosen pathway and has no ring property for the other", () => {
+    const f = facility({ status: "low", occupational_exposure: worker({ risk_tier: "high" }) });
+    const [outdoor] = facilityCollection([f], scale, [], "outdoor").features;
+    const [indoor] = facilityCollection([f], scale, [], "indoor").features;
+    expect([outdoor?.properties.status, indoor?.properties.status]).toEqual(["low", "high"]);
+    expect(Object.keys(outdoor?.properties ?? {})).not.toContain("worker_tier");
   });
 
-  it("draws a worker-only facility outlined, at a fixed size, with its worker ring", () => {
-    const data = facilityCollection(
-      [facility({ frs_id: "A", emission_rate_g_s: 1 }), facility({ frs_id: "B", emission_rate_g_s: 9 }), workerOnly()],
-      scale,
-    );
-    const [, , only] = data.features;
-    expect(only?.properties).toMatchObject({ worker_only: true, status: "none", worker_tier: "moderate", radius_px: 6 });
-    expect(data.features.map((f) => f.properties.radius_px).slice(0, 2)).toEqual([6, 22]);
-    expect(data.features.map((f) => f.properties.worker_only)).toEqual([false, false, true]);
+  it("gives a facility with no result on the pathway the neutral none status", () => {
+    const only = workerOnly();
+    expect(facilityCollection([only], scale, [], "outdoor").features[0]?.properties.status).toBe("none");
+    expect(facilityCollection([only], scale, [], "indoor").features[0]?.properties.status).toBe("moderate");
+    expect(facilityCollection([facility()], scale, [], "indoor").features[0]?.properties.status).toBe("none");
+  });
+
+  it("sizes a worker-only facility by its total, whichever pathway is chosen", () => {
+    const facilities = [
+      facility({ frs_id: "A", total_air_release_kg_per_year: 100 }),
+      workerOnly({ total_air_release_kg_per_year: 400 }),
+    ];
+    for (const pathway of ["outdoor", "indoor"] as const) {
+      const sizes = facilityCollection(facilities, scale, [], pathway).features.map((f) => f.properties.radius_px);
+      expect(sizes).toEqual([6, 22]);
+    }
   });
 
   it("marks the facilities that drive a result and no others", () => {
@@ -79,12 +86,40 @@ describe("facilityCollection", () => {
     expect(data.features[0]?.properties.name).toBe("FRS F1");
   });
 
-  it("sizes by emission rate", () => {
+  it("sizes by total annual air release on a square-root scale", () => {
     const data = facilityCollection(
-      [facility({ frs_id: "A", emission_rate_g_s: 1 }), facility({ frs_id: "B", emission_rate_g_s: 9 })],
+      [
+        facility({ frs_id: "A", total_air_release_kg_per_year: 100 }),
+        facility({ frs_id: "B", total_air_release_kg_per_year: 400 }),
+        facility({ frs_id: "C", total_air_release_kg_per_year: 900 }),
+      ],
+      scale,
+    );
+    expect(data.features.map((f) => f.properties.radius_px)).toEqual([6, 14, 22]);
+  });
+
+  it("ignores the emission rate", () => {
+    const data = facilityCollection(
+      [
+        facility({ frs_id: "A", emission_rate_g_s: 9, total_air_release_kg_per_year: 100 }),
+        facility({ frs_id: "B", emission_rate_g_s: 1, total_air_release_kg_per_year: 400 }),
+      ],
       scale,
     );
     expect(data.features.map((f) => f.properties.radius_px)).toEqual([6, 22]);
+  });
+
+  it("gives an absent or non-finite total the smallest size, never the middle one", () => {
+    const data = facilityCollection(
+      [
+        facility({ frs_id: "A", total_air_release_kg_per_year: 100 }),
+        facility({ frs_id: "B", total_air_release_kg_per_year: 400 }),
+        facility({ frs_id: "C", total_air_release_kg_per_year: null }),
+        facility({ frs_id: "D", total_air_release_kg_per_year: Number.NaN }),
+      ],
+      scale,
+    );
+    expect(data.features.map((f) => f.properties.radius_px)).toEqual([6, 22, 6, 6]);
   });
 });
 

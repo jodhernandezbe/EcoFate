@@ -43,6 +43,7 @@ export const EMPTY_WORKSPACE: WorkspaceState = {
     reason: "not yet computed",
   },
   scenario_drivers: [],
+  worst_case_chain: { lanes: [], nodes: [], edges: [], caption: null },
   receptors: null,
   meteorology: null,
   unattributed: [],

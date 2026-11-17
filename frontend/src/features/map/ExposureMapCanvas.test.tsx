@@ -4,7 +4,7 @@ import { act } from "react";
 
 import { FakeMap } from "../../test/fakeMaplibre";
 import { resizeObservers } from "../../test/fakeResizeObserver";
-import { facility, scenario, workspace } from "../../test/fixtures";
+import { facility, scenario, worker, workspace } from "../../test/fixtures";
 import type { WorkspaceState } from "../../types/workspace";
 import { BLANK_NOTICE, ExposureMapCanvas } from "./ExposureMapCanvas";
 import { SECTOR_CAPTION } from "./MapLegend";
@@ -200,7 +200,7 @@ describe("legend", () => {
     render(<ExposureMapCanvas digits={2} workspace={placed(1)} config={config} />);
     const legend = screen.getByRole("complementary", { name: "Map legend" });
     expect(legend).toHaveTextContent("High");
-    expect(legend).toHaveTextContent("Marker size follows the emission rate");
+    expect(legend).toHaveTextContent("Size: total annual air release");
   });
 
   it("has no em dash in its caption", () => {
@@ -235,7 +235,7 @@ describe("legend", () => {
       const legend = screen.getByRole("complementary", { name: "Map legend" });
       expect(legend).toHaveTextContent("No facilities mapped yet.");
       expect(entry(/High/).textContent).not.toMatch(/\d/);
-      expect(entry(/Not computed/).textContent).not.toMatch(/\d/);
+      expect(entry(/No result on this pathway/).textContent).not.toMatch(/\d/);
     });
 
     it("keeps its overlays inside the map's own stacking context", () => {
@@ -248,7 +248,7 @@ describe("legend", () => {
       expect(entry(/High/)).toHaveTextContent("1");
       expect(entry(/Low/)).toHaveTextContent("1");
       expect(entry(/Moderate/)).toHaveTextContent("0");
-      expect(entry(/Not computed/)).toHaveTextContent("1");
+      expect(entry(/No result on this pathway/)).toHaveTextContent("1");
     });
 
     it("hides a status's markers when its entry is pressed, and shows them again when pressed again", async () => {
@@ -267,7 +267,7 @@ describe("legend", () => {
       render(<ExposureMapCanvas digits={2} workspace={two()} config={config} />);
       load();
       await userEvent.click(entry(/High/));
-      await userEvent.click(entry(/Not computed/));
+      await userEvent.click(entry(/No result on this pathway/));
       expect(shown()).toBe(1);
       expect(entry(/High/)).toHaveTextContent("1");
     });
@@ -462,5 +462,123 @@ describe("worst-case scenarios on the map", () => {
     const map = load();
     expect(receptors(map)).toHaveLength(0);
     expect(screen.queryByText(/drives a worst case/)).toBeNull();
+  });
+});
+
+describe("pathway dropdown", () => {
+  type Marker = { properties: { frs_id: string; status: string; driver: boolean; radius_px: number } };
+  const markers = (map: FakeMap) => (map.getSource("facilities")?.data as { features: Marker[] }).features;
+  const receptors = (map: FakeMap) => (map.getSource("receptors")?.data as { features: unknown[] }).features;
+  const legend = () => within(screen.getByRole("complementary", { name: "Map legend" }));
+  const pick = (value: "outdoor" | "indoor") =>
+    userEvent.selectOptions(screen.getByRole("combobox", { name: /Map pathway/ }), value);
+  const tract = {
+    kind: "tract" as const,
+    label: "T1",
+    residents: 100,
+    age_distribution: {},
+    distance_m: 500,
+    bearing_deg: 90,
+    latitude: 10.1,
+    longitude: -20.1,
+    concentration: 1,
+    fraction_of_maximum: 1,
+    note: null,
+  };
+  const driver = (pathway_key: string, frs_id: string) => ({
+    pathway_key,
+    quantity: "hq",
+    frs_id,
+    facility_name: frs_id,
+    stack_number: 1,
+    value: 2,
+  });
+  const two = () =>
+    placed(1, {
+      facilities: [
+        facility({
+          frs_id: "A",
+          name: "Plant A",
+          status: "low",
+          total_air_release_kg_per_year: 100,
+          scenarios: [scenario({ receptors: [tract] })],
+        }),
+        facility({
+          frs_id: "B",
+          name: "Plant B",
+          status: "high",
+          latitude: 11,
+          total_air_release_kg_per_year: null,
+          occupational_exposure: worker({ risk_tier: "high" }),
+        }),
+        facility({ frs_id: "C", name: "Plant C", status: "moderate", latitude: 12, total_air_release_kg_per_year: 400 }),
+      ],
+      scenario_drivers: [driver("community_inhalation", "A"), driver("worker_inhalation", "B")],
+    });
+
+  it("offers the same pathways as Risk by group, outdoor first", () => {
+    render(<ExposureMapCanvas digits={2} workspace={two()} config={config} />);
+    const options = within(screen.getByRole("combobox", { name: /Map pathway/ })).getAllByRole("option");
+    expect(options.map((o) => o.textContent)).toEqual([
+      "Outdoor Air → Inhalation → General Population",
+      "Indoor Air → Inhalation → Worker",
+    ]);
+    expect(screen.getByRole("combobox", { name: /Map pathway/ })).toHaveValue("outdoor");
+  });
+
+  it("recolours and recounts when the pathway changes, and names it in the legend", async () => {
+    render(<ExposureMapCanvas digits={2} workspace={two()} config={config} />);
+    const map = load();
+    expect(markers(map).map((m) => m.properties.status)).toEqual(["low", "high", "moderate"]);
+    expect(legend().getByRole("button", { name: /High/ })).toHaveTextContent("1");
+    await pick("indoor");
+    expect(markers(map).map((m) => m.properties.status)).toEqual(["none", "high", "none"]);
+    expect(legend().getByRole("button", { name: /High/ })).toHaveTextContent("1");
+    expect(legend().getByRole("button", { name: /Low/ })).toHaveTextContent("0");
+    expect(legend().getByRole("button", { name: /No result on this pathway/ })).toHaveTextContent("2");
+    expect(screen.getByRole("complementary", { name: "Map legend" })).toHaveTextContent("Colour: Indoor Air");
+  });
+
+  it("resets the hidden statuses when the pathway changes", async () => {
+    render(<ExposureMapCanvas digits={2} workspace={two()} config={config} />);
+    const map = load();
+    await userEvent.click(legend().getByRole("button", { name: /High/ }));
+    expect(markers(map)).toHaveLength(2);
+    await pick("indoor");
+    expect(legend().getByRole("button", { name: /High/ })).toHaveAttribute("aria-pressed", "true");
+    expect(markers(map)).toHaveLength(3);
+  });
+
+  it("rings the driver of the chosen pathway only", async () => {
+    render(<ExposureMapCanvas digits={2} workspace={two()} config={config} />);
+    const map = load();
+    expect(markers(map).map((m) => m.properties.driver)).toEqual([true, false, false]);
+    await pick("indoor");
+    expect(markers(map).map((m) => m.properties.driver)).toEqual([false, true, false]);
+  });
+
+  it("draws receptors only on the outdoor pathway", async () => {
+    render(<ExposureMapCanvas digits={2} workspace={two()} config={config} />);
+    const map = load();
+    await userEvent.click(screen.getByRole("button", { name: /Plant A/ }));
+    expect(receptors(map)).toHaveLength(1);
+    await pick("indoor");
+    expect(receptors(map)).toHaveLength(0);
+  });
+
+  it("sizes by total release, with the smallest size and a count for an absent total", () => {
+    render(<ExposureMapCanvas digits={2} workspace={two()} config={config} />);
+    const map = load();
+    expect(markers(map).map((m) => m.properties.radius_px)).toEqual([6, 6, 22]);
+    expect(screen.getByRole("complementary", { name: "Map legend" })).toHaveTextContent(
+      "1 facility with no release reported",
+    );
+  });
+
+  it("has no worker ring layer", () => {
+    render(<ExposureMapCanvas digits={2} workspace={two()} config={config} />);
+    const map = load();
+    expect(map.layers.has("facility-markers")).toBe(true);
+    expect([...map.layers].some((id) => id.includes("worker"))).toBe(false);
   });
 });

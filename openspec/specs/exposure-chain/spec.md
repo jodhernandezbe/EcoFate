@@ -8,68 +8,64 @@ person is judged against, built from pathway lanes that can be added without cha
 ## Requirements
 
 ### Requirement: Diagram of worst-case connections
-The tab SHALL draw, for the focused facility, a facility hub and one lane per registered pathway, each
-lane running source, pathway, route, receptor and endpoint with a connection between consecutive steps.
-Each connection SHALL be labelled with the quantity it carries and each node SHALL show its headline
-value. Every value, name and status SHALL come from the API; the browser SHALL NOT compute, convert or
-estimate any of them. A value the API did not report SHALL read "not reported" with its reason, never 0
-or "-". With no facility the tab SHALL say what to do instead of drawing placeholders.
+The tab SHALL draw the run's worst-case chain (`worst_case_chain`) as a Sankey diagram: one shared source node, then one lane per pathway, each running release, pathway, route, receptor and endpoint, with a band between consecutive steps. The tab SHALL NOT ask the user to choose a facility and SHALL NOT show any facility's name, identifier or location. Each band SHALL be labelled with the quantity it carries, and each node SHALL show its headline value. Every value, name and status SHALL come from the API; the browser SHALL NOT compute, convert or estimate any of them. A value the API did not report SHALL read "not reported" with its reason, never 0 or "-". With an empty chain, the tab SHALL say what to do instead of drawing placeholders.
 
 #### Scenario: Community lane
-- **WHEN** the facility has a community result
-- **THEN** the lane shows the stack release, outdoor air with the peak concentration and distance, inhalation, the residents counted with their age bands, and the worst-case hazard quotient and cancer risk
+- **WHEN** the run has a community result
+- **THEN** the lane shows the stack behind the worst hazard quotient with its release, outdoor air with the peak concentration and distance, inhalation, the most exposed age band with its dose, and the worst-case hazard quotient and cancer risk
 
 #### Scenario: Worker lane
-- **WHEN** the facility has an occupational result
-- **THEN** the lane shows the fugitive release, indoor workplace air with ventilation and concentration, inhalation, the shift worker with the schedule, and the 8-hour average, limit ratio, benchmark source, hazard quotient, cancer risk and tier
+- **WHEN** the run has an occupational result
+- **THEN** the lane shows the driving worker activity with its vapor generation rate (or the OSHA monitoring evidence), workplace air with its worst-case ventilation and concentration, inhalation, the worker with the activity's hours and working days, and the 8-hour average, limit ratio, benchmark source and band
+
+#### Scenario: No facility picker
+- **WHEN** the run has several facilities
+- **THEN** the tab shows one chain with no facility picker and no facility name
 
 #### Scenario: Missing value
-- **WHEN** a value is null (for example no fugitive release)
-- **THEN** that node or connection reads "not reported" with the reason and the rest of the diagram is unaffected
+- **WHEN** a value is null (for example no vapor pressure)
+- **THEN** that node or band reads "not reported" with the reason and the rest of the diagram is unaffected
 
 #### Scenario: Unavailable lane
-- **WHEN** the facility lacks the result a lane needs
-- **THEN** the lane is drawn as an empty, labelled lane saying why
+- **WHEN** the run lacks the result a lane needs
+- **THEN** the lane is listed as unavailable with its reason, and no bands are drawn for it
 
 #### Scenario: No facility
-- **WHEN** the workspace has no facilities
+- **WHEN** no facility has been assessed (or the server sends no chain)
 - **THEN** the tab shows an empty state
 
 ### Requirement: The diagram draws the graph the API sent
-The diagram SHALL draw the facility's exposure graph as sent, laid out automatically left to right, with
-any number of lanes, branches and nodes. A new lane, node or edge in the graph SHALL be drawn without a
-frontend change. The canvas SHALL pan and zoom and fit the graph to view; it SHALL open at a readable zoom (anchored on the source when the whole graph does not fit) and show a minimap while part of the graph is out of view. Connections SHALL show the direction of flow with moving markers, still when the user prefers reduced motion.
+The diagram SHALL draw the chain exactly as sent, laid out by a Sankey layout in columns from left to right (source, release, pathway, route, receptor, endpoint), with any number of lanes and nodes. A new lane, node or edge in the graph SHALL be drawn without a frontend change. Bands SHALL have one fixed width, because the steps carry different units, and SHALL be coloured by their lane's screening band (neutral when the lane has none). The diagram SHALL fit the panel's width, scale with it, and scroll horizontally rather than shrink text below a legible size. Bands SHALL show the direction of flow, with a still marker when the user prefers reduced motion.
 
 #### Scenario: New lane
 - **WHEN** the graph contains a lane the frontend has never seen
-- **THEN** it is drawn with its nodes and labelled connections
+- **THEN** it is drawn with its nodes and labelled bands
+
+#### Scenario: Equal bands
+- **WHEN** one band carries 1,000 kg/yr and the next carries 0.2 µg/m³
+- **THEN** both bands are drawn at the same width
 
 #### Scenario: Branches
-- **WHEN** the graph has several stack nodes and several age-band nodes
+- **WHEN** the graph has more than one node in a column (for example a new lane's extra receptor)
 - **THEN** each is drawn and connected, without overlap
 
 ### Requirement: Every state is checked visually
-Each state of the tab (both lanes, missing values, unavailable lane, exceedance, light and dark, wide and
-narrow) SHALL be rendered in a real browser by the test suite, and its screenshot SHALL be compared with
-the approved reference.
+Each state of the tab (both lanes, missing values, an unavailable lane, the "high" band, a worker lane resting on monitoring data, the empty state, light and dark, wide and narrow) SHALL be rendered in a real browser by the test suite, and its screenshot SHALL be compared with the approved reference.
 
 #### Scenario: Layout change
-- **WHEN** a change moves or overlaps nodes
+- **WHEN** a change moves or overlaps nodes or bands
 - **THEN** the screenshot comparison fails
 
 ### Requirement: Explore by hover, focus and click
-Hovering or focusing a node SHALL highlight its lane and dim the others; choosing it (click, Enter or
-Space) SHALL open a detail panel listing its fields with units, sources, assumptions and warnings as the
-API sent them, and for the receptors the dose of each age band; choosing it again or pressing Escape
-SHALL close it. The user SHALL be able to isolate one lane and choose the facility. The panel SHALL NOT state anything the data does not show.
+Hovering or focusing a node or band SHALL highlight its lane and dim the others. Choosing a node (click, Enter or Space) SHALL open a detail panel listing its fields with units, sources, assumptions and warnings as the API sent them. Choosing it again, or pressing Escape, SHALL close the panel. The panel SHALL NOT state anything the data does not show and SHALL NOT name a facility.
 
 #### Scenario: Highlight
 - **WHEN** a node is hovered or focused
 - **THEN** its lane stays prominent and the other lane is dimmed
 
 #### Scenario: Detail
-- **WHEN** the receptor node is chosen
-- **THEN** the panel lists the residents, the age-band shares and the dose of each band
+- **WHEN** the community receptor node is chosen
+- **THEN** the panel lists the age band, its share of residents, its dose, and the total residents and radius
 
 #### Scenario: Escape
 - **WHEN** the panel is open and Escape is pressed
@@ -77,43 +73,31 @@ SHALL close it. The user SHALL be able to isolate one lane and choose the facili
 
 #### Scenario: Both ventilation tiers
 - **WHEN** the worker endpoint is chosen
-- **THEN** the panel lists the worst-case and the baseline values the API sent
+- **THEN** the panel lists the worst-case ventilation values the API sent, and no baseline values (the chain carries the worst case only)
 
 ### Requirement: Status in words and colour
-Status SHALL be taken from the API (below, near or above concern for community values; acceptable,
-elevated or exceedance for the occupational tier, relabelled onto the same three looks), shown as words
-as well as colour, with design-token colours that meet WCAG AA in light and dark.
+Status SHALL be the screening band the API sent for both pathways ("high", "moderate" or "low"), shown
+as the words "High", "Moderate" or "Low" as well as colour, with design-token colours that meet WCAG AA
+in light and dark. The browser SHALL NOT relabel or recompute a band.
 
 #### Scenario: Exceedance
-- **WHEN** the occupational tier is exceedance
-- **THEN** the endpoint and the lane's connections read it in words and use the "above" look
+- **WHEN** the occupational band is "high"
+- **THEN** the endpoint and the lane's connections read "High" in words and use the high look
 
-### Requirement: Follows the facility the user is looking at
-The tab SHALL show the facility pinned on the map or chosen in its own picker; when none, the facility
-the chat selected. A pin or choice SHALL be dropped when the chat selects a different facility or the
-workspace is replaced, and SHALL fall back when its facility is gone.
-
-#### Scenario: Map pin
-- **WHEN** the user pins a facility on the map
-- **THEN** the diagram shows it
-
-#### Scenario: Chat selection
-- **WHEN** the chat selects a different facility
-- **THEN** the diagram shows it and the earlier pin is dropped for good
+#### Scenario: Same look for both lanes
+- **WHEN** the community and the worker endpoints are both "moderate"
+- **THEN** both read "Moderate" and use the same look
 
 ### Requirement: Accessible and responsive
-Every node SHALL be a keyboard-focusable control whose accessible name states its step, label and value;
-connections SHALL be described in text for screen readers (for example "release to outdoor air: 1 g/s");
-the canvas SHALL pan and zoom rather than shrink text below a legible size; flow animation SHALL be
-off when the user prefers reduced motion.
+Every node SHALL be a keyboard-focusable control whose accessible name states its step, label and value. Bands SHALL be described in text for screen readers (for example "release to outdoor air: 1 g/s"). Flow animation SHALL be off when the user prefers reduced motion.
 
 #### Scenario: Keyboard
 - **WHEN** the user tabs through the diagram
 - **THEN** each node takes focus in lane order and Enter opens its detail
 
 #### Scenario: Narrow panel
-- **WHEN** the panel is narrower than the diagram
-- **THEN** the graph is fitted to the view and can be panned and zoomed
+- **WHEN** the panel is narrower than the diagram's minimum width
+- **THEN** the diagram keeps its legible size and scrolls horizontally
 
 #### Scenario: Reduced motion
 - **WHEN** the user prefers reduced motion

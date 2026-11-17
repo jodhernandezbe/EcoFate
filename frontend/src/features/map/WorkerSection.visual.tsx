@@ -104,22 +104,28 @@ describe("inspector worker section and map legend, in a real browser", () => {
       .toMatchScreenshot(shot("worker-section-worker-only"));
   });
 
-  it("explains the fill, the worker ring and the outlined worker-only marker in the legend", async () => {
-    render(
-      <Frame width={300}>
-        {/* The legend is absolutely placed over the map; this box stands in for the map. */}
-        <div style={{ position: "relative", height: 440 }}>
-          <MapLegend
-            facilities={[
-              facility({ occupational_exposure: worker() }),
-              workerOnly(),
-            ]}
-            hidden={new Set()}
-            onToggle={() => {}}
-          />
-        </div>
-      </Frame>,
-    );
-    await expect.element(frame()).toMatchScreenshot(shot("map-legend-bands"));
-  });
+  const legendFacilities = () => [
+    facility({ status: "high", total_air_release_kg_per_year: 400, occupational_exposure: worker() }),
+    facility({ frs_id: "F2", status: "low", total_air_release_kg_per_year: 100 }),
+    workerOnly({ total_air_release_kg_per_year: null }),
+  ];
+
+  for (const pathway of ["outdoor", "indoor"] as const) {
+    it(`explains the fill, the size and the missing result on the ${pathway} pathway in the legend`, async () => {
+      render(
+        <Frame width={300}>
+          {/* The legend is absolutely placed over the map; this box stands in for the map. */}
+          <div style={{ position: "relative", height: 440 }}>
+            <MapLegend
+              facilities={legendFacilities()}
+              pathway={pathway}
+              hidden={new Set()}
+              onToggle={() => {}}
+            />
+          </div>
+        </Frame>,
+      );
+      await expect.element(frame()).toMatchScreenshot(shot(`map-legend-${pathway}`));
+    });
+  }
 });

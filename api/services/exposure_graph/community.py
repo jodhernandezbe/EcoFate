@@ -2,9 +2,16 @@
 
 from __future__ import annotations
 
-from api.schemas.exposure_graph import GraphEdge, GraphLane, GraphNode, GraphQuantity
-from api.schemas.workspace import ExposureRanges, Facility, Receptors, Stack
-from api.services.exposure_graph.hub import HUB
+from api.schemas.exposure_graph import GraphEdge, GraphFact, GraphLane, GraphNode, GraphQuantity
+from api.schemas.workspace import (
+    ExposureRanges,
+    Facility,
+    Receptors,
+    ScenarioReceptor,
+    Stack,
+    WorstCaseScenario,
+)
+from api.services.exposure_graph.hub import HUB, release_quantities
 from api.services.exposure_graph.parts import LaneParts, edge, fact, quantity, unavailable
 from config.exposure_graph import GraphText
 
@@ -26,14 +33,19 @@ def _stack_quantities(stack: Stack, text: GraphText) -> list[GraphQuantity]:
     ]
 
 
-def _stack_node(stack: Stack, text: GraphText) -> GraphNode:
+def _stack_node(
+    stack: Stack,
+    text: GraphText,
+    release: list[GraphQuantity] | None = None,
+) -> GraphNode:
+    """The stack's node; ``release`` appends the facility's release quantities to it."""
     return GraphNode(
         id=f"{LANE}:stack:{stack.stack_number}",
         kind="release",
         lane=LANE,
         title=text.nodes["stack"].format(number=stack.stack_number),
         headline="stack_peak",
-        quantities=_stack_quantities(stack, text),
+        quantities=[*_stack_quantities(stack, text), *(release or [])],
         facts=[
             fact(text, "stack_tier", stack.tier_label),
             fact(text, "process", stack.scc_description),
@@ -42,14 +54,36 @@ def _stack_node(stack: Stack, text: GraphText) -> GraphNode:
     )
 
 
-def _releases(facility: Facility, text: GraphText) -> tuple[list[GraphNode], list[GraphEdge]]:
-    """One node per evaluated stack, or a single release node when none was evaluated."""
-    stacks = [s for s in facility.stacks if s.stack_number is not None]
+def _generic_release(
+    text: GraphText,
+    release: list[GraphQuantity] | None,
+) -> tuple[list[GraphNode], list[GraphEdge]]:
+    """The single release node of a facility with no evaluated stack."""
+    node = GraphNode(
+        id=f"{LANE}:release",
+        kind="release",
+        lane=LANE,
+        title=text.nodes["stack_release"],
+        quantities=release or [],
+    )
+    return [node], [edge(LANE, HUB, node.id), edge(LANE, node.id, AIR)]
+
+
+def _releases(
+    facility: Facility,
+    text: GraphText,
+    stack_number: int | None = None,
+    release: list[GraphQuantity] | None = None,
+) -> tuple[list[GraphNode], list[GraphEdge]]:
+    """One node per evaluated stack (only ``stack_number`` when given), or a single release node."""
+    stacks = [
+        s
+        for s in facility.stacks
+        if s.stack_number is not None and stack_number in (None, s.stack_number)
+    ]
     if not stacks:
-        title = text.nodes["stack_release"]
-        node = GraphNode(id=f"{LANE}:release", kind="release", lane=LANE, title=title)
-        return [node], [edge(LANE, HUB, node.id), edge(LANE, node.id, AIR)]
-    nodes = [_stack_node(stack, text) for stack in stacks]
+        return _generic_release(text, release)
+    nodes = [_stack_node(stack, text, release) for stack in stacks]
     edges = [edge(LANE, HUB, n.id) for n in nodes]
     edges += [edge(LANE, n.id, AIR, n.quantities[0]) for n in nodes]
     return nodes, edges
@@ -112,13 +146,44 @@ def _band_node(
     )
 
 
-def _band_nodes(facility: Facility, exposure: ExposureRanges, text: GraphText) -> list[GraphNode]:
-    """One receptor node per age band with residents, or a single one when no band is known."""
+def _highest_band(shares: dict[str, float], doses: dict[str, float]) -> list[str]:
+    """The band with the highest reported dose (the first in reported order on a tie), if any."""
+    reported = [band for band in shares if band in doses]
+    return [max(reported, key=lambda band: doses[band])] if reported else []
+
+
+def _single_band(people: Receptors, doses: dict[str, float], text: GraphText) -> list[GraphNode]:
+    """One receptor node for the most exposed band, with the residents and radius around it."""
+    chosen = _highest_band(people.age_distribution, doses)
+    if not chosen:
+        return [_residents_node(text)]
+    node = _band_node(chosen[0], people.age_distribution[chosen[0]], doses[chosen[0]], people, text)
+    total = quantity(text, "residents", float(people.total_population))
+    radius = quantity(text, "radius", people.radius_km)
+    return [node.model_copy(update={"quantities": [*node.quantities, total, radius]})]
+
+
+def _residents_node(text: GraphText) -> GraphNode:
+    title = text.nodes["residents"]
+    return GraphNode(id=f"{LANE}:residents", kind="receptor", lane=LANE, title=title)
+
+
+def _band_nodes(
+    facility: Facility,
+    exposure: ExposureRanges,
+    text: GraphText,
+    single_band: bool = False,
+) -> list[GraphNode]:
+    """One receptor node per age band with residents, or a single one when no band is known.
+
+    ``single_band`` keeps only the band with the highest reported dose.
+    """
     people = facility.receptors
     if people is None or not people.age_distribution:
-        title = text.nodes["residents"]
-        return [GraphNode(id=f"{LANE}:residents", kind="receptor", lane=LANE, title=title)]
+        return [_residents_node(text)]
     doses = exposure.dose.by_band if exposure.dose else {}
+    if single_band:
+        return _single_band(people, doses, text)
     return [
         _band_node(band, share, doses.get(band), people, text)
         for band, share in people.age_distribution.items()
@@ -161,22 +226,90 @@ def _receptor_edges(bands: list[GraphNode]) -> list[GraphEdge]:
     ]
 
 
-def community_lane(facility: Facility, text: GraphText) -> LaneParts:
-    """The fenceline lane of the facility, or an empty lane when it has no community result."""
+def _tract_quantities(
+    tracts: list[ScenarioReceptor],
+    text: GraphText,
+) -> list[GraphQuantity]:
+    """Each most affected tract's residents, distance and fraction of the maximum, by position.
+
+    The tract's label, coordinates and bearing are never carried: they would locate the facility.
+    """
+    rows: list[GraphQuantity] = []
+    for position, tract in enumerate(tracts, start=1):
+        for key, value in (
+            ("tract_residents", None if tract.residents is None else float(tract.residents)),
+            ("tract_distance", tract.distance_m),
+            ("tract_fraction", tract.fraction_of_maximum),
+        ):
+            item = quantity(text, key, value)
+            label = f"{item.label} {position}"
+            rows.append(item.model_copy(update={"key": f"{key}:{position}", "label": label}))
+    return rows
+
+
+def _scenario_extras(
+    scenario: WorstCaseScenario,
+    text: GraphText,
+) -> tuple[list[GraphQuantity], list[GraphFact]]:
+    """The tracts, and the note when it says something or stands in for missing tracts."""
+    tracts = [r for r in scenario.receptors if r.kind == "tract"]
+    note = fact(text, "receptors_note", scenario.receptors_note)
+    facts = [note] if note.text is not None or not tracts else []
+    return _tract_quantities(tracts, text), facts
+
+
+def _with_scenario(
+    nodes: tuple[GraphNode, ...],
+    scenario: WorstCaseScenario,
+    text: GraphText,
+) -> tuple[GraphNode, ...]:
+    """Receptors gain the scenario's most affected tracts and note; the endpoint gains its notes."""
+    tracts, facts = _scenario_extras(scenario, text)
+    return tuple(_extend(n, scenario, tracts, facts) for n in nodes)
+
+
+def _extend(
+    node: GraphNode,
+    scenario: WorstCaseScenario,
+    tracts: list[GraphQuantity],
+    facts: list[GraphFact],
+) -> GraphNode:
+    if node.kind == "receptor":
+        update = {"quantities": [*node.quantities, *tracts], "facts": [*node.facts, *facts]}
+        return node.model_copy(update=update)
+    if node.kind == "endpoint":
+        return node.model_copy(update={"warnings": [*node.warnings, *scenario.notes]})
+    return node
+
+
+def community_lane(
+    facility: Facility,
+    text: GraphText,
+    *,
+    stack_number: int | None = None,
+    single_band: bool = False,
+    scenario: WorstCaseScenario | None = None,
+) -> LaneParts:
+    """The fenceline lane of the facility, or an empty lane when it has no community result.
+
+    With ``stack_number`` only that stack's release node is kept, and with ``single_band`` only
+    the most exposed age band; each release node then also carries the facility's own release
+    quantities (the run-wide chain has no facility node to hold them). The defaults draw
+    every stack and band. A ``scenario`` (the run-wide chain passes the driving one) adds its
+    most affected tracts and receptors note to the receptor node and its notes to the endpoint.
+    """
     exposure = facility.exposure
     if facility.worker_only:
         return unavailable(text, LANE, "worker_only")
     if exposure is None:
         return unavailable(text, LANE)
-    releases, release_edges = _releases(facility, text)
-    bands = _band_nodes(facility, exposure, text)
+    release = release_quantities(facility, text) if stack_number or single_band else None
+    releases, release_edges = _releases(facility, text, stack_number, release)
+    bands = _band_nodes(facility, exposure, text, single_band)
+    nodes = (*releases, _air_node(facility, exposure, text), _route(text), *bands)
+    nodes = (*nodes, _endpoint(facility, exposure, text))
+    if scenario is not None:
+        nodes = _with_scenario(nodes, scenario, text)
     edges = (*release_edges, *_receptor_edges(bands))
-    nodes = (
-        *releases,
-        _air_node(facility, exposure, text),
-        _route(text),
-        *bands,
-        _endpoint(facility, exposure, text),
-    )
     lane = GraphLane(id=LANE, label=text.lanes[LANE], available=True, status=facility.status)
     return LaneParts(lane=lane, nodes=nodes, edges=edges)

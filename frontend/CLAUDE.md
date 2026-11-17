@@ -3,7 +3,7 @@
 Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `frontend/`.
 
 - React + TypeScript (strict) + Vite + Tailwind; MapLibre GL for the map, Recharts for the
-  age-band bar, React Flow + ELK for the exposure chain, Lucide for icons (react-icons only for the `TbMessageChatbot` copilot toggle and the
+  age-band bar, d3-sankey (layout only) for the exposure chain, Lucide for icons (react-icons only for the `TbMessageChatbot` copilot toggle and the
   `AiOutlineClear` chat clear button).
   Commands: `npm --prefix frontend ci`, `run build`, `run check` (contract diff, tsc, eslint,
   vitest). `check` must pass before work is done. `run test:visual` renders `*.visual.tsx` in
@@ -14,10 +14,16 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   `hooks/` (stream, stores, key status) and `services/apiClient.ts` serve features;
   `components/` never import `features/`, and features never import each other's internals.
 - `features/exposure-chain` is the Overview's "Exposure chain" tab (composed by `App.tsx` as a slot):
-  it draws the focused facility's `exposure_graph` (a map pin, the tab's picker, else the chat's
-  selection) exactly as the API built it, laid out by ELK (`layout.ts`) on a React Flow canvas with
-  flowing, labelled edges. It never decides what a pathway is: a new lane or node is a backend change
+  it draws the run's `worst_case_chain` (one lane per pathway, from the facility that drives it; no
+  facility is named, picked or followed) exactly as the API built it, as a Sankey diagram: `layout.ts`
+  (pure, `d3-sankey`) puts each step in the column of its kind, SVG bands of one fixed width join them
+  and HTML step buttons sit on top; each band's label hangs under its lane on a dotted leader, never
+  over a card. The diagram never shrinks below its minimum width (the container scrolls, opening at
+  the endpoint column). It never decides what a pathway is: a new lane or node is a backend change
   (`api/services/exposure_graph/`). Quantities are formatted with `lib/format` only.
+- Map markers: size is the API's `total_air_release_kg_per_year` (square root, smallest when absent),
+  fill is the band of the pathway chosen in the map's dropdown (`lib/pathways.ts`, shared with Risk by
+  group), and the outer ring marks the driver of that pathway; there is no worker ring.
 - Layout: `components/layout/SplitWorkspace` divides the window into rail | analysis (overview
   over map) | chat with `react-resizable-panels` splitters. Limits come from `layout` in the
   client config, never from constants. Fullscreen is CSS only (nothing unmounts; the others go

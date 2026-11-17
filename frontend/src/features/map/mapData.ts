@@ -1,62 +1,75 @@
 import type { Feature, FeatureCollection, Point, Polygon } from "geojson";
 
-import type { Facility, OccupationalTier, ScenarioDriver, Status } from "../../types/workspace";
+import type { Band } from "../../lib/band";
+import { pathwayInfo, type Pathway } from "../../lib/pathways";
+import type { Facility, ScenarioDriver } from "../../types/workspace";
 
 export interface MarkerScale {
   minPx: number;
   maxPx: number;
 }
 
+/** A marker's status on the chosen pathway: its band, or "none" when it has no result there. */
+export type StatusKey = Band | "none";
+
 export interface MarkerProperties {
   frs_id: string;
   name: string;
-  status: Status | "none";
-  /** Tier of the worker screening (drawn as a ring), or "none" while it is not computed. */
-  worker_tier: OccupationalTier | "none";
-  /** A facility with a worker result and no stack release: outlined, no community fill. */
-  worker_only: boolean;
-  /** Whether the facility has the highest value of some result (drawn as an outer ring). */
+  status: StatusKey;
+  /** Whether the facility drives a worst case of the chosen pathway (drawn as an outer ring). */
   driver: boolean;
   radius_px: number;
 }
 
-/** Marker radius (px) from the emission rate, on a square-root scale across the facilities shown. */
-export function markerRadius(rate: number, rates: number[], scale: MarkerScale): number {
-  const roots = rates.map((r) => Math.sqrt(Math.max(r, 0)));
+/** The facility's status key on a pathway (the band the API sent, else "none"). */
+export const statusKey = (facility: Facility, pathway: Pathway): StatusKey =>
+  pathwayInfo(pathway).band(facility) ?? "none";
+
+/** The total annual air release (kg/yr) when the API sent a finite one. */
+export const totalOf = (facility: Facility): number | null => {
+  const total = facility.total_air_release_kg_per_year;
+  return typeof total === "number" && Number.isFinite(total) ? total : null;
+};
+
+/** Marker radius (px) from the total annual air release, on a square-root scale across the facilities shown. */
+export function markerRadius(total: number, totals: number[], scale: MarkerScale): number {
+  const roots = totals.map((t) => Math.sqrt(Math.max(t, 0)));
   const low = Math.min(...roots);
   const high = Math.max(...roots);
   if (!(high > low)) return (scale.minPx + scale.maxPx) / 2;
-  const share = (Math.sqrt(Math.max(rate, 0)) - low) / (high - low);
+  const share = (Math.sqrt(Math.max(total, 0)) - low) / (high - low);
   return scale.minPx + (scale.maxPx - scale.minPx) * share;
 }
 
 /**
- * One point per facility: filled by the community status (none while not computed), ringed by the
- * worker tier, sized by emission rate. A worker-only facility has no emission rate: it keeps one
- * fixed size (the smallest) and its marker is outlined instead of filled.
+ * One point per facility: filled by its band on the chosen pathway ("none" when it has no result
+ * there), sized by its total annual air release (the smallest size when the API sent none). The
+ * `drivers` are those of the chosen pathway.
  */
 export function facilityCollection(
   facilities: Facility[],
   scale: MarkerScale,
   drivers: readonly ScenarioDriver[] = [],
+  pathway: Pathway = "outdoor",
 ): FeatureCollection<Point, MarkerProperties> {
   const driving = new Set(drivers.map((d) => d.frs_id));
-  const rates = facilities.flatMap((f) => (f.emission_rate_g_s === null ? [] : [f.emission_rate_g_s]));
+  const totals = facilities.flatMap((f) => totalOf(f) ?? []);
   return {
     type: "FeatureCollection",
-    features: facilities.map((f) => ({
-      type: "Feature",
-      geometry: { type: "Point", coordinates: [f.longitude, f.latitude] },
-      properties: {
-        frs_id: f.frs_id,
-        name: f.name ?? `FRS ${f.frs_id}`,
-        status: f.status ?? "none",
-        worker_tier: f.occupational_exposure?.risk_tier ?? "none",
-        worker_only: f.worker_only,
-        driver: driving.has(f.frs_id),
-        radius_px: f.emission_rate_g_s === null ? scale.minPx : markerRadius(f.emission_rate_g_s, rates, scale),
-      },
-    })),
+    features: facilities.map((f) => {
+      const total = totalOf(f);
+      return {
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [f.longitude, f.latitude] },
+        properties: {
+          frs_id: f.frs_id,
+          name: f.name ?? `FRS ${f.frs_id}`,
+          status: statusKey(f, pathway),
+          driver: driving.has(f.frs_id),
+          radius_px: total === null ? scale.minPx : markerRadius(total, totals, scale),
+        },
+      };
+    }),
   };
 }
 

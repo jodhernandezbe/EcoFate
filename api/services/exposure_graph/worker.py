@@ -40,7 +40,11 @@ def _case(worker: OccupationalExposure, variant: Variant) -> WorkerCase:
     return worker.worst_case if variant == "worst_case" else worker.baseline
 
 
-def _activity_quantities(worker: OccupationalExposure, text: GraphText) -> list[GraphQuantity]:
+def _activity_quantities(
+    worker: OccupationalExposure,
+    text: GraphText,
+    variants: tuple[Variant, ...],
+) -> list[GraphQuantity]:
     rows = [
         quantity(
             text,
@@ -48,7 +52,7 @@ def _activity_quantities(worker: OccupationalExposure, text: GraphText) -> list[
             _case(worker, variant).generation_g_per_s,
             variant=variant,
         )
-        for variant in VARIANTS
+        for variant in variants
     ]
     rows.append(quantity(text, "fugitive_release", worker.fugitive_release_kg_per_year))
     return rows
@@ -64,14 +68,24 @@ def _activity_facts(worker: OccupationalExposure, text: GraphText) -> list[Graph
     ]
 
 
-def _activity_node(worker: OccupationalExposure, text: GraphText) -> GraphNode:
+def _activity_title(worker: OccupationalExposure, text: GraphText) -> str:
+    """The driving activity's own name; the configured generic words when there is none."""
+    driving = worker.driving_activity
+    return driving.label if driving and driving.label.strip() else text.nodes["worker_activity"]
+
+
+def _activity_node(
+    worker: OccupationalExposure,
+    text: GraphText,
+    variants: tuple[Variant, ...],
+) -> GraphNode:
     return GraphNode(
         id=RELEASE,
         kind="release",
         lane=LANE,
-        title=text.nodes["worker_activity"],
+        title=_activity_title(worker, text),
         headline="generation_rate:worst_case",
-        quantities=_activity_quantities(worker, text),
+        quantities=_activity_quantities(worker, text, variants),
         facts=_activity_facts(worker, text),
         warnings=[w for a in worker.activities if a.key == _key(worker) for w in a.warnings],
     )
@@ -115,15 +129,23 @@ def _monitoring_node(worker: OccupationalExposure, text: GraphText) -> GraphNode
     )
 
 
-def _source_node(worker: OccupationalExposure, text: GraphText) -> GraphNode:
+def _source_node(
+    worker: OccupationalExposure,
+    text: GraphText,
+    variants: tuple[Variant, ...],
+) -> GraphNode:
     if worker.evidence == "monitoring":
         return _monitoring_node(worker, text)
-    return _activity_node(worker, text)
+    return _activity_node(worker, text, variants)
 
 
-def _air_quantities(worker: OccupationalExposure, text: GraphText) -> list[GraphQuantity]:
+def _air_quantities(
+    worker: OccupationalExposure,
+    text: GraphText,
+    variants: tuple[Variant, ...],
+) -> list[GraphQuantity]:
     rows: list[GraphQuantity] = []
-    for variant in VARIANTS:
+    for variant in variants:
         case = _case(worker, variant)
         rows += [
             quantity(
@@ -140,10 +162,14 @@ def _air_quantities(worker: OccupationalExposure, text: GraphText) -> list[Graph
     return rows
 
 
-def _case_words(worker: OccupationalExposure, text: GraphText) -> list[str]:
+def _case_words(
+    worker: OccupationalExposure,
+    text: GraphText,
+    variants: tuple[Variant, ...],
+) -> list[str]:
     """For each case, how its average was reached and whether saturation capped the air."""
     parts: list[str] = []
-    for variant in VARIANTS:
+    for variant in variants:
         case = _case(worker, variant)
         estimator = text.estimators.get(case.estimator or "")
         flag = (
@@ -154,11 +180,15 @@ def _case_words(worker: OccupationalExposure, text: GraphText) -> list[str]:
     return parts
 
 
-def _air_facts(worker: OccupationalExposure, text: GraphText) -> list[GraphFact]:
+def _air_facts(
+    worker: OccupationalExposure,
+    text: GraphText,
+    variants: tuple[Variant, ...],
+) -> list[GraphFact]:
     setting = worker.worst_case.setting or worker.baseline.setting
     return [
         fact(text, "setting", text.settings.get(setting or "")),
-        fact(text, "ventilation", "; ".join(_case_words(worker, text)) or None),
+        fact(text, "ventilation", "; ".join(_case_words(worker, text, variants)) or None),
         fact(text, "volatility", text.volatilities.get(worker.volatility or "")),
     ]
 
@@ -180,15 +210,19 @@ def _properties(worker: OccupationalExposure, text: GraphText) -> list[GraphQuan
     ]
 
 
-def _air_node(worker: OccupationalExposure, text: GraphText) -> GraphNode:
+def _air_node(
+    worker: OccupationalExposure,
+    text: GraphText,
+    variants: tuple[Variant, ...],
+) -> GraphNode:
     return GraphNode(
         id=AIR,
         kind="pathway",
         lane=LANE,
         title=text.nodes["workplace_air"],
         headline="workplace_concentration:worst_case",
-        quantities=[*_air_quantities(worker, text), *_properties(worker, text)],
-        facts=_air_facts(worker, text),
+        quantities=[*_air_quantities(worker, text, variants), *_properties(worker, text)],
+        facts=_air_facts(worker, text, variants),
     )
 
 
@@ -225,9 +259,13 @@ def _worker_node(facility: Facility, worker: OccupationalExposure, text: GraphTe
     )
 
 
-def _endpoint_quantities(worker: OccupationalExposure, text: GraphText) -> list[GraphQuantity]:
+def _endpoint_quantities(
+    worker: OccupationalExposure,
+    text: GraphText,
+    variants: tuple[Variant, ...],
+) -> list[GraphQuantity]:
     rows = [quantity(text, "oel", worker.oel_twa_mg_m3, source=worker.oel_source)]
-    for variant in VARIANTS:
+    for variant in variants:
         case = _case(worker, variant)
         rows += [
             quantity(text, "oel_ratio", case.oel_ratio, variant=variant),
@@ -243,7 +281,11 @@ def _status(worker: OccupationalExposure, text: GraphText) -> tuple[GraphStatus 
     return (tier, text.tiers[tier]) if tier else (None, None)
 
 
-def _endpoint(worker: OccupationalExposure, text: GraphText) -> GraphNode:
+def _endpoint(
+    worker: OccupationalExposure,
+    text: GraphText,
+    variants: tuple[Variant, ...],
+) -> GraphNode:
     status, label = _status(worker, text)
     return GraphNode(
         id=END,
@@ -251,7 +293,7 @@ def _endpoint(worker: OccupationalExposure, text: GraphText) -> GraphNode:
         lane=LANE,
         title=text.nodes["worker_endpoint"],
         headline="oel_ratio:worst_case",
-        quantities=_endpoint_quantities(worker, text),
+        quantities=_endpoint_quantities(worker, text, variants),
         facts=[fact(text, "benchmark", worker.oel_source), fact(text, "tier", label)],
         status=status,
         status_label=label,
@@ -270,15 +312,24 @@ def _edges(air: GraphNode, receptor: GraphNode, end: GraphNode) -> tuple[GraphEd
     )
 
 
-def worker_lane(facility: Facility, text: GraphText) -> LaneParts:
-    """The worker lane of the facility, or an empty lane when it has no occupational result."""
+def worker_lane(
+    facility: Facility,
+    text: GraphText,
+    *,
+    variants: tuple[Variant, ...] = VARIANTS,
+) -> LaneParts:
+    """The worker lane of the facility, or an empty lane when it has no occupational result.
+
+    ``variants`` names the cases carried; the run-wide chain passes ``("worst_case",)``. The
+    worst case must come first, because the edges carry the first worst-case quantity.
+    """
     worker = facility.occupational_exposure
     if worker is None:
         return unavailable(text, LANE)
     route = GraphNode(id=INHALE, kind="route", lane=LANE, title=text.nodes["worker_inhalation"])
-    air = _air_node(worker, text)
+    air = _air_node(worker, text, variants)
     receptor = _worker_node(facility, worker, text)
-    end = _endpoint(worker, text)
+    end = _endpoint(worker, text, variants)
     lane = GraphLane(
         id=LANE,
         label=text.lanes[LANE],
@@ -286,5 +337,5 @@ def worker_lane(facility: Facility, text: GraphText) -> LaneParts:
         status=end.status,
         status_label=end.status_label,
     )
-    nodes = (_source_node(worker, text), air, route, receptor, end)
+    nodes = (_source_node(worker, text, variants), air, route, receptor, end)
     return LaneParts(lane=lane, nodes=nodes, edges=_edges(air, receptor, end))

@@ -786,8 +786,19 @@
     },
     "ExposureGraph": {
       "additionalProperties": false,
-      "description": "The source facility, then each lane's steps, joined by labelled edges.",
+      "description": "The source facility, then each lane's steps, joined by labelled edges.\n\nAttributes:\n    caption: Configured text to show under the diagram (the run-wide chain says its bands\n        have a fixed width); None for a facility's graph.",
       "properties": {
+        "caption": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "edges": {
           "items": {
             "$ref": "#/$defs/GraphEdge"
@@ -808,6 +819,7 @@
         }
       },
       "required": [
+        "caption",
         "lanes",
         "nodes",
         "edges"
@@ -996,7 +1008,7 @@
     },
     "Facility": {
       "additionalProperties": false,
-      "description": "One facility of the emissions inventory with what the other tools reported about it.\n\nAttributes:\n    doc_ctrl_num: TRI document control number (the inventory has no TRI facility ID).\n    medium, total_release, release_unit, emission_rate_g_s: The stack release (annual quantity\n        in ``release_unit``, as reported; the rate is that quantity averaged over\n        ``operating_hours_per_year``); None for a worker-only facility, which has none.\n    worker_only: True for a facility with a fugitive air release and no stack release: it has\n        a worker result and no community one (its community values are absent, never zero).\n    community_reason: Why a worker-only facility has no community result; None otherwise.\n    operating_hours_source: Where those hours came from (industry survey or default); None\n        when the record predates the field.\n    fugitive_release_kg_per_year: TRI fugitive air release, kg/yr; None when TRI has none.\n    exposure: The community (ambient fenceline) result.\n    occupational_exposure: The worker screening; None when no assessment produced it.\n    operational_profile: Schedule, life cycle stage, condition of use and CDR sector.\n    scenarios: The worst-case scenarios of the facility, one per pathway and quantity that\n        has a value.\n    exposure_graph: How the worst-case exposure arises, source to endpoint, per pathway.\n    naics_subsector: First three digits of the inventory's NAICS code (e.g. \"325\").\n    naics_subsector_title: That subsector's title from the Census lists; None if unknown.\n    conditions_of_use: TSCA conditions of use of the activities the facility reported to TRI.\n    lifecycle_stages: The distinct TSCA life cycle stages of ``conditions_of_use``.\n    conditions_note: Why ``conditions_of_use`` is empty; None when it is not.\n    stack_source: Where the NEI stack lookup came from, when one was made for the facility.\n    status: Worst-case risk status (from the screening value when screened out); None\n        while no risk is computed.\n    screening: How the batch assessment screened it; None when it did not.\n    buffer: The receptor radius drawn as a circle around the facility, when receptors exist.\n    sector: Schematic downwind sector (toward ``wind_toward_deg``, length the receptor radius);\n        never a modelled plume footprint. Present with both receptors and meteorology.",
+      "description": "One facility of the emissions inventory with what the other tools reported about it.\n\nAttributes:\n    doc_ctrl_num: TRI document control number (the inventory has no TRI facility ID).\n    medium, total_release, release_unit, emission_rate_g_s: The stack release (annual quantity\n        in ``release_unit``, as reported; the rate is that quantity averaged over\n        ``operating_hours_per_year``); None for a worker-only facility, which has none.\n    worker_only: True for a facility with a fugitive air release and no stack release: it has\n        a worker result and no community one (its community values are absent, never zero).\n    community_reason: Why a worker-only facility has no community result; None otherwise.\n    operating_hours_source: Where those hours came from (industry survey or default); None\n        when the record predates the field.\n    fugitive_release_kg_per_year: TRI fugitive air release, kg/yr; None when TRI has none.\n    total_air_release_kg_per_year: Stack release (converted to kg/yr) plus fugitive release,\n        kg/yr; each part counts only when reported; None when it cannot be established.\n    total_air_release_reason: Why the total is None; None when it is set.\n    exposure: The community (ambient fenceline) result.\n    occupational_exposure: The worker screening; None when no assessment produced it.\n    operational_profile: Schedule, life cycle stage, condition of use and CDR sector.\n    scenarios: The worst-case scenarios of the facility, one per pathway and quantity that\n        has a value.\n    exposure_graph: How the worst-case exposure arises, source to endpoint, per pathway.\n    naics_subsector: First three digits of the inventory's NAICS code (e.g. \"325\").\n    naics_subsector_title: That subsector's title from the Census lists; None if unknown.\n    conditions_of_use: TSCA conditions of use of the activities the facility reported to TRI.\n    lifecycle_stages: The distinct TSCA life cycle stages of ``conditions_of_use``.\n    conditions_note: Why ``conditions_of_use`` is empty; None when it is not.\n    stack_source: Where the NEI stack lookup came from, when one was made for the facility.\n    status: Worst-case risk status (from the screening value when screened out); None\n        while no risk is computed.\n    screening: How the batch assessment screened it; None when it did not.\n    buffer: The receptor radius drawn as a circle around the facility, when receptors exist.\n    sector: Schematic downwind sector (toward ``wind_toward_deg``, length the receptor radius);\n        never a modelled plume footprint. Present with both receptors and meteorology.",
       "properties": {
         "address": {
           "anyOf": [
@@ -1350,6 +1362,28 @@
           ],
           "default": null
         },
+        "total_air_release_kg_per_year": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "total_air_release_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "total_release": {
           "anyOf": [
             {
@@ -1402,6 +1436,8 @@
         "operating_hours_source",
         "fugitive_release_kg_per_year",
         "fugitive_reporting_year",
+        "total_air_release_kg_per_year",
+        "total_air_release_reason",
         "conditions_of_use",
         "lifecycle_stages",
         "conditions_note",
@@ -5214,7 +5250,7 @@
     },
     "WorkspaceState": {
       "additionalProperties": false,
-      "description": "The current workspace of one thread.\n\nAttributes:\n    framing_version: Increases only when the set of placed facilities or buffers changes.\n    bounds: Extent of the placed facilities and buffers; None when none is placed.\n    facilities: One per FRS ID, in the order first reported.\n    selected_frs_id: Facility whose receptors the ribbon shows (the highest risk, or the\n        only one); None when no single facility stands out.\n    chemical: The queried chemical and its provenance.\n    risk: Highest risk values across the attributed facilities.\n    worker_risk: Highest worker (occupational) values across the assessed facilities.\n    scenario_drivers: For each pathway and quantity, the facility with the highest value.\n    receptors: Receptors of the selected facility.\n    meteorology: Meteorology of the selected facility, else the latest result.\n    unattributed: Results not attached to any facility.\n    warnings: Results left out (malformed, unattributable) and why.",
+      "description": "The current workspace of one thread.\n\nAttributes:\n    framing_version: Increases only when the set of placed facilities or buffers changes.\n    bounds: Extent of the placed facilities and buffers; None when none is placed.\n    facilities: One per FRS ID, in the order first reported.\n    selected_frs_id: Facility whose receptors the ribbon shows (the highest risk, or the\n        only one); None when no single facility stands out.\n    chemical: The queried chemical and its provenance.\n    risk: Highest risk values across the attributed facilities.\n    worker_risk: Highest worker (occupational) values across the assessed facilities.\n    scenario_drivers: For each pathway and quantity, the facility with the highest value.\n    worst_case_chain: The run-wide worst-case exposure chain (one lane per pathway, from the\n        facility that drives it, naming no facility); empty before any assessment.\n    receptors: Receptors of the selected facility.\n    meteorology: Meteorology of the selected facility, else the latest result.\n    unattributed: Results not attached to any facility.\n    warnings: Results left out (malformed, unattributable) and why.",
       "properties": {
         "bounds": {
           "anyOf": [
@@ -5297,6 +5333,9 @@
         },
         "worker_risk": {
           "$ref": "#/$defs/WorkerRiskSummary"
+        },
+        "worst_case_chain": {
+          "$ref": "#/$defs/ExposureGraph"
         }
       },
       "required": [
@@ -5308,6 +5347,7 @@
         "risk",
         "worker_risk",
         "scenario_drivers",
+        "worst_case_chain",
         "receptors",
         "meteorology",
         "unattributed",

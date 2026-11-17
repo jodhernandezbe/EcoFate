@@ -11,7 +11,9 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Literal, TypedDict, get_args
 
+from config.air_release import AirReleaseRules, parse_air_release
 from config.exposure_graph import GraphText, parse_exposure_graph
+from config.loader import load_unit_settings
 from config.parsing import (
     as_table,
     names,
@@ -189,6 +191,7 @@ class UiSettings:
         pricing: Chat model name -> token prices.
         report: Fixed text of the Word assessment report.
         exposure_graph: Fixed text and units of the exposure chain graph.
+        air_release: How a facility's total annual air release is computed.
     """
 
     host: str
@@ -205,6 +208,7 @@ class UiSettings:
     pricing: Mapping[str, ModelPrice]
     report: ReportSettings
     exposure_graph: GraphText
+    air_release: AirReleaseRules
 
     @property
     def origin(self) -> str:
@@ -482,6 +486,7 @@ def load_ui_settings(path: Path | None = None) -> UiSettings:
         pricing=_pricing(table),
         report=parse_report(table),
         exposure_graph=parse_exposure_graph(table),
+        air_release=parse_air_release(table, load_unit_settings(path).aliases),
     )
 
 

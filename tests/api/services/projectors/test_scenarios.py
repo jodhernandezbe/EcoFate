@@ -180,3 +180,28 @@ def test_a_tie_goes_to_the_first_facility() -> None:
 
 def test_no_scenario_means_no_driver() -> None:
     assert _build(_item("F1", [])).scenario_drivers == []
+
+
+def _rate_item(frs_id: str, rate: float, scenarios: list[object]) -> dict[str, object]:
+    item = _item(frs_id, scenarios)
+    item["record"] = record(frs_id, rate=rate)
+    return item
+
+
+def _community_rate(state: WorkspaceState) -> float | None:
+    release = next(n for n in state.worst_case_chain.nodes if n.kind == "release")
+    return next(q.value for q in release.quantities if q.key == "emission_rate")
+
+
+def test_the_worst_case_chain_follows_the_facility_driving_the_hazard_quotient() -> None:
+    first = _rate_item("F1", 11.0, [_scenario(2.0)])
+    second = _rate_item("F2", 22.0, [_scenario(1.0)])
+    assert _community_rate(_build(first, second)) == 11.0
+    higher = _rate_item("F2", 22.0, [_scenario(9.0)])
+    assert _community_rate(_build(first, higher)) == 22.0
+
+
+def test_the_worst_case_chain_is_empty_before_any_assessment() -> None:
+    chain = _build(_item("F1", [])).worst_case_chain
+    assert (chain.lanes, chain.nodes, chain.edges) == ([], [], [])
+    assert build_workspace([], RULES).worst_case_chain.lanes == []

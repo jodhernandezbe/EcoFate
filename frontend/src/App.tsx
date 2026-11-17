@@ -5,7 +5,7 @@ import { SplitWorkspace } from "./components/layout/SplitWorkspace";
 import { ConfirmDialog } from "./components/ui/ConfirmDialog";
 import { AccountDrawer, AccountScreens } from "./features/auth";
 import { ChatDock } from "./features/chat/ChatDock";
-import { ExposureChainTab, useFocusedFacility } from "./features/exposure-chain";
+import { ExposureChainTab } from "./features/exposure-chain";
 import { MapPanel } from "./features/map/MapPanel";
 import { MonitoringView } from "./features/monitoring/MonitoringView";
 import { OverviewPanel } from "./features/overview/OverviewPanel";
@@ -48,7 +48,6 @@ function Workspace({ user, onSignOut, onGone }: WorkspaceProps) {
   const report = useReportDownload();
   const key = useKeyStatus();
   const config = useClientConfig();
-  const focus = useFocusedFacility(store.workspace, store.epoch);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [confirmingClear, setConfirmingClear] = useState(false);
@@ -107,10 +106,10 @@ function Workspace({ user, onSignOut, onGone }: WorkspaceProps) {
             workspace={store.workspace}
             digits={digits}
             bands={config?.bands}
-            chain={<ExposureChainTab facility={focus.facility} workspace={store.workspace} digits={digits} onPick={focus.onPin} />}
+            chain={<ExposureChainTab chain={store.workspace.worst_case_chain} digits={digits} />}
           />
         }
-        map={<MapPanel workspace={store.workspace} viewEpoch={store.epoch} digits={digits} map={config?.map} onPin={focus.onPin} />}
+        map={<MapPanel workspace={store.workspace} viewEpoch={store.epoch} digits={digits} map={config?.map} />}
         chat={({ collapse }) => (
           <ChatDock
             messages={chat.messages}

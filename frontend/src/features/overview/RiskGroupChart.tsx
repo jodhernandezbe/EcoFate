@@ -2,7 +2,8 @@ import { Bar, BarChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Toolt
 
 import { formatNumber } from "../../lib/format";
 import type { BandBoundaries } from "../../types/api";
-import { describeBar, type Group, type Pathway, type Quantity } from "./riskGroups";
+import type { Pathway } from "../../lib/pathways";
+import { describeBar, type Group, type Quantity } from "./riskGroups";
 
 const BAR_COLOR = "var(--accent)";
 const AXIS_TEXT = { fill: "var(--fg-2)", fontSize: 11 };

@@ -9,6 +9,7 @@ from typing import TypedDict
 
 from commons.bands import Band
 from config.assessment import ScreeningSettings
+from tools.assessment.helpers.occupational.dosimetry import cancer_risk_sets_band
 from tools.assessment.helpers.scenarios import drivers_of
 from tools.assessment.helpers.screened_workers import highest_worker, worker_bands
 from tools.assessment.helpers.screened_workers import sentence as screened_sentence
@@ -31,6 +32,12 @@ from tools.schemas import (
 
 # The model reads up to this many notes per facility; the rest are counted.
 MAX_NOTES = 6
+
+# Said beside a worker band that its limit ratio alone would not give.
+CANCER_RISK_BAND = (
+    "the worker band is set by the worker cancer risk, above the band the occupational limit "
+    "ratio alone gives"
+)
 
 
 @dataclass(frozen=True)
@@ -75,11 +82,21 @@ def _notes(item: FacilityAssessment) -> list[str]:
         *(w for result in exposure["results"] for w in result["warnings"]),
         *(item["meteorology"] or {}).get("warnings", []),
         *(item["population"] or {}).get("warnings", []),
+        *_worker_notes(item),
     ]
     unique = list(dict.fromkeys(note for note in every if note))
     if len(unique) <= MAX_NOTES:
         return unique
     return [*unique[:MAX_NOTES], f"(+{len(unique) - MAX_NOTES} more notes)"]
+
+
+def _worker_notes(item: FacilityAssessment) -> list[str]:
+    """Why the worker band is above its limit ratio's band, when the cancer risk lifts it."""
+    return (
+        [CANCER_RISK_BAND]
+        if cancer_risk_sets_band(item["occupational_exposure"]["baseline"])
+        else []
+    )
 
 
 def _worst_hq(summary: FacilitySummary) -> float:

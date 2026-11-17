@@ -1,13 +1,11 @@
-import { CirclePause, CircleStop } from "lucide-react";
+import { CirclePause } from "lucide-react";
 import { useEffect, useRef } from "react";
 import Markdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import type { ChatMessage, LiveStatus } from "../../hooks/chatState";
-import type { TurnInterruption } from "../../types/workspace";
 import { SuggestionChips } from "./SuggestionChips";
 import { ToolExecutionPills } from "./ToolExecutionPill";
-import { STOPPING, turnStatusText } from "./turnStatusText";
 import { Welcome } from "./Welcome";
 
 const CELL = "border-l border-hairline px-3 py-2 first:border-l-0 whitespace-nowrap";
@@ -35,91 +33,17 @@ const MARKDOWN: Components = {
   td: ({ children }) => <td className={CELL}>{children}</td>,
 };
 
-const RESUME_BLOCKED = "A turn is running; Resume is available when it ends.";
-
-interface StopActions {
-  /** A turn is running: Resume is shown disabled with the reason. */
-  busy: boolean;
-  onResume?: (() => void) | undefined;
-  onOpenSettings?: (() => void) | undefined;
-}
-
-/** Why the turn stopped (the server's fixed text) and what the user can do about it. */
-function StopNotice({ stop, busy, onResume, onOpenSettings }: StopActions & { stop: TurnInterruption }) {
+/** Marks where a turn stopped; why it stopped, and Resume, are in the controls above the chat. */
+function StopNote() {
   return (
-    <div role="status" className="mt-2 rounded-xl border border-hairline px-3 py-2 text-sm">
-      <p className="flex items-start gap-2">
-        <CirclePause size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-fg2" />
-        <span>{stop.message}</span>
-      </p>
-      {stop.resumable || stop.reason === "bad_key" ? (
-        <div className="mt-2 flex flex-wrap items-center gap-2 pl-6">
-          {stop.resumable && onResume ? (
-            <button
-              type="button"
-              disabled={busy}
-              title={busy ? RESUME_BLOCKED : undefined}
-              aria-description={busy ? RESUME_BLOCKED : undefined}
-              onClick={onResume}
-              className="spring rounded-full bg-accent px-3 py-1 text-sm font-medium text-accent-fg transition disabled:opacity-30"
-            >
-              Resume
-            </button>
-          ) : null}
-          {stop.reason === "bad_key" && onOpenSettings ? (
-            <button
-              type="button"
-              onClick={onOpenSettings}
-              className="spring rounded-full border border-hairline px-3 py-1 text-sm text-accent transition hover:bg-hairline"
-            >
-              Open Settings
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
+    <p className="mt-2 flex items-center gap-1.5 text-xs text-fg2">
+      <CirclePause size={14} aria-hidden="true" className="shrink-0" />
+      <span>Stopped</span>
+    </p>
   );
 }
 
-interface LiveActions {
-  /** What the running turn is doing now. */
-  status?: LiveStatus | null | undefined;
-  /** A stop was asked for; the turn finishes its current step first. */
-  stopping?: boolean | undefined;
-  /** Stop the running turn after its current step. */
-  onStop?: (() => void) | undefined;
-}
-
-/** Under the streaming answer: what the turn is doing now, and a Stop control. */
-function LiveLine({ status = null, stopping = false, onStop }: LiveActions) {
-  return (
-    <div className="mt-2 flex flex-wrap items-center gap-2">
-      <span role="status" aria-live="polite" className="text-xs text-fg2">
-        {stopping ? STOPPING : turnStatusText(status)}…
-      </span>
-      {onStop ? (
-        <button
-          type="button"
-          disabled={stopping}
-          title={stopping ? STOPPING : undefined}
-          aria-description={stopping ? STOPPING : undefined}
-          onClick={onStop}
-          className="spring inline-flex items-center gap-1 rounded-full border border-hairline px-3 py-1 text-sm text-fg transition hover:bg-hairline disabled:opacity-30"
-        >
-          <CircleStop className="size-4" aria-hidden="true" />
-          Stop
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
-function Assistant({
-  message,
-  live,
-  ...actions
-}: StopActions & { message: ChatMessage; live: LiveActions }) {
-  const running = message.streaming && !message.error && !message.interrupted;
+function Assistant({ message }: { message: ChatMessage }) {
   return (
     <div className="min-w-0 max-w-[92%] text-[15px] leading-relaxed">
       <ToolExecutionPills steps={message.tools} />
@@ -130,8 +54,7 @@ function Assistant({
           </Markdown>
         </div>
       ) : null}
-      {running ? <LiveLine {...live} /> : null}
-      {message.interrupted ? <StopNotice stop={message.interrupted} {...actions} /> : null}
+      {message.interrupted ? <StopNote /> : null}
       {message.error ? (
         <p role="alert" className="mt-2 rounded-xl border border-hairline px-3 py-2 text-sm text-bad">
           {message.error}
@@ -154,18 +77,8 @@ interface MessageStreamProps {
   suggestions?: string[];
   canSend?: boolean;
   onSend?: (text: string) => void;
-  /** A turn is running (an interrupted turn's Resume waits for it). */
-  busy?: boolean;
-  /** Resume the interrupted turn in place. */
-  onResume?: (() => void) | undefined;
-  /** Open the Settings drawer (offered when the key was rejected). */
-  onOpenSettings?: (() => void) | undefined;
-  /** What the running turn is doing now (shown under the streaming answer). */
+  /** What the running turn is doing now (keeps the newest line in view as it changes). */
   status?: LiveStatus | null | undefined;
-  /** A stop was asked for and the turn is finishing its current step. */
-  stopping?: boolean | undefined;
-  /** Stop the running turn after its current step. */
-  onStop?: (() => void) | undefined;
 }
 
 export function MessageStream({
@@ -173,14 +86,8 @@ export function MessageStream({
   suggestions = [],
   canSend = false,
   onSend,
-  busy = false,
-  onResume,
-  onOpenSettings,
   status = null,
-  stopping = false,
-  onStop,
 }: MessageStreamProps) {
-  const live: LiveActions = { status, stopping, onStop };
   const end = useRef<HTMLDivElement>(null);
   const last = messages[messages.length - 1];
   useEffect(() => {
@@ -205,13 +112,7 @@ export function MessageStream({
               {message.role === "user" ? (
                 <User message={message} />
               ) : (
-                <Assistant
-                  message={message}
-                  live={live}
-                  busy={busy}
-                  onResume={onResume}
-                  onOpenSettings={onOpenSettings}
-                />
+                <Assistant message={message} />
               )}
             </li>
           ))}

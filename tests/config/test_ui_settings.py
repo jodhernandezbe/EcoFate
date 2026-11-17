@@ -102,7 +102,14 @@ output_usd_per_mtok = 3.0
 priced_on = 2026-01-02
 source_url = "https://example.test/pricing"
 """
-UI = _BASE.replace('[ui.pricing."model-a"]', GRAPH + '\n[ui.pricing."model-a"]')
+AIR = """
+[ui.air_release]
+target_unit = "kg"
+[ui.air_release.reasons]
+none_reported = "a"
+unit_not_convertible = "b"
+"""
+UI = _BASE.replace('[ui.pricing."model-a"]', GRAPH + AIR + '\n[ui.pricing."model-a"]')
 
 
 def _write(tmp_path: Path, text: str) -> Path:

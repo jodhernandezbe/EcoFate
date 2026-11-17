@@ -39,6 +39,8 @@ export function facility(over: Partial<Facility> = {}): Facility {
     operating_hours_source: null,
     fugitive_release_kg_per_year: null,
     fugitive_reporting_year: null,
+    total_air_release_kg_per_year: null,
+    total_air_release_reason: null,
     worker_only: false,
     community_reason: null,
     conditions_of_use: [],

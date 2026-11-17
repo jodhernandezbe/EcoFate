@@ -4,9 +4,9 @@ import type { ExposureGraph, GraphEdge, GraphLane, GraphNode, GraphQuantity } fr
 
 export type { ExposureGraph, GraphEdge, GraphLane, GraphNode, GraphQuantity };
 
-/** Size every node is laid out and drawn at, px. */
-export const NODE_W = 188;
-export const NODE_H = 118;
+/** Size every node card is laid out and drawn at, px. */
+export const NODE_W = 140;
+export const NODE_H = 132;
 
 /** The quantity a node puts on its face, when it names one. */
 export const headline = (node: GraphNode): GraphQuantity | null =>
@@ -18,24 +18,9 @@ export function formatQuantity(quantity: GraphQuantity, digits: number): string 
   return quantity.unit ? formatWithUnit(quantity.value, quantity.unit, digits) : formatNumber(quantity.value, digits);
 }
 
-/** The lanes that can be drawn, in the order the API sent them. */
-export const drawnLanes = (graph: ExposureGraph): GraphLane[] => graph.lanes.filter((lane) => lane.available);
-
-/** The graph restricted to one lane (plus the shared source), or the whole graph for "all". */
-export function visibleGraph(graph: ExposureGraph, lane: string): ExposureGraph {
-  if (lane === "all") return graph;
-  const keep = (id: string | null) => id === null || id === lane;
-  return {
-    lanes: graph.lanes.filter((l) => l.id === lane),
-    nodes: graph.nodes.filter((n) => keep(n.lane)),
-    edges: graph.edges.filter((e) => e.lane === lane),
-  };
-}
-
-/** A stable key of the graph's shape, so layout reruns only when nodes or edges change. */
-export const shapeKey = (graph: ExposureGraph): string =>
-  [...graph.nodes.map((n) => n.id), "|", ...graph.edges.map((e) => e.id)].join(",");
-
 /** CSS colour of a status (design tokens), neutral when there is none. */
 export const statusColor = (status: GraphLane["status"]): string =>
   isBand(status) ? BAND_LOOK[status].color : "var(--fg-2)";
+
+/** The chain with nothing in it: before any assessment, or from a server that sends no chain. */
+export const EMPTY_CHAIN: ExposureGraph = { lanes: [], nodes: [], edges: [], caption: null };

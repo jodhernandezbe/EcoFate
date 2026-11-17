@@ -559,6 +559,8 @@ export interface WorkspaceUpdate {
  *     risk: Highest risk values across the attributed facilities.
  *     worker_risk: Highest worker (occupational) values across the assessed facilities.
  *     scenario_drivers: For each pathway and quantity, the facility with the highest value.
+ *     worst_case_chain: The run-wide worst-case exposure chain (one lane per pathway, from the
+ *         facility that drives it, naming no facility); empty before any assessment.
  *     receptors: Receptors of the selected facility.
  *     meteorology: Meteorology of the selected facility, else the latest result.
  *     unattributed: Results not attached to any facility.
@@ -580,6 +582,7 @@ export interface WorkspaceState {
   unattributed: Unattributed[];
   warnings: string[];
   worker_risk: WorkerRiskSummary;
+  worst_case_chain: ExposureGraph;
 }
 /**
  * Extent of the placed facilities and buffers, decimal degrees (WGS84).
@@ -656,6 +659,9 @@ export interface ReadAcross {
  *     operating_hours_source: Where those hours came from (industry survey or default); None
  *         when the record predates the field.
  *     fugitive_release_kg_per_year: TRI fugitive air release, kg/yr; None when TRI has none.
+ *     total_air_release_kg_per_year: Stack release (converted to kg/yr) plus fugitive release,
+ *         kg/yr; each part counts only when reported; None when it cannot be established.
+ *     total_air_release_reason: Why the total is None; None when it is set.
  *     exposure: The community (ambient fenceline) result.
  *     occupational_exposure: The worker screening; None when no assessment produced it.
  *     operational_profile: Schedule, life cycle stage, condition of use and CDR sector.
@@ -716,6 +722,8 @@ export interface Facility {
   stacks: Stack[];
   state: string | null;
   status: ("high" | "moderate" | "low") | null;
+  total_air_release_kg_per_year: number | null;
+  total_air_release_reason: string | null;
   total_release: number | null;
   worker_only: boolean;
   zip_code: string | null;
@@ -795,10 +803,15 @@ export interface Dose {
 /**
  * The source facility, then each lane's steps, joined by labelled edges.
  *
+ * Attributes:
+ *     caption: Configured text to show under the diagram (the run-wide chain says its bands
+ *         have a fixed width); None for a facility's graph.
+ *
  * This interface was referenced by `ApiContract`'s JSON-Schema
  * via the `definition` "ExposureGraph".
  */
 export interface ExposureGraph {
+  caption: string | null;
   edges: GraphEdge[];
   lanes: GraphLane[];
   nodes: GraphNode[];

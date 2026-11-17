@@ -61,12 +61,18 @@ const marker = (name: RegExp) => screen.getByRole("button", { name });
 describe("markers", () => {
   it("are reachable by keyboard and announce the facility name", () => {
     show(facility({ name: "Plant F1", status: "high" }));
-    expect(marker(/Plant F1, high/)).toBeInTheDocument();
+    expect(marker(/Plant F1, high on Outdoor Air/)).toBeInTheDocument();
   });
 
-  it("say when no risk is computed", () => {
+  it("say when there is no result on the chosen pathway", () => {
     show(facility({ name: "Plant F1" }));
-    expect(marker(/Plant F1, risk not computed/)).toBeInTheDocument();
+    expect(marker(/Plant F1, no result on Outdoor Air/)).toBeInTheDocument();
+  });
+
+  it("announce the band of the pathway the dropdown chose", async () => {
+    show(facility({ status: "low", occupational_exposure: worker({ risk_tier: "high" }) }));
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: /Map pathway/ }), "indoor");
+    expect(marker(/Plant F1, high on Indoor Air/)).toBeInTheDocument();
   });
 });
 
@@ -501,39 +507,30 @@ describe("worker section and ring", () => {
     expect(dialog).toHaveTextContent("Worker exposure: not reported");
   });
 
-  it("announces the worker tier on the marker and draws the ring in the legend", () => {
+  it("draws no worker ring and no ring legend, whichever pathway is chosen", async () => {
     show(facility({ status: "high", occupational_exposure: worker() }));
-    expect(marker(/Plant F1, high, worker moderate/)).toBeInTheDocument();
-    const rings = screen.getByRole("group", { name: "Worker screening rings" });
-    expect(rings).toHaveTextContent("Moderate1");
-    expect(rings).toHaveTextContent("Low0");
-  });
-
-  it("has no ring legend without any worker result", () => {
-    show(facility());
     expect(screen.queryByRole("group", { name: "Worker screening rings" })).toBeNull();
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: /Map pathway/ }), "indoor");
+    expect(screen.queryByRole("group", { name: "Worker screening rings" })).toBeNull();
+    expect(screen.getByRole("complementary", { name: "Map legend" })).not.toHaveTextContent("Ring:");
   });
 });
 
 describe("worker-only facilities", () => {
-  it("announce that they report no stack release, with the worker band", () => {
+  it("have no result on the outdoor pathway and the worker band on the indoor one", async () => {
     show(workerOnly({ name: "Plant W1" }));
-    expect(marker(/Plant W1, reports no stack release, worker moderate/)).toBeInTheDocument();
+    expect(marker(/Plant W1, no result on Outdoor Air/)).toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: /Map pathway/ }), "indoor");
+    expect(marker(/Plant W1, moderate on Indoor Air/)).toBeInTheDocument();
   });
 
-  it("are counted in the legend with the outlined marker explained", () => {
+  it("are counted as no result outdoors and under their band indoors", async () => {
     show(workerOnly(), facility({ status: "low" }));
     const legend = screen.getByRole("complementary", { name: "Map legend" });
-    expect(within(legend).getByRole("button", { name: /No stack release/ })).toHaveTextContent("No stack release1");
-    expect(legend).toHaveTextContent("Outlined marker: no stack release");
-    expect(within(legend).getByRole("button", { name: /Not computed/ })).toHaveTextContent("Not computed0");
-  });
-
-  it("leave the legend without the entry when none is on the map", () => {
-    show(facility({ status: "low" }));
-    const legend = screen.getByRole("complementary", { name: "Map legend" });
-    expect(within(legend).queryByRole("button", { name: /No stack release/ })).toBeNull();
-    expect(legend).not.toHaveTextContent("Outlined marker");
+    expect(within(legend).getByRole("button", { name: /No result on this pathway/ })).toHaveTextContent("1");
+    await userEvent.selectOptions(screen.getByRole("combobox", { name: /Map pathway/ }), "indoor");
+    expect(within(legend).getByRole("button", { name: /Moderate/ })).toHaveTextContent("1");
+    expect(within(legend).getByRole("button", { name: /No result on this pathway/ })).toHaveTextContent("1");
   });
 
   it("say in the inspector that no community result applies, and show the worker section", async () => {

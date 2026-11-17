@@ -1258,6 +1258,17 @@ assessor = "Assessor summary"
 
 # Fixed text and units of the exposure chain graph (api/services/exposure_graph/). Every value in the
 # graph comes from a tool result; this table only names and labels them.
+# The facility's total annual air release (stack plus fugitive), computed by the server for the
+# size of the map markers. `target_unit` is the unit of the stack release after conversion (the
+# fugitive release is already kg per year); the stack unit spellings TRI reports are in
+# [units.aliases]. The reasons say why a facility has no total.
+[ui.air_release]
+target_unit = "kg"
+
+[ui.air_release.reasons]
+none_reported = "no stack or fugitive air release reported"
+unit_not_convertible = "the reported stack release unit could not be converted to kg"
+
 [ui.exposure_graph]
 source = "Source facility"
 
@@ -1292,6 +1303,7 @@ process = "Process (SCC)"
 stability_class = "Atmospheric stability class"
 weather_source = "Weather"
 population_source = "Population"
+receptors_note = "Most affected residents"
 ventilation = "Ventilation scenario"
 benchmark = "Occupational limit source"
 schedule_source = "Operating schedule"
@@ -1335,8 +1347,23 @@ capped = "capped at the saturation concentration"
 not_capped = "not capped by saturation"
 
 [ui.exposure_graph.variants]
-worst_case = "worst case"
+worst_case = "worst case, upper bound"
 baseline = "typical case"
+
+# The run-wide worst-case chain (api/services/exposure_graph/worst_case.py): one lane per pathway,
+# taken from the facility that drives the pathway's headline quantity, naming no facility. The
+# caption is shown under the diagram because every band is drawn at the same width.
+[ui.exposure_graph.worst_case]
+source_title = "Reported release of {chemical}"
+unknown_chemical = "the chemical"
+other_driver_note = "Another facility in the run has a higher value of {quantity}."
+withheld_title = "Step (name withheld)"
+caption = "Bands have a fixed width: the steps carry different units, so width shows no amount. Read each value from its label."
+
+# Pathway key -> the quantity whose driving facility feeds that pathway's lane.
+[ui.exposure_graph.worst_case.headline]
+community_inhalation = "hq"
+worker_inhalation = "oel_ratio"
 
 [ui.exposure_graph.reasons]
 community = "no community result yet"
@@ -1361,6 +1388,9 @@ wind_speed = { label = "Wind speed", unit = "m/s" }
 residents = { label = "Residents", unit = "" }
 radius = { label = "Radius", unit = "km" }
 band_share = { label = "Share of residents", unit = "%" }
+tract_residents = { label = "Residents of most affected area", unit = "" }
+tract_distance = { label = "Distance to most affected area", unit = "m" }
+tract_fraction = { label = "Share of the maximum at most affected area", unit = "" }
 band_dose = { label = "Inhalation dose", unit = "mg/(kg·day)" }
 hq = { label = "Hazard quotient", unit = "" }
 cancer_risk = { label = "Lifetime cancer risk", unit = "" }

@@ -5,7 +5,8 @@ import type { WorkspaceState } from "../../types/workspace";
 import { EpaOverviewRibbon } from "./EpaOverviewRibbon";
 import { isAssessed } from "./assessment";
 import { RiskGroupSection } from "./RiskGroupSection";
-import { PATHWAYS, type GroupBy, type Pathway, type Quantity } from "./riskGroups";
+import { PATHWAYS, type Pathway } from "../../lib/pathways";
+import type { GroupBy, Quantity } from "./riskGroups";
 
 interface Props {
   workspace: WorkspaceState;
