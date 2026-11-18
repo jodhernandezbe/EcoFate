@@ -17,7 +17,9 @@ main() {
   [[ "${bucket}" =~ ^[a-z0-9][a-z0-9-]{1,62}$ ]] || { echo "backup: set ECOFATE_BACKUP_BUCKET in ${ECOFATE_ENV_FILE}" >&2; exit 1; }
   name="pg/$(date -u +%Y%m%dT%H%M%SZ).dump"
   dump="$(mktemp)"
-  trap 'rm -f "${dump}"' EXIT
+  # The path is expanded now: $dump is local to main and gone when the EXIT trap runs.
+  # shellcheck disable=SC2064
+  trap "rm -f $(printf '%q' "${dump}")" EXIT
   # The credentials stay inside the container: pg_dump reads them from its own environment.
   # shellcheck disable=SC2016  # expanded by the container's shell, on purpose
   ecofate_compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom' > "${dump}"

@@ -21,6 +21,13 @@ PUBLIC_KEY="${OCI_SSH_PUBLIC_KEY_FILE/#\~/${HOME}}"
 PRIVATE_KEY="${PUBLIC_KEY%.pub}"
 [[ -f "${PUBLIC_KEY}" && -f "${PRIVATE_KEY}" ]] || die "need both ${PRIVATE_KEY} and ${PUBLIC_KEY}"
 [[ "${LOCAL_PORT}" =~ ^[0-9]{4,5}$ ]] || die "LOCAL_PORT must be a port number"
+# Another session (or anything else) may already listen there: never reuse a busy port, or the
+# login below would go to whatever answers on it.
+for _ in $(seq 1 50); do
+  nc -z 127.0.0.1 "${LOCAL_PORT}" 2>/dev/null || break
+  LOCAL_PORT=$(( LOCAL_PORT + 1 ))
+done
+nc -z 127.0.0.1 "${LOCAL_PORT}" 2>/dev/null && die "no free local port found near ${LOCAL_PORT}"
 
 instance="$(oci compute instance list --compartment-id "${OCI_COMPARTMENT_OCID}" --all \
   --query "data[?\"display-name\"=='${NAME}-vm' && \"lifecycle-state\"=='RUNNING'].id | [0]" --raw-output)"
