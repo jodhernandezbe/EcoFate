@@ -16,7 +16,7 @@ abstract: >-
 repository-code: "https://github.com/jodhernandezbe/EcoFate"
 license: Apache-2.0
 version: "0.1.0"
-date-released: "2026-11-07"
+date-released: "2026-11-17"
 keywords:
   - chemical exposure
   - risk assessment
