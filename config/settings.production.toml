@@ -4,7 +4,7 @@
 
 [ui]
 # The site is served by Cloudflare (through the tunnel) at this origin.
-public_origin = "https://ecofate.org"
+public_origin = "https://rollback-drill.invalid"  # deliberately wrong: rollback drill (task 8.3), never merged
 
 [mail]
 # Links in verification and password-reset emails open the public site.
