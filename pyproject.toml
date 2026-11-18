@@ -47,7 +47,9 @@ dev = [
     "pre-commit>=4.0.0",
     "pyright>=1.1.380",
     "pytest>=8.0.0",
+    "pyyaml>=6.0.3",
     "ruff>=0.6.0",
+    "types-pyyaml>=6.0.12.20261113",
 ]
 
 # PyTorch on Linux (the Docker image) comes from the CPU-only wheel index, so the image carries

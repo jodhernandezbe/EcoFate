@@ -363,3 +363,15 @@ files and state their changes. If you use EcoFate, build on it or publish work t
 please credit the author and cite it with [CITATION.cff](CITATION.cff) (GitHub's "Cite this
 repository" button). Third-party data and models keep their own licences; the MolDeBERTa model
 used by the read-across tool is CC BY-NC-ND 4.0 (non-commercial only).
+
+Every published GitHub release is archived on [Zenodo](https://zenodo.org), which gives it a DOI;
+the archive takes its metadata from `CITATION.cff` (there is deliberately no `.zenodo.json`), and
+`tests/test_citation.py` keeps that file complete and in step with `pyproject.toml`.
+
+Releasing a version:
+
+1. Once only, before the first release: sign in to Zenodo with GitHub and switch this repository on
+   (GitHub settings in Zenodo). Releases published before that are not archived.
+2. Bump `version` in `pyproject.toml` and `CITATION.cff` together, and set `date-released`.
+3. Run `uv run pre-commit run --all-files` and merge through a pull request with CI green.
+4. Tag `v<version>` on `main` and publish a GitHub release from it. Zenodo archives it within minutes.

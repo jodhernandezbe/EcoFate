@@ -5,6 +5,14 @@ type: software
 authors:
   - family-names: "Hernandez-Betancur"
     given-names: "Jose"
+    orcid: "https://orcid.org/0000-0003-2652-1405"
+abstract: >-
+  EcoFate turns fragmented environmental data into screening-level chemical exposure risk
+  profiles. It unifies public datasets, such as the EPA Toxics Release Inventory (TRI), with
+  phenomenological transport models to automate screening-level exposure assessments. A user
+  provides a location, facility, or chemical of interest, and the system pulls together release
+  data, chemical properties, and transport modeling to return a risk profile: a starting point
+  for further investigation.
 repository-code: "https://github.com/jodhernandezbe/EcoFate"
 license: Apache-2.0
 version: "0.1.0"
