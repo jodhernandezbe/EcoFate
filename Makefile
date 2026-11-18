@@ -8,7 +8,7 @@ WARM := from huggingface_hub import snapshot_download; \
 	model = settings().model; snapshot_download(model.name, revision=model.revision)
 
 .DEFAULT_GOAL := help
-.PHONY: help up down build logs worker-logs shell warm test lint check audit eval catalogue migrate db test-db redis test-redis psql
+.PHONY: help up down build logs worker-logs shell warm test lint check audit eval catalogue migrate db test-db redis test-redis psql deploy-provision deploy-teardown deploy-ssh deploy-backup deploy-restore
 
 help: ## List the targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-10s %s\n", $$1, $$2}'
@@ -86,3 +86,24 @@ test-redis: redis ## Run the Redis tests (pytest -m redis) against the redis ser
 
 psql: ## Open a psql shell in the db service
 	docker compose exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
+
+# --- Production on Oracle Cloud (docs/deployment.md) ---------------------------------------
+# On your machine: deploy-provision, deploy-teardown, deploy-ssh. On the VM: deploy-backup,
+# deploy-restore (as the ecofate user, in /opt/ecofate/app).
+
+deploy-provision: ## Create the Oracle Cloud resources (reads deploy/oci/config.env)
+	deploy/oci/provision.sh
+
+deploy-teardown: ## Delete every Oracle Cloud resource provision created (asks to confirm)
+	deploy/oci/teardown.sh
+
+deploy-ssh: ## SSH into the VM through the OCI Bastion (first login, emergencies)
+	deploy/oci/bastion-ssh.sh
+
+deploy-backup: ## On the VM: dump the database to Object Storage now
+	deploy/backup.sh
+
+deploy-restore: export DUMP := $(DUMP)
+deploy-restore: ## On the VM: restore a dump, e.g. make deploy-restore DUMP=20261118T031500Z
+	@test -n "$$DUMP" || { echo "usage: make deploy-restore DUMP=<UTC timestamp>"; exit 1; }
+	deploy/restore.sh "$$DUMP"

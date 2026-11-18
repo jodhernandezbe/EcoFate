@@ -173,5 +173,9 @@ def test_production_containers_rotate_their_logs_and_have_memory_limits() -> Non
         assert service["mem_limit"], name
 
 
+def test_the_tunnel_can_reach_the_vms_own_ssh_server() -> None:
+    assert "host.docker.internal:host-gateway" in SERVICES["cloudflared"]["extra_hosts"]
+
+
 def test_dev_only_services_are_not_switched_on_in_production() -> None:
     assert not {"db-port", "redis-port", "mailpit"} & SERVICES.keys()

@@ -17,6 +17,13 @@ EcoFate unifies public datasets, such as the EPA Toxics Release Inventory (TRI),
 
 The intended tool flow for an assessment is: chemical properties -> emissions inventory -> stack parameters -> meteorology and population -> exposure metrics. All tools are implemented (see [Tools](#tools)).
 
+## Production
+
+EcoFate's production address is **https://ecofate.org**: one Oracle Cloud Always Free VM running the
+same compose stack, served by Cloudflare through a tunnel (no port open on the VM), deployed from a
+version tag and backed up nightly. How it is provisioned, released, rolled back, backed up and torn
+down, at no monthly cost: [docs/deployment.md](docs/deployment.md).
+
 ## Run with Docker
 
 The quickest way to see the app: no Python or Node needed, only Docker (Docker Desktop on macOS or Windows).

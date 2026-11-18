@@ -12,6 +12,7 @@ packages:
   - curl
   - git
   - gnupg
+  - make
   - pipx
   - unattended-upgrades
 
@@ -25,12 +26,23 @@ users:
       - "__OPERATOR_SSH_PUBLIC_KEY__"
 
 write_files:
+  # SSH: keys only, no root, no client-supplied environment, the ecofate user only. sshd is
+  # reachable only through the Bastion (subnet) and the Cloudflare tunnel (behind Access).
+  - path: /etc/ssh/sshd_config.d/10-ecofate.conf
+    permissions: "0644"
+    content: |
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PermitRootLogin no
+      PermitUserEnvironment no
+      AllowUsers ecofate
   - path: /etc/apt/apt.conf.d/20auto-upgrades
     content: |
       APT::Periodic::Update-Package-Lists "1";
       APT::Periodic::Unattended-Upgrade "1";
 
 runcmd:
+  - systemctl reload ssh || systemctl reload sshd
   # Docker Engine and the compose plugin (Docker's documented apt repository).
   - install -m 0755 -d /etc/apt/keyrings
   - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
@@ -45,3 +57,7 @@ runcmd:
   # The application checkout and its state; deploy.sh moves it to each release tag.
   - install -d -o ecofate -g ecofate -m 0750 /opt/ecofate
   - sudo -u ecofate git clone https://github.com/jodhernandezbe/EcoFate.git /opt/ecofate/app
+  # The nightly backup (it fails visibly in the journal until /opt/ecofate/.env.prod exists).
+  - cp /opt/ecofate/app/deploy/ecofate-backup.service /opt/ecofate/app/deploy/ecofate-backup.timer /etc/systemd/system/
+  - systemctl daemon-reload
+  - systemctl enable --now ecofate-backup.timer

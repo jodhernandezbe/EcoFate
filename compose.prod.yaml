@@ -65,6 +65,10 @@ services:
     command: ["tunnel", "--no-autoupdate", "run"]
     env_file:
       - /opt/ecofate/tunnel.env
+    # The tunnel's ssh.<domain> hostname points at ssh://host.docker.internal:22, the VM's own sshd
+    # (reachable from this container only; the VM's security list admits nothing from outside).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       api:
         condition: service_healthy

@@ -33,9 +33,9 @@
 
 ## 7. Makefile and documentation
 
-- [ ] 7.1 `Makefile`: `deploy-provision`, `deploy-teardown`, `deploy-backup`, `deploy-restore`.
-- [ ] 7.2 `docs/deployment.md`: architecture (Cloudflare → tunnel → api/worker → db/redis; GHCR; Object Storage; Logfire), USD 0 cost and how to keep it (Always Free shapes only, Pay As You Go upgrade against idle reclamation, USD 1 budget alert), Oracle sign-up and console walkthrough, capacity tips and the Hetzner fallback, Cloudflare Tunnel + Access setup, `www` redirect, Always Use HTTPS + HSTS, SMTP via Cloudflare Email Service (Resend fallback) and the SPF/DKIM records, creating `.env.prod`, first deploy, first admin, releasing, rollback, logs, backups and the restore drill, teardown.
-- [ ] 7.3 README: `https://ecofate.org` and a link to `docs/deployment.md`.
+- [x] 7.1 `Makefile`: `deploy-provision`, `deploy-teardown`, `deploy-backup`, `deploy-restore`.
+- [x] 7.2 `docs/deployment.md`: architecture (Cloudflare → tunnel → api/worker → db/redis; GHCR; Object Storage; Logfire), USD 0 cost and how to keep it (Always Free shapes only, Pay As You Go upgrade against idle reclamation, USD 1 budget alert), Oracle sign-up and console walkthrough, capacity tips and the Hetzner fallback, Cloudflare Tunnel + Access setup, `www` redirect, Always Use HTTPS + HSTS, SMTP via Cloudflare Email Service (Resend fallback) and the SPF/DKIM records, creating `.env.prod`, first deploy, first admin, releasing, rollback, logs, backups and the restore drill, teardown.
+- [x] 7.3 README: `https://ecofate.org` and a link to `docs/deployment.md`.
 
 ## 8. Verification
 
