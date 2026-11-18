@@ -20,5 +20,5 @@
 
 ## 5. After the first release (owner actions first)
 
-- [ ] 5.1 Owner: sign in to Zenodo with GitHub, switch on `jodhernandezbe/EcoFate`, publish release `v<version>`; confirm the Zenodo record's title, author, version and licence look right.
-- [ ] 5.2 Add the concept DOI to `CITATION.cff` (`doi:`) and a DOI badge under the README title linking to `https://doi.org/<concept DOI>`, plus a sentence on citing a specific version's DOI; the test passes.
+- [x] 5.1 Owner: sign in to Zenodo with GitHub, switch on `jodhernandezbe/EcoFate`, publish release `v<version>`; confirm the Zenodo record's title, author, version and licence look right.
+- [x] 5.2 Add the concept DOI to `CITATION.cff` (`doi:`) and a DOI badge under the README title linking to `https://doi.org/<concept DOI>`, plus a sentence on citing a specific version's DOI; the test passes.
