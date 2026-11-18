@@ -184,8 +184,16 @@ ensure_bucket() {
       --name "${OCI_BACKUP_BUCKET}" --public-access-type NoPublicAccess --storage-tier Standard >/dev/null
   fi
   items='[{"name":"expire-dumps","action":"DELETE","timeAmount":30,"timeUnit":"DAYS","isEnabled":true,"objectNameFilter":{"inclusionPrefixes":["pg/"]}}]'
-  oci os object-lifecycle-policy put --bucket-name "${OCI_BACKUP_BUCKET}" --namespace-name "${namespace}" \
-    --items "${items}" --force >/dev/null
+  # The lifecycle rule needs the policy ensure_backup_permission just created, and a new IAM
+  # policy takes a little while to apply: retry for about two minutes before giving up.
+  local attempt
+  for attempt in $(seq 1 12); do
+    oci os object-lifecycle-policy put --bucket-name "${OCI_BACKUP_BUCKET}" --namespace-name "${namespace}" \
+      --items "${items}" --force >/dev/null 2>&1 && break
+    (( attempt < 12 )) || die "could not set the 30-day lifecycle rule on ${OCI_BACKUP_BUCKET}; run provision.sh again"
+    say "waiting for the new policy to apply (attempt ${attempt})"
+    sleep 10
+  done
   say "bucket ${OCI_BACKUP_BUCKET} (private, dumps deleted after 30 days)"
 }
 
