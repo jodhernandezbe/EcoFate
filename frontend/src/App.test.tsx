@@ -62,7 +62,7 @@ describe("App", () => {
     const first = await renderApp(undefined, { welcome: true });
     expect(screen.getByRole("dialog", { name: "Welcome to EcoFate" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Map" })).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Get started" }));
+    await user.click(screen.getByRole("button", { name: "Continue" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     first.unmount();
     await renderApp(undefined, { welcome: true });
@@ -76,7 +76,7 @@ describe("App", () => {
     const user = userEvent.setup();
     localStorage.clear();
     await renderApp(undefined, { welcome: true });
-    await user.click(within(screen.getByRole("dialog", { name: "Welcome to EcoFate" })).getByRole("button", { name: "Open Settings" }));
+    await user.click(within(screen.getByRole("dialog", { name: "Welcome to EcoFate" })).getByRole("button", { name: "Add your key in Settings" }));
     expect(screen.queryByRole("dialog", { name: "Welcome to EcoFate" })).toBeNull();
     expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument();
   });

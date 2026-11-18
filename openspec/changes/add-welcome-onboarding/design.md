@@ -42,3 +42,11 @@ API (`/api/keys` keeps reporting it; the UI simply stops showing it).
 - Operators lose the UI hint that Census/CompTox are unavailable; the tools still state a missing
   key in the answer and the operator sees it in logs. Accepted: users cannot act on it.
 - Visual snapshots of Settings change and must be regenerated; reviewed with `/ui-check`.
+
+## Revision (after the first deploy)
+
+The owner found the first version (numbered steps in the bottom drawer, chips) dated. It is now a
+"What's New" card: centered over a blurred scrim, the mark, a `text-3xl` title (a documented row in
+DESIGN.md's type scale), three accent-icon features, one full-width Continue and, without a key, an
+"Add your key in Settings" link. One example replaces the chip list (the chat keeps all of them).
+It composes `useFocusTrap` and `BrandMark` like `ConfirmDialog`; no new primitive.

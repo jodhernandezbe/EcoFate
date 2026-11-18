@@ -1,25 +1,26 @@
 ## Purpose
 
-A short first-visit welcome that tells a new user what EcoFate does and the three things to do
-first (add the OpenAI key, ask a question, read the results), then gets out of the way.
+A short first-visit welcome that tells a new user what EcoFate does and the three things to know
+first (bring the OpenAI key, ask in plain words, read the results), then gets out of the way.
 
 ## ADDED Requirements
 
 ### Requirement: Welcome sheet on the first visit
 When a signed-in user opens the workspace and has not dismissed the welcome in this browser, the
-workspace SHALL show a welcome sheet over it (the `BottomDrawer` primitive at its content height,
-over a scrim, focus inside, Escape and its close control dismiss it). The workspace, chat and map
-SHALL stay mounted underneath. The sheet SHALL have a title ("Welcome to EcoFate"), one sentence
-saying the app produces screening-level chemical exposure and risk assessments from public
-inventories, and three numbered steps in order: "Add your OpenAI key", "Ask a question", "Read
-the results". It SHALL end with a primary "Get started" action that dismisses it.
+workspace SHALL show a welcome sheet in the manner of a "What's New" screen: a centered card over a
+blurred scrim with the EcoFate mark, a large title ("Welcome to EcoFate"), one line saying it gives
+screening-level chemical exposure and risk from public inventories, three features (each an accent
+Lucide icon, a bold title and one or two sentences) in this order: "Bring your OpenAI key", "Ask
+in plain words", "See the risk at a glance", and one full-width primary "Continue" action. Focus
+SHALL start on Continue and stay inside the card; Continue, Escape or the scrim dismiss it. The
+workspace, chat and map SHALL stay mounted underneath.
 
 #### Scenario: First visit
 - **WHEN** a user signs in for the first time in this browser
-- **THEN** the welcome sheet is shown with the three steps in order
+- **THEN** the welcome sheet is shown with the three features in order and focus on Continue
 
 #### Scenario: Dismissed
-- **WHEN** the user chooses "Get started", the close control or Escape
+- **WHEN** the user chooses Continue, presses Escape or clicks the scrim
 - **THEN** the sheet closes, focus returns to the workspace, and it is not shown on the next visit in this browser
 
 #### Scenario: Storage unavailable
@@ -30,44 +31,42 @@ the results". It SHALL end with a primary "Get started" action that dismisses it
 - **WHEN** another user signs in on the same browser
 - **THEN** that user sees the welcome on their own first visit
 
-### Requirement: Step 1 shows the key state and leads to Settings
-The first step SHALL say that the assistant runs on the user's own OpenAI key, billed to their
-OpenAI account, and stored encrypted. It SHALL show the state in words: "Key stored" (with the
-`ok` tint) or "No key yet", and an "Open Settings" action that closes the welcome and opens the
-Settings drawer. The welcome SHALL never contain a key input or any part of a key.
+### Requirement: The key feature shows the key state and leads to Settings
+The first feature SHALL say that the assistant runs on the user's own OpenAI key, billed to their
+OpenAI account and stored encrypted, followed by the state in words: "Key stored." (in the `ok`
+colour) or "No key yet.". While no key is stored, an "Add your key in Settings" action under
+Continue SHALL close the welcome and open the Settings drawer. The welcome SHALL never contain a
+key input or any part of a key.
 
 #### Scenario: No key
 - **WHEN** the user has no key stored
-- **THEN** step 1 reads "No key yet" and "Open Settings" opens the Settings drawer
+- **THEN** the feature reads "No key yet." and "Add your key in Settings" opens the Settings drawer
 
 #### Scenario: Key stored
 - **WHEN** the user's key is stored
-- **THEN** step 1 reads "Key stored"
+- **THEN** the feature reads "Key stored." and no Settings action is shown
 
-### Requirement: Step 2 offers the example questions
-The second step SHALL show the configured example prompts (the client configuration's
-`suggestions`) as chips. Choosing one SHALL close the welcome and send that prompt as the user's
-message, exactly as the chat's suggestion chips do. While no key is stored or a reply is running
-the chips SHALL be disabled and say why (tooltip and `aria-description`). Without configured
-suggestions the step SHALL say to type a question in the chat.
+### Requirement: The ask feature offers one example
+The second feature SHALL offer the first configured example prompt (the client configuration's
+`suggestions`) as a one-tap "Try “…” →" action. Choosing it SHALL close the welcome and send that
+prompt as the user's message. While no key is stored or a reply is running it SHALL be disabled
+and say why (tooltip and `aria-description`). Without configured suggestions no example is shown.
 
-#### Scenario: Pick an example
-- **WHEN** a user with a stored key chooses an example
+#### Scenario: Pick the example
+- **WHEN** a user with a stored key chooses the example
 - **THEN** the welcome closes and that prompt is sent in the chat
 
 #### Scenario: No key yet
 - **WHEN** no key is stored
-- **THEN** the examples are disabled and say a key is needed first
+- **THEN** the example is disabled and says a key is needed first
 
-### Requirement: Step 3 explains where the results appear
-The third step SHALL say in one line each: the Overview summarises the screening results and
-their bands, the Map shows the facilities and the people around them, the Chat explains each step
-and asks when a value is missing, and the rail's report downloads the assessment. It SHALL state
-that results are screening level, not a regulatory determination.
+### Requirement: The results feature explains where the results appear
+The third feature SHALL name the overview, the map and the downloadable report, and state that
+results are screening level, not a regulatory determination.
 
 #### Scenario: Results explained
 - **WHEN** the welcome is shown
-- **THEN** step 3 names the Overview, the Map, the Chat and the report, and says results are screening level
+- **THEN** it names the overview, the map and the report, and says results are screening level
 
 ### Requirement: Reopen from the rail
 The navigation rail SHALL have a "Welcome" item (Lucide icon, labelled when collapsed) that opens
