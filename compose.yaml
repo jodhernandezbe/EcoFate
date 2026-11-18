@@ -126,11 +126,8 @@ services:
         condition: service_completed_successfully
     restart: unless-stopped
     healthcheck:
-      test:
-        - CMD
-        - python
-        - -c
-        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4).status == 200 else 1)"
+      # Calls /api/health on loopback with the site's own Host (see api/container_health.py).
+      test: ["CMD", "python", "-m", "api.container_health"]
       interval: 30s
       timeout: 5s
       start_period: 40s

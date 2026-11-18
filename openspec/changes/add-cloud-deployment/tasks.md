@@ -1,42 +1,46 @@
-## 1. Production compose and proxy
+## 1. arm64 images first (de-risk)
 
-- [ ] 1.1 Write `compose.prod.yaml`: `api`/`worker`/`migrate` use `image: ghcr.io/<owner>/ecofate-{api,worker}:${ECOFATE_TAG}`, `env_file: /opt/ecofate/.env.prod`, `restart: unless-stopped`, `mem_limit`s, json-file log rotation; no ports published except `caddy` 80/443; `mailpit` excluded.
-- [ ] 1.2 Add the one-off `migrate` service (`alembic upgrade head`) to `compose.yaml` if `migrate-to-postgresql` has not, and make `api` and `worker` depend on it with `service_completed_successfully`.
-- [ ] 1.3 Write `deploy/Caddyfile`: site `{$ECOFATE_DOMAIN}`, `reverse_proxy api:8000 { flush_interval -1 }`, HSTS and security headers; `caddy_data` volume for certificates.
-- [ ] 1.4 Make the API health endpoint report unhealthy when Postgres or Redis is unreachable (fixed body, no error text); add a test with fakes.
+- [x] 1.1 Build the `api` and `worker` targets for `linux/arm64` (locally with buildx, or a throwaway workflow run on `ubuntu-24.04-arm`); confirm every native wheel installs and `python -c "import torch, rdkit, chromadb"` runs in the image. If it fails, stop and revisit the platform choice.
 
-## 2. Provisioning and teardown
+## 2. App changes for production behind Cloudflare
 
-- [ ] 2.1 Write `deploy/aws/config.env.example` (region, instance type, key-less defaults, operator CIDR, bucket name, domain) and git-ignore `deploy/aws/config.env`.
-- [ ] 2.2 Write `deploy/aws/cloud-init.yaml` (Docker Engine + compose plugin from Docker's apt repo, `ecofate` user, `/opt/ecofate`, 2 GB swap, unattended-upgrades, SSM agent check) and `deploy/aws/iam-policy.json` (read `/ecofate/prod/*`, decrypt with the SSM KMS key, put/get on the backup bucket only).
-- [ ] 2.3 Write `deploy/aws/provision.sh` (idempotent, `set -euo pipefail`): security group (80/443 open, 22 only from the operator CIDR or none), instance role + profile, S3 bucket (block public access, versioning, SSE, 30-day lifecycle), EC2 instance with cloud-init and tags, Elastic IP, optional AWS Budget alarm; prints the IP and next steps.
-- [ ] 2.4 Write `deploy/aws/teardown.sh` that deletes everything `provision.sh` created, after typing the bucket name to confirm.
+- [x] 2.1 Production settings override in `config/` (typed loader, environment-selected): public origin, `cookie_secure`, `trusted_proxy_hops`, `[telemetry].environment`; local defaults unchanged; tests including refusals of malformed values.
+- [x] 2.2 Origin guard checks `Host` and `Origin` against the public origin when set (it stays strict for every path, `/api/health` included); the container health check becomes `python -m api.container_health`, which calls `/api/health` on loopback with the origin's own `Host`; tests: public host served, other hosts and origins rejected, the health command sends the right `Host` locally and in production, local runs unchanged.
+- [x] 2.3 SSE comment heartbeat in the chat event relay at a `[ui]`-configured interval (about 15 s, below Cloudflare's 100 s); tests with a quiet fake turn.
+- [x] 2.4 Health endpoint also checks Redis (fixed body, no error text); tests with fakes for each dependency down.
 
-## 3. Secrets and deploy script
+## 3. Production compose and secrets
 
-- [ ] 3.1 Write `deploy/fetch-secrets.sh`: reads every parameter under `/ecofate/prod/` with decryption via the instance role and writes `/opt/ecofate/.env.prod` with `umask 077`, owner `ecofate`; never prints a value.
-- [ ] 3.2 Write `deploy/deploy.sh <tag>`: log in to GHCR with the stored read token, record `RELEASE` → `RELEASE.prev`, fetch secrets, `docker compose -f compose.yaml -f compose.prod.yaml pull`, `up -d` (migrate runs first), poll `https://$ECOFATE_DOMAIN/<health>`; on failure redeploy `RELEASE.prev` and exit non-zero. <!-- pragma: allowlist secret -->
+- [x] 3.1 `compose.prod.yaml`: `api`/`worker`/`migrate` from `ghcr.io/jodhernandezbe/ecofate-{api,worker}:${ECOFATE_TAG}`, `env_file: /opt/ecofate/.env.prod`, no published ports, `mem_limit`s, json-file log rotation, `restart: unless-stopped`; a `cloudflared` service (`tunnel run`, pinned image, token from its own `/opt/ecofate/tunnel.env` so the API and worker never hold it); `ECOFATE_SETTINGS_PROFILE=production` on `api`, `worker` and `migrate`; dev-only services excluded. `docker compose -f compose.yaml -f compose.prod.yaml config` validates.
+- [x] 3.2 `deploy/env.prod.example` and `deploy/tunnel.env.example`: every required variable name with a comment on how to generate or obtain it, no values (uncommented names are the list `deploy.sh` requires); git-ignore `.env.prod`, `tunnel.env` and `deploy/oci/config.env`.
 
-## 4. Release workflow
+## 4. Provisioning and teardown on Oracle Cloud
 
-- [ ] 4.1 Write `.github/workflows/deploy.yml`: on tags `v*.*.*` and `workflow_dispatch` (input `rollback_tag`, validated against the tag pattern); `permissions: contents: read, packages: write, id-token: write`; build and push both images to GHCR tagged version + `sha-<short>`; `aws-actions/configure-aws-credentials` with OIDC role; `aws ssm send-command` running `deploy.sh <tag>` on the instance by tag, wait for the result with retries, fail the job on failure; all actions SHA-pinned; `environment: production`.
-- [ ] 4.2 Document the OIDC trust policy (repository + tag ref condition) and the minimal role policy in `deploy/aws/` and `docs/deployment.md`.
+- [ ] 4.1 `deploy/oci/config.env.example` (region, availability domain, OCPUs, memory, boot size, bucket name, compartment) and git-ignore `deploy/oci/config.env`.
+- [ ] 4.2 `deploy/oci/cloud-init.yaml`: Docker Engine + compose plugin from Docker's apt repo (arm64), OCI CLI, `ecofate` user, `/opt/ecofate`, unattended-upgrades.
+- [ ] 4.3 `deploy/oci/provision.sh` (idempotent, `set -euo pipefail`): refuses shapes beyond Always Free; VCN, subnet and a security list with no inbound rules; A1 Flex instance with cloud-init (retry with backoff across availability domains on capacity errors); dynamic group + policy for objects in the one bucket; private bucket with a 30-day retention rule; prints next steps.
+- [ ] 4.4 `deploy/oci/teardown.sh`: deletes everything `provision.sh` created after typing the bucket name.
 
-## 5. Backups and restore
+## 5. Deploy path
 
-- [ ] 5.1 Write `deploy/backup.sh` and the systemd `ecofate-backup.service`/`.timer` (03:15 UTC): `pg_dump -Fc` in the `db` container to a temp file, upload to `s3://<bucket>/pg/<UTC date>.dump`, remove the local file, exit non-zero on any failure.
-- [ ] 5.2 Write `deploy/restore.sh <date>`: download, restore into a new database, check row counts of the core tables, then switch and restart `api`/`worker`.
+- [ ] 5.1 `deploy/deploy.sh <tag>`: validates the tag pattern, checks `.env.prod` mode/owner and required variables (names only), records `RELEASE` → `RELEASE.prev`, `pull`, `up -d` (migrate first), polls `https://ecofate.org/api/health`; on failure redeploys `RELEASE.prev` and exits non-zero. Installed as the deploy key's forced command (`authorized_keys` options documented).
+- [ ] 5.2 `.github/workflows/deploy.yml`: on tags `v*.*.*` and `workflow_dispatch` (`rollback_tag`, validated against the pattern, passed via `env:`); `permissions: contents: read, packages: write`; build and push both images on `ubuntu-24.04-arm` tagged version + `sha-<short>`; deploy job uses `cloudflared access ssh` with the Access service token and the deploy key from secrets; all actions SHA-pinned; `environment: production`.
 
-## 6. Makefile and documentation
+## 6. Backups and restore
 
-- [ ] 6.1 Add `deploy-provision`, `deploy-teardown`, `deploy-backup`, `deploy-restore` targets to the `Makefile`.
-- [ ] 6.2 Write `docs/deployment.md`: architecture diagram (internet → Caddy → api/worker → db/redis, S3, SSM, GHCR, Logfire), costs per month, prerequisites, SSM parameters to create (and how to generate the encryption key and session secret), first deploy, creating the first admin, releasing, rollback, reading logs, backups and the restore drill result, teardown.
-- [ ] 6.3 README: public URL (or "demo torn down" with screenshots) and a link to `docs/deployment.md`.
+- [ ] 6.1 `deploy/backup.sh` + systemd `ecofate-backup.service`/`.timer` (03:15 UTC): `pg_dump -Fc` in `db`, upload with `oci os object put --auth instance_principal` as `pg/<UTC date>.dump`, remove the local file, exit non-zero on any failure.
+- [ ] 6.2 `deploy/restore.sh <date>`: download, restore into a new database, check row counts of the core tables, then switch and restart `api`/`worker`.
 
-## 7. Verification
+## 7. Makefile and documentation
 
-- [ ] 7.1 `shellcheck` on every script, `actionlint` on the workflow, `docker compose -f compose.yaml -f compose.prod.yaml config` validates, `uv run pre-commit run --all-files` passes (detect-secrets clean).
-- [ ] 7.2 Provision, deploy `v1.0.0`, sign up, run one assessment over HTTPS, confirm the certificate and HSTS header.
-- [ ] 7.3 Deploy a tag whose health check fails on purpose and confirm the automatic rollback to the previous tag.
-- [ ] 7.4 Run one backup, restore it into a fresh database, record the drill (date, dump size, time taken) in `docs/deployment.md`.
-- [ ] 7.5 Confirm with `nmap`/the console that only 80/443 (and 22 from the operator CIDR, if enabled) are reachable, and that `.env.prod` is mode 0600.
+- [ ] 7.1 `Makefile`: `deploy-provision`, `deploy-teardown`, `deploy-backup`, `deploy-restore`.
+- [ ] 7.2 `docs/deployment.md`: architecture (Cloudflare → tunnel → api/worker → db/redis; GHCR; Object Storage; Logfire), USD 0 cost and how to keep it (Always Free shapes only, Pay As You Go upgrade against idle reclamation, USD 1 budget alert), Oracle sign-up and console walkthrough, capacity tips and the Hetzner fallback, Cloudflare Tunnel + Access setup, `www` redirect, Always Use HTTPS + HSTS, SMTP via Cloudflare Email Service (Resend fallback) and the SPF/DKIM records, creating `.env.prod`, first deploy, first admin, releasing, rollback, logs, backups and the restore drill, teardown.
+- [ ] 7.3 README: `https://ecofate.org` and a link to `docs/deployment.md`.
+
+## 8. Verification
+
+- [ ] 8.1 `shellcheck` on every script, `actionlint` on the workflow, compose config validates, `uv run pre-commit run --all-files` passes (detect-secrets clean).
+- [ ] 8.2 Provision, deploy `v0.2.0`, sign up with a real mailbox (email arrives, SPF/DKIM pass), run one assessment at `https://ecofate.org`, confirm the HSTS header, the `Secure` cookie, and a long turn's stream staying open; confirm `trusted_proxy_hops = 1` by checking that two visitors' sign-in throttles are counted separately (cloudflared does not append its own address to `X-Forwarded-For`).
+- [ ] 8.3 Deploy a tag whose health check fails on purpose and confirm the automatic rollback.
+- [ ] 8.4 Run one backup, restore it into a fresh database, record the drill (date, dump size, time) in `docs/deployment.md`.
+- [ ] 8.5 Confirm in the OCI console and with a port scan that no inbound port is open, that the deploy key cannot open a shell, and that `.env.prod` is mode 0600.

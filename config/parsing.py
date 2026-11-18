@@ -7,7 +7,10 @@ surface at load time (setup errors raise; they are never coerced).
 from __future__ import annotations
 
 import math
+import os
+import re
 import tomllib
+from collections.abc import Mapping
 from pathlib import Path
 from typing import cast
 
@@ -15,13 +18,73 @@ DEFAULT_SETTINGS_PATH = Path(__file__).parent / "settings.toml"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 
-def read_toml(path: Path | None) -> dict[str, object]:
-    """Parse the settings file (``DEFAULT_SETTINGS_PATH`` when ``path`` is None)."""
-    settings_path = path or DEFAULT_SETTINGS_PATH
+# Names a settings profile (e.g. "production"): ``settings.<profile>.toml`` beside the shipped
+# file is laid over it. Unset locally; the production compose file sets it.
+PROFILE_ENV_VAR = "ECOFATE_SETTINGS_PROFILE"
+_PROFILE_NAME = re.compile(r"^[a-z][a-z0-9-]{0,31}$")
+
+
+def _load_toml(settings_path: Path) -> dict[str, object]:
     if not settings_path.is_file():
         raise FileNotFoundError(f"Settings file not found: {settings_path}")
     with settings_path.open("rb") as handle:
         return tomllib.load(handle)
+
+
+def profile_path(environ: Mapping[str, str]) -> Path | None:
+    """The profile file ``environ`` selects, or None when no profile is set.
+
+    Raises:
+        ValueError: If the profile name is not a plain lowercase name.
+        FileNotFoundError: If no settings file exists for the profile.
+    """
+    name = environ.get(PROFILE_ENV_VAR, "").strip()
+    if not name:
+        return None
+    if not _PROFILE_NAME.match(name):
+        raise ValueError(f"{PROFILE_ENV_VAR} must be a lowercase profile name")
+    path = DEFAULT_SETTINGS_PATH.with_name(f"settings.{name}.toml")
+    if not path.is_file():
+        raise FileNotFoundError(f"Settings profile not found: {path.name}")
+    return path
+
+
+def overlay_settings(
+    base: dict[str, object],
+    overlay: dict[str, object],
+    where: str = "",
+) -> dict[str, object]:
+    """``base`` with ``overlay``'s values laid over it (tables merged key by key).
+
+    Raises:
+        ValueError: If the overlay names a key the base lacks, or replaces a table with a value
+            (or a value with a table); the message names the key.
+    """
+    merged = dict(base)
+    for key, value in overlay.items():
+        name = f"{where}{key}"
+        if key not in base:
+            raise ValueError(f"settings profile sets {name}, which is not a setting")
+        if isinstance(base[key], dict) != isinstance(value, dict):
+            raise ValueError(f"settings profile changes the kind of {name}")
+        merged[key] = (
+            overlay_settings(as_table(base[key], name), as_table(value, name), f"{name}.")
+            if isinstance(base[key], dict)
+            else value
+        )
+    return merged
+
+
+def read_toml(path: Path | None, environ: Mapping[str, str] | None = None) -> dict[str, object]:
+    """Parse the settings file; ``path`` None means the shipped file plus the selected profile.
+
+    An explicit ``path`` (tests, tools) is read alone; no profile is applied to it.
+    """
+    if path is not None:
+        return _load_toml(path)
+    data = _load_toml(DEFAULT_SETTINGS_PATH)
+    overlay = profile_path(os.environ if environ is None else environ)
+    return data if overlay is None else overlay_settings(data, _load_toml(overlay))
 
 
 def as_table(raw: object, name: str) -> dict[str, object]:

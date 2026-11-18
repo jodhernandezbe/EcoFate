@@ -1132,6 +1132,13 @@ judge_temperature = 0.0
 [ui]
 host = "127.0.0.1"
 port = 8000
+# The https:// origin the site is served at behind a proxy, with no path (e.g.
+# "https://ecofate.org"). Empty: the site is reached at host:port directly (local runs). When set,
+# the Host/Origin checks and CORS use it instead of host:port. Set by settings.production.toml.
+public_origin = ""
+# A chat event stream silent for this many seconds sends an SSE comment line (ignored by the
+# browser) so a proxy's idle timeout never closes it; Cloudflare's is 100 s. At least 1.
+sse_heartbeat_seconds = 15.0
 frontend_dist = "frontend/dist"
 max_key_length = 512
 
@@ -1140,6 +1147,9 @@ max_key_length = 512
 # host's loopback only, and the Host/Origin checks still use `host` and `port` above.
 [ui.container]
 bind_host = "0.0.0.0"
+# Seconds the container health check (`python -m api.container_health`) waits for /api/health;
+# below the 5 s timeout of the HEALTHCHECK in the Dockerfile and compose.yaml.
+health_timeout_seconds = 4.0
 
 # OS credential store entries holding the API keys (macOS Keychain, Secret Service, Windows
 # Credential Locker): one service name and one account per key. Names only; a key itself never

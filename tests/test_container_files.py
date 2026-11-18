@@ -5,6 +5,9 @@ from __future__ import annotations
 import fnmatch
 import re
 from pathlib import Path
+from typing import Any
+
+import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 DOCKERFILE = (ROOT / "Dockerfile").read_text()
@@ -115,3 +118,57 @@ def test_every_makefile_target_in_the_readme_exists() -> None:
     mentioned = set(re.findall(r"`make ([a-z-]+)`", README))
     assert mentioned, "the README lists the Makefile targets"
     assert mentioned <= targets
+
+
+# --- compose.prod.yaml (production on the VM) -----------------------------------------------
+
+
+class _ComposeLoader(yaml.SafeLoader):
+    """A safe loader that also reads Compose's merge tags as plain values."""
+
+
+def _tagged(loader: yaml.SafeLoader, node: yaml.Node) -> object:
+    if isinstance(node, yaml.SequenceNode):
+        return loader.construct_sequence(node)
+    if isinstance(node, yaml.MappingNode):
+        return loader.construct_mapping(node)
+    return loader.construct_scalar(node)  # pyright: ignore[reportArgumentType]
+
+
+_ComposeLoader.add_constructor("!override", _tagged)
+_ComposeLoader.add_constructor("!reset", _tagged)
+PROD: dict[str, Any] = yaml.load((ROOT / "compose.prod.yaml").read_text(), Loader=_ComposeLoader)  # noqa: S506  # nosec B506 - a SafeLoader subclass
+SERVICES: dict[str, Any] = PROD["services"]
+
+
+def test_production_publishes_no_host_port() -> None:
+    assert SERVICES["api"]["ports"] == []
+    assert all(not service.get("ports") for service in SERVICES.values())
+
+
+def test_production_services_use_the_production_settings_profile() -> None:
+    for name in ("api", "worker", "migrate"):
+        assert SERVICES[name]["environment"]["ECOFATE_SETTINGS_PROFILE"] == "production", name
+
+
+def test_production_images_are_pinned_and_app_images_come_from_ghcr() -> None:
+    for name in ("api", "worker", "migrate"):
+        assert SERVICES[name]["image"].startswith("ghcr.io/jodhernandezbe/ecofate-"), name
+        assert ":${ECOFATE_TAG:?" in SERVICES[name]["image"], name
+    assert re.fullmatch(r"cloudflare/cloudflared:\d{4}\.\d+\.\d+", SERVICES["cloudflared"]["image"])
+
+
+def test_the_tunnel_token_stays_out_of_the_app_containers() -> None:
+    assert SERVICES["cloudflared"]["env_file"] == ["/opt/ecofate/tunnel.env"]
+    for name in ("api", "worker"):
+        assert SERVICES[name]["env_file"] == ["/opt/ecofate/.env.prod"], name
+
+
+def test_production_containers_rotate_their_logs_and_have_memory_limits() -> None:
+    for name, service in SERVICES.items():
+        assert service["logging"]["options"]["max-size"], name
+        assert service["mem_limit"], name
+
+
+def test_dev_only_services_are_not_switched_on_in_production() -> None:
+    assert not {"db-port", "redis-port", "mailpit"} & SERVICES.keys()

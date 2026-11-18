@@ -17,9 +17,11 @@ host = "127.0.0.1"
 port = 9000
 frontend_dist = "frontend/dist"
 max_key_length = 64
+sse_heartbeat_seconds = 15.0
 
 [ui.container]
 bind_host = "0.0.0.0"
+health_timeout_seconds = 4.0
 
 [ui.keyring]
 service = "svc"
@@ -267,3 +269,79 @@ def test_removed_thread_limit_is_rejected(tmp_path: Path, old: str) -> None:
 def test_missing_section(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="ui section is missing"):
         load_ui_settings(_write(tmp_path, "[agent]\n"))
+
+
+# --- public origin (production behind a proxy) ----------------------------------------------
+
+
+def _with_public_origin(tmp_path: Path, value: str) -> Path:
+    return _write(
+        tmp_path,
+        UI.replace("port = 9000\n", f"port = 9000\npublic_origin = {value}\n", 1),
+    )
+
+
+def test_without_a_public_origin_the_origin_is_host_and_port(tmp_path: Path) -> None:
+    settings = load_ui_settings(_with_public_origin(tmp_path, '""'))
+    assert settings.public_origin is None
+    assert settings.origin == "http://127.0.0.1:9000"
+
+
+def test_a_public_origin_replaces_host_and_port(tmp_path: Path) -> None:
+    settings = load_ui_settings(_with_public_origin(tmp_path, '"https://ecofate.org"'))
+    assert settings.origin == "https://ecofate.org"
+    assert (settings.host, settings.port) == ("127.0.0.1", 9000)  # still what it binds
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        '"http://ecofate.org"',
+        '"https://ecofate.org/"',
+        '"https://ecofate.org/app"',
+        '"https://ecofate.org?x=1"',
+        '"https://user@ecofate.org"',
+        '"https://EcoFate.org"',
+        '" https://ecofate.org"',
+        '"ecofate.org"',
+        "42",
+        "true",
+    ],
+)
+def test_a_malformed_public_origin_is_rejected(tmp_path: Path, value: str) -> None:
+    with pytest.raises(ValueError, match="ui.public_origin"):
+        load_ui_settings(_with_public_origin(tmp_path, value))
+
+
+def test_shipped_settings_have_no_public_origin() -> None:
+    assert load_ui_settings().public_origin is None
+
+
+@pytest.mark.parametrize("value", ["0", "0.5", "-1", "true", '"15"'])
+def test_a_keepalive_interval_below_one_second_or_not_a_number_is_rejected(
+    tmp_path: Path,
+    value: str,
+) -> None:
+    path = _write(
+        tmp_path,
+        UI.replace("sse_heartbeat_seconds = 15.0", f"sse_heartbeat_seconds = {value}", 1),
+    )
+    with pytest.raises(ValueError, match="sse_heartbeat_seconds"):
+        load_ui_settings(path)
+
+
+def test_shipped_keepalive_is_below_cloudflares_idle_timeout() -> None:
+    assert 1.0 <= load_ui_settings().sse_heartbeat_seconds < 100.0
+
+
+@pytest.mark.parametrize("value", ["0", "0.1", "-1", "true"])
+def test_a_container_health_timeout_below_half_a_second_is_rejected(
+    tmp_path: Path,
+    value: str,
+) -> None:
+    path = _write(
+        tmp_path,
+        UI.replace("health_timeout_seconds = 4.0", f"health_timeout_seconds = {value}", 1),
+    )
+    with pytest.raises(ValueError, match="health_timeout_seconds"):
+        load_ui_settings(path)

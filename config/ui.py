@@ -10,6 +10,7 @@ from functools import lru_cache
 from pathlib import Path
 from types import MappingProxyType
 from typing import Literal, TypedDict, get_args
+from urllib.parse import urlsplit
 
 from config.air_release import AirReleaseRules, parse_air_release
 from config.exposure_graph import GraphText, parse_exposure_graph
@@ -180,8 +181,14 @@ class UiSettings:
         port: TCP port.
         container_bind_host: Address bound instead of ``host`` when launched in a container
             (loopback or unspecified); the origin stays ``host:port``.
+        container_health_timeout_seconds: Seconds the container health check waits for the
+            health route (below the container runtime's own health-check timeout).
+        public_origin: The ``https://`` origin the site is served at behind a proxy (production),
+            or None when the backend is reached at ``host:port`` directly.
         frontend_dist: Built frontend directory served by the backend.
         max_key_length: Longest API key accepted, characters.
+        sse_heartbeat_seconds: Seconds a chat event stream may stay silent before it sends a
+            comment line, so a proxy's idle timeout never closes it.
         keyring: Credential-store names for the API key.
         prompts: Scope-guardrail prompts.
         step_labels: Tool name -> step label shown in the chat.
@@ -197,8 +204,11 @@ class UiSettings:
     host: str
     port: int
     container_bind_host: str
+    container_health_timeout_seconds: float
+    public_origin: str | None
     frontend_dist: Path
     max_key_length: int
+    sse_heartbeat_seconds: float
     keyring: KeyringNames
     prompts: ScopePrompts
     step_labels: Mapping[str, str]
@@ -212,8 +222,8 @@ class UiSettings:
 
     @property
     def origin(self) -> str:
-        """The backend's own origin, e.g. ``http://127.0.0.1:8765``."""
-        return f"http://{self.host}:{self.port}"
+        """The site's origin: the public one when set, else ``http://<host>:<port>``."""
+        return self.public_origin or f"http://{self.host}:{self.port}"
 
 
 def _container_bind_host(table: dict[str, object]) -> str:
@@ -450,6 +460,24 @@ class _Addresses(TypedDict):
     host: str
     port: int
     container_bind_host: str
+    container_health_timeout_seconds: float
+    public_origin: str | None
+
+
+def _public_origin(table: dict[str, object]) -> str | None:
+    """The public ``https://host`` origin, or None when unset (an empty string)."""
+    raw = table.get("public_origin", "")
+    if not isinstance(raw, str):
+        raise ValueError(f"{_NAME}.public_origin must be a string")
+    if not raw.strip():
+        return None
+    parts = urlsplit(raw.strip())
+    plain = not (parts.path or parts.query or parts.fragment or parts.username or parts.password)
+    if parts.scheme != "https" or not parts.hostname or not plain or raw.strip() != raw:
+        raise ValueError(f"{_NAME}.public_origin must be an https:// origin with no path")
+    if parts.netloc != parts.netloc.lower():
+        raise ValueError(f"{_NAME}.public_origin must be lowercase")
+    return raw
 
 
 def _addresses(table: dict[str, object]) -> _Addresses:
@@ -458,6 +486,31 @@ def _addresses(table: dict[str, object]) -> _Addresses:
         host=_loopback_host(table),
         port=_port(table),
         container_bind_host=_container_bind_host(table),
+        container_health_timeout_seconds=require_number(
+            subtable(table, "container", _NAME),
+            "health_timeout_seconds",
+            minimum=0.5,
+            name=f"{_NAME}.container",
+        ),
+        public_origin=_public_origin(table),
+    )
+
+
+class _Limits(TypedDict):
+    max_key_length: int
+    sse_heartbeat_seconds: float
+
+
+def _limits(table: dict[str, object]) -> _Limits:
+    """The longest key accepted and the quiet-stream keepalive interval."""
+    return _Limits(
+        max_key_length=require_int(table, "max_key_length", minimum=1, name=_NAME),
+        sse_heartbeat_seconds=require_number(
+            table,
+            "sse_heartbeat_seconds",
+            minimum=1.0,
+            name=_NAME,
+        ),
     )
 
 
@@ -476,7 +529,7 @@ def load_ui_settings(path: Path | None = None) -> UiSettings:
     return UiSettings(
         **_addresses(table),
         frontend_dist=project_path(table, "frontend_dist", _NAME),
-        max_key_length=require_int(table, "max_key_length", minimum=1, name=_NAME),
+        **_limits(table),
         keyring=_keyring(table),
         prompts=_prompts(table),
         step_labels=_step_labels(table),

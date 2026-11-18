@@ -46,3 +46,8 @@ frontend/.vitest/
 
 # Which changes the security audit has already seen (per working tree)
 .claude/.security-audit-state
+
+# Production secrets and per-operator deploy settings (templates are the *.example files)
+.env.prod
+tunnel.env
+deploy/oci/config.env

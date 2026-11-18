@@ -31,7 +31,7 @@ from api.services.quota import QuotaService
 from api.services.report.builder import MEDIA_TYPE
 from api.services.report.service import ReportUnavailable, thread_report
 from api.services.snapshots import SnapshotOptions, thread_snapshot
-from api.services.sse import encode_event
+from api.services.sse import encode_event, with_heartbeat
 from api.services.threads import ThreadStore
 from api.services.turn_lifecycle import BUSY, TurnRefused, resume_turn_record, start_turn
 from api.services.turn_queue import (
@@ -69,7 +69,8 @@ async def _frames(events: AsyncGenerator[StreamEvent]) -> AsyncGenerator[str]:
 
 
 def _streaming(events: AsyncGenerator[StreamEvent]) -> StreamingResponse:
-    return StreamingResponse(_frames(events), media_type="text/event-stream", headers=SSE_HEADERS)
+    frames = with_heartbeat(_frames(events), get_settings().sse_heartbeat_seconds)
+    return StreamingResponse(frames, media_type="text/event-stream", headers=SSE_HEADERS)
 
 
 def _relay(

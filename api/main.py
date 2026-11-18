@@ -37,6 +37,7 @@ from api.services.auth.smtp import MailSetupError, smtp_server
 from api.services.auth.stores import Accounts
 from api.services.auth.tokens import SecretSetupError, load_session_secret
 from api.services.database import open_database
+from api.services.health import all_healthy, redis_health_check
 from api.services.key_setup import (
     KeyServices,
     build_key_services,
@@ -161,11 +162,23 @@ async def _worker_queue(environ: Mapping[str, str]) -> AsyncGenerator[QueueSetup
     except BrokerSetupError as error:
         raise SystemExit(str(error)) from None
     client = _redis_client(url, settings)
-    enqueuer = CeleryEnqueuer(build_celery(settings, url), settings, process_secret_values(environ))
     try:
-        yield queue_setup(RedisStreamBus(client, settings.event_stream_max_length), enqueuer)
+        yield _redis_queue(client, url, settings, environ)
     finally:
         await client.aclose()
+
+
+def _redis_queue(
+    client: Redis,
+    url: str,
+    settings: WorkerSettings,
+    environ: Mapping[str, str],
+) -> QueueSetup:
+    """The queue over Redis streams and Celery, with a health check that pings ``client``."""
+    enqueuer = CeleryEnqueuer(build_celery(settings, url), settings, process_secret_values(environ))
+    setup = queue_setup(RedisStreamBus(client, settings.event_stream_max_length), enqueuer)
+    check = redis_health_check(lambda: client.ping(), settings.broker_timeout_seconds)
+    return replace(setup, health_check=check)
 
 
 def _smtp_mailer(app: FastAPI, mail: MailSettings) -> SmtpMailer:
@@ -213,7 +226,8 @@ async def _thread_state(app: FastAPI) -> AsyncGenerator[None]:
         _purging(database.threads, settings, _usage_retention(database.quota)),
     ):
         _set_state(app, turn_queue=queue, threads=database.threads)
-        _set_state(app, health_check=database.health_check, quota=_quota_service(database.quota))
+        health = all_healthy(database.health_check, queue.health_check)
+        _set_state(app, health_check=health, quota=_quota_service(database.quota))
         app.state.keys = build_key_services(keks, operator, database.credentials)
         _install_auth(app, database.threads, database.accounts)
         await _recover_turns(database.threads, queue)
