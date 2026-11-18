@@ -1,6 +1,7 @@
 # EcoFate
 
 [![CI](https://github.com/jodhernandezbe/EcoFate/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jodhernandezbe/EcoFate/actions/workflows/ci.yml)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24327281.svg)](https://doi.org/10.5281/zenodo.24327281)
 
 EcoFate turns fragmented environmental data into screening-level chemical exposure risk profiles.
 
@@ -364,8 +365,10 @@ please credit the author and cite it with [CITATION.cff](CITATION.cff) (GitHub's
 repository" button). Third-party data and models keep their own licences; the MolDeBERTa model
 used by the read-across tool is CC BY-NC-ND 4.0 (non-commercial only).
 
-Every published GitHub release is archived on [Zenodo](https://zenodo.org), which gives it a DOI;
-the archive takes its metadata from `CITATION.cff` (there is deliberately no `.zenodo.json`), and
+Every published GitHub release is archived on [Zenodo](https://zenodo.org), which gives it a DOI.
+Cite EcoFate with [10.5281/zenodo.24327281](https://doi.org/10.5281/zenodo.24327281), which always
+resolves to the latest release; to cite one specific version, use that version's own DOI from its
+Zenodo page. The archive takes its metadata from `CITATION.cff` (there is deliberately no `.zenodo.json`), and
 `tests/test_citation.py` keeps that file complete and in step with `pyproject.toml`.
 
 Releasing a version:

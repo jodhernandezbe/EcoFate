@@ -13,6 +13,8 @@ abstract: >-
   provides a location, facility, or chemical of interest, and the system pulls together release
   data, chemical properties, and transport modeling to return a risk profile: a starting point
   for further investigation.
+# Concept DOI: resolves to the latest archived release (each release also has its own DOI).
+doi: "10.5281/zenodo.24327281"
 repository-code: "https://github.com/jodhernandezbe/EcoFate"
 license: Apache-2.0
 version: "0.1.0"
