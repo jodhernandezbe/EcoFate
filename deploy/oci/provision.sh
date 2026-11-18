@@ -102,6 +102,16 @@ ensure_security_list() {
   say "security list ${SL_ID} (inbound: SSH from ${SUBNET_CIDR} only)"
 }
 
+# Oracle gives every VCN a default security list that admits SSH from anywhere. No subnet here
+# uses it, but a subnet created later in the console would: keep it empty (no inbound, no outbound).
+close_default_security_list() {
+  local default_id
+  default_id="$(oci network vcn get --vcn-id "${VCN_ID}" --query 'data."default-security-list-id"' --raw-output)"
+  oci network security-list update --security-list-id "${default_id}" --ingress-security-rules '[]' \
+    --egress-security-rules '[]' --force --wait-for-state AVAILABLE >/dev/null
+  say "default security list ${default_id} emptied (unused)"
+}
+
 ensure_subnet() {
   SUBNET_ID="$(find_id "network subnet" "${NAME}-subnet" --vcn-id "${VCN_ID}")"
   if [[ -z "${SUBNET_ID}" ]]; then
@@ -172,6 +182,10 @@ ensure_bastion() {
     BASTION_ID="$(oci bastion bastion create --compartment-id "${OCI_COMPARTMENT_OCID}" --bastion-type standard \
       --name "${NAME}bastion" --target-subnet-id "${SUBNET_ID}" --client-cidr-list "[\"${OCI_BASTION_CLIENT_CIDR}\"]" \
       --max-session-ttl 10800 --wait-for-state SUCCEEDED --query 'data.resources[0].identifier' --raw-output)"
+  else
+    # Re-applied on every run: a new home IP in config.env replaces the old one (only one /32).
+    oci bastion bastion update --bastion-id "${BASTION_ID}" --client-cidr-list "[\"${OCI_BASTION_CLIENT_CIDR}\"]" \
+      --force --wait-for-state SUCCEEDED >/dev/null
   fi
   say "bastion ${BASTION_ID} (accepts ${OCI_BASTION_CLIENT_CIDR} only)"
 }
@@ -231,6 +245,7 @@ main() {
   ensure_vcn
   ensure_gateway_and_routes
   ensure_security_list
+  close_default_security_list
   ensure_subnet
   ensure_instance
   ensure_bastion

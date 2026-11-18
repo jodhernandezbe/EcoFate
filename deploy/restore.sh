@@ -34,7 +34,7 @@ restore_into() {
 show_counts() {
   echo "Row counts in the restored database ${1}:"
   db_psql -d "${1}" -A -F ' ' -c \
-    "SELECT 'users', count(*) FROM users UNION ALL SELECT 'threads', count(*) FROM threads UNION ALL SELECT 'turns', count(*) FROM turns"
+    "SELECT 'users', count(*) FROM users UNION ALL SELECT 'threads', count(*) FROM threads UNION ALL SELECT 'turns', count(*) FROM turns"  < /dev/null
 }
 
 switch_to() {
@@ -68,13 +68,15 @@ main() {
   bucket="$(ecofate_env_value ECOFATE_BACKUP_BUCKET)"
   [[ "${bucket}" =~ ^[a-z0-9][a-z0-9-]{1,62}$ ]] || die "set ECOFATE_BACKUP_BUCKET in ${ECOFATE_ENV_FILE}"
   dump="$(mktemp)"
-  trap 'rm -f "${dump}"' EXIT
+  # The path is expanded now: $dump is local to main and gone when the EXIT trap runs.
+  # shellcheck disable=SC2064
+  trap "rm -f $(printf '%q' "${dump}")" EXIT
   ecofate_oci os object get --bucket-name "${bucket}" --name "pg/${stamp}.dump" --file "${dump}" > /dev/null
   restored="ecofate_restore_${stamp,,}"
   echo "==> restoring pg/${stamp}.dump into ${restored}"
   restore_into "${restored}" "${dump}"
   show_counts "${restored}"
-  read -r -p "Type 'switch' to make it the live database (anything else keeps the live one): " answer
+  read -r -p "Type 'switch' to make it the live database (anything else keeps the live one): " answer || answer=""
   [[ "${answer}" == "switch" ]] || { echo "Not switched. ${restored} is left in place for inspection."; exit 0; }
   switch_to "${restored}" "${stamp}"
 }

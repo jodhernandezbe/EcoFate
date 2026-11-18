@@ -66,16 +66,28 @@ CAX21 (about EUR 7 a month).
 
 ## 3. Cloudflare Tunnel and Access
 
-1. **Zero Trust → Networks → Tunnels → Create a tunnel** (type *Cloudflared*), name `ecofate`.
-   Copy the token (the long value after `--token`); it goes into `tunnel.env` in step 4.
-2. On the tunnel, **Public hostnames**:
-   - `ecofate.org` → service `HTTP`, URL `api:8000`
-   - `ssh.ecofate.org` → service `SSH`, URL `host.docker.internal:22`
-3. **Zero Trust → Access → Service auth → Create service token** named `github-deploy`. Copy the
-   Client ID and Client Secret (shown once) for the GitHub secrets in step 6.
-4. **Zero Trust → Access → Applications → Add → Self-hosted**, domain `ssh.ecofate.org`, with a
-   policy whose action is **Service Auth** and whose rule is that service token. Optionally add a
-   second policy (action *Allow*) for your own email, to SSH in through the browser login.
+Cloudflare moves these menus often; the dashboard search (**Cmd/Ctrl + K**) finds each page by
+the name in bold.
+
+1. **Tunnels** (main dashboard: Networking → Tunnels; or Zero Trust → Networks → Connectors) →
+   **Create a tunnel**, type *Cloudflared*, name `ecofate`. Pick any OS (Debian, arm64): only the
+   token matters. Copy the value starting with `eyJ` from the "install as a service" command
+   into your password manager (it goes into `tunnel.env` in step 4); run nothing. The page can
+   be opened again later to show it.
+2. The wizard cannot continue while no connector runs: leave it, open the tunnel, **Routes →
+   Add route → Published application**, and add two (the URL includes the protocol):
+   - subdomain empty, domain `ecofate.org`, URL `http://api:8000` (**http**, not https: the
+     tunnel encrypts, the API speaks plain HTTP inside the VM; https gives a 502)
+   - subdomain `ssh`, domain `ecofate.org`, URL `ssh://host.docker.internal:22`
+3. **Service Tokens** (Zero Trust → Access → Service credentials) → **Create Service Token**
+   named `github-deploy`, non-expiring (or a year). Copy the Client ID and Client Secret (the
+   secret is shown once) for the GitHub secrets in step 6.
+4. **Applications** (Zero Trust → Access) → **Add an application → Self-hosted** (not
+   *Infrastructure*, which needs the WARP client), name `ecofate-ssh`, hostname `ssh.ecofate.org`,
+   with a policy whose action is **Service Auth** and whose rule is that service token. Optionally
+   add a second policy (action *Allow*) for your own email, to SSH in through the browser login.
+   The default session duration is fine (service-token requests re-authenticate every time).
+   Never put an Access application on `ecofate.org` itself: the site is public.
 5. **Check Access before going further**: from your machine, `ssh -o ProxyCommand="cloudflared access ssh --hostname %h" ecofate@ssh.ecofate.org`
    must stop at a Cloudflare login (or be refused) unless you pass the service token or your
    email policy lets you in. sshd is reachable through the tunnel, so Access is what guards it.
@@ -89,6 +101,13 @@ CAX21 (about EUR 7 a month).
 make deploy-ssh            # opens a one-hour Bastion session and logs you in as ecofate
 ```
 
+A new Bastion session refuses its key for a few seconds; the script retries ("not ready yet;
+retrying") and uses the next free local port if 2222 is taken. It fails only when your public
+IP no longer matches `OCI_BASTION_CLIENT_CIDR`: update `config.env` and run
+`make deploy-provision` (it updates the Bastion). Ignore Ubuntu's offer to upgrade to a newer
+release; reboot when it says "System restart required" (`oci compute instance action --action
+SOFTRESET`, or the console).
+
 On the VM (`ecofate` user):
 
 ```bash
@@ -100,8 +119,12 @@ cp app/deploy/tunnel.env.example tunnel.env && chmod 600 tunnel.env && nano tunn
 Fill every uncommented variable (the template says how to generate each); keep a copy in your
 password manager. `deploy.sh` refuses to deploy while one is missing and names it without showing
 values. Email: `SMTP_HOST=smtp.mx.cloudflare.net`, `SMTP_PORT=465`, `SMTP_SECURITY=tls`,
-`SMTP_USERNAME=api_token`, `SMTP_PASSWORD=` a **new** Cloudflare API token with only *Email
-Sending: Edit* (not the one you use locally), `SMTP_FROM=EcoFate <no-reply@ecofate.org>`.
+`SMTP_USERNAME=api_token`, `SMTP_PASSWORD=` a **new** Cloudflare API token (not the one you use
+locally): permission *Account → Email Sending → Edit*, **Account Resources** the account that owns
+`ecofate.org` (or all accounts), and **no client IP filter** (the VM's outbound address is
+Oracle's and can change). A token scoped otherwise still logs in but every send fails with
+`550 5.7.1 Not authorized to send from domain`. `SMTP_FROM=noreply@ecofate.org`, exactly the
+sender verified in Cloudflare Email Service (a different address is refused the same way).
 `ECOFATE_BACKUP_BUCKET` is the bucket name from `config.env`.
 
 The nightly backup timer was installed at first boot (`systemctl list-timers ecofate-backup.timer`);
@@ -152,8 +175,9 @@ The tunnel starts with the stack, so the very first deploy runs by hand through 
    `https://ecofate.org/api/health`).
 3. Approve the waiting deploy job: it redeploys the same tag over the tunnel, which proves the
    automatic path works.
-4. Create the first administrator on the VM:
-   `cd /opt/ecofate/app && docker compose --env-file ../.env.prod -f compose.yaml -f compose.prod.yaml exec api python -m api create-admin --email you@example.com`
+4. Create the first administrator on the VM (it asks for the password, hidden; an existing
+   account with that email is promoted instead):
+   `docker exec -it ecofate-api-1 python -m api create-admin --email you@example.com`
 
 Every later release is only: bump the version, tag, push, approve.
 
@@ -166,10 +190,11 @@ earlier release on purpose: **Actions → Deploy → Run workflow**, `rollback_t
 
 ## Logs
 
-On the VM, in `/opt/ecofate/app`:
+On the VM (compose needs the running release's tag, which `deploy.sh` records in
+`/opt/ecofate/RELEASE`):
 
 ```bash
-alias dc='docker compose --env-file ../.env.prod -f compose.yaml -f compose.prod.yaml'
+alias dc='ECOFATE_TAG=$(cat /opt/ecofate/RELEASE) docker compose --env-file /opt/ecofate/.env.prod -f /opt/ecofate/app/compose.yaml -f /opt/ecofate/app/compose.prod.yaml --project-directory /opt/ecofate/app'
 dc ps                      # state and health of every service
 dc logs --tail 200 api     # or worker, cloudflared, db
 journalctl -u ecofate-backup.service --since today
@@ -187,7 +212,10 @@ is set (administrators see them in the Monitoring view).
   row counts, and switches only after you type `switch`, in one transaction; the previous
   database is kept as `<name>_before_<timestamp>` until you drop it.
 
-**Restore drill** (to be recorded at the first deploy): date, dump size, time taken.
+**Restore drill**: 2026-11-18, v0.2.0, dump `pg/20261118T185624Z.dump`, 40,113 bytes (1 user,
+1 thread, 1 turn); backup 3 s, restore into `ecofate_restore_20261118t185624z` 4 s, row counts
+matched, live database untouched, drill database dropped afterwards. Repeat after big data
+changes; the times grow with the dump.
 
 ## Teardown
 
