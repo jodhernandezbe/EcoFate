@@ -39,12 +39,34 @@ session="$(oci bastion session create-port-forwarding --bastion-id "${bastion}" 
   --display-name "${NAME}-$(date -u +%Y%m%dT%H%M%SZ)" \
   --wait-for-state SUCCEEDED --query 'data.resources[0].identifier' --raw-output)"
 
-ssh -i "${PRIVATE_KEY}" -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 \
-  -L "${LOCAL_PORT}:${private_ip}:22" -p 22 "${session}@host.bastion.${region}.oci.oraclecloud.com" &
-forward=$!
-trap 'kill "${forward}" 2>/dev/null || true' EXIT
-sleep 5
-kill -0 "${forward}" 2>/dev/null || die "the bastion forward did not start (is ${OCI_BASTION_CLIENT_CIDR} still your IP?)"
+# Runs in the background, so it must never stop at a host-key question: Oracle's bastion host
+# key is recorded on first use (the VM's own key is still checked on the login below).
+start_forward() {
+  ssh -i "${PRIVATE_KEY}" -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=30 \
+    -o StrictHostKeyChecking=accept-new -o BatchMode=yes -o ConnectTimeout=15 \
+    -L "${LOCAL_PORT}:${private_ip}:22" -p 22 "${session}@host.bastion.${region}.oci.oraclecloud.com" &
+  forward=$!
+}
+forward=""
+trap '[[ -n "${forward}" ]] && kill "${forward}" 2>/dev/null || true' EXIT
 
+# A new session refuses its key ("Permission denied (publickey)") for a few seconds after it is
+# created: retry the forward for up to about two minutes until the local port answers. The port
+# counts only while our own forward is alive (another local process could be listening on it).
+for _ in $(seq 1 12); do
+  start_forward
+  for _ in $(seq 1 10); do
+    kill -0 "${forward}" 2>/dev/null && nc -z 127.0.0.1 "${LOCAL_PORT}" 2>/dev/null && break 2
+    kill -0 "${forward}" 2>/dev/null || break
+    sleep 1
+  done
+  kill "${forward}" 2>/dev/null || true
+  echo "==> the bastion session is not ready yet; retrying"
+  sleep 5
+done
+kill -0 "${forward}" 2>/dev/null && nc -z 127.0.0.1 "${LOCAL_PORT}" 2>/dev/null \
+  || die "the bastion forward did not open (is ${OCI_BASTION_CLIENT_CIDR} still your IP?)"
+
+# Extra arguments run as a command on the VM instead of an interactive shell.
 ssh -i "${PRIVATE_KEY}" -p "${LOCAL_PORT}" -o HostKeyAlias="${NAME}-vm" -o StrictHostKeyChecking=accept-new \
-  ecofate@127.0.0.1
+  ecofate@127.0.0.1 "$@"
