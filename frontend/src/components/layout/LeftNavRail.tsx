@@ -7,6 +7,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
+  Sparkles,
   Trash2,
   UserRound,
 } from "lucide-react";
@@ -36,6 +37,8 @@ interface LeftNavRailProps {
   /** Why the last report failed; null when it did not. */
   reportError?: string | null | undefined;
   onOpenSettings: () => void;
+  /** Reopen the welcome sheet. */
+  onWelcome: () => void;
   /** The signed-in user's email, shown on the Account entry. */
   email: string;
   /** Administrators see the Monitoring entry; nobody else does. */
@@ -107,7 +110,7 @@ function ReportError({ text, collapsed }: { text: string; collapsed: boolean }) 
 
 /**
  * The left rail: brand and toggle; Workspace, Clear workspace, Generate report, Monitoring
- * (administrators only); Account (with the email) and Settings.
+ * (administrators only); Welcome, Account (with the email) and Settings.
  */
 export function LeftNavRail({
   collapsed,
@@ -122,6 +125,7 @@ export function LeftNavRail({
   reporting,
   reportError,
   onOpenSettings,
+  onWelcome,
   email,
   admin,
   onAccount,
@@ -191,6 +195,7 @@ export function LeftNavRail({
           />
         ) : null}
       </div>
+      <Item icon={Sparkles} label="Welcome" collapsed={collapsed} onClick={onWelcome} />
       <Item icon={UserRound} label="Account" collapsed={collapsed} onClick={onAccount} />
       {collapsed ? null : (
         <p title={email} className="truncate px-3 pb-1 text-xs text-fg2">

@@ -6,30 +6,7 @@ import { Banner } from "../../components/ui/Banner";
 import { BottomDrawer } from "../../components/ui/BottomDrawer";
 import { InfoTooltip } from "../../components/ui/InfoTooltip";
 import type { KeyOutcome } from "../../hooks/useKeyStatus";
-import type { KeysStatusResponse, ServiceName } from "../../types/workspace";
-
-interface Service {
-  name: ServiceName;
-  label: string;
-  purpose: string;
-  /** What is missing from the answers while the installation does not provide the service. */
-  missing: string;
-}
-
-const SERVICES: Service[] = [
-  {
-    name: "census",
-    label: "Census",
-    purpose: "Counts the people living around a facility.",
-    missing: "Without it, population counts fall back to a generic screening default.",
-  },
-  {
-    name: "comptox",
-    label: "CompTox",
-    purpose: "Looks up chemical properties and toxicity benchmarks.",
-    missing: "Without it, chemical properties and toxicity values cannot be looked up.",
-  },
-];
+import type { KeysStatusResponse } from "../../types/workspace";
 
 const OPENAI_PURPOSE = "Runs the assistant. It is billed to your own OpenAI account. Required.";
 const BUTTON = "spring rounded-full px-4 py-1.5 text-sm transition disabled:opacity-30";
@@ -123,33 +100,9 @@ function KeyForm({ configured, busy, outcome, onSave, onClear }: KeyFormProps) {
   );
 }
 
-/** One data service: whether this installation provides it, in words; no input of any kind. */
-function ServiceEntry({ service, available }: { service: Service; available: boolean }) {
-  return (
-    <section
-      aria-label={`${service.label} service`}
-      className="flex flex-col gap-3 border-t border-hairline pt-4 first:border-t-0 first:pt-0"
-    >
-      <div className="flex items-center gap-1">
-        <h4 className="text-sm font-semibold">{service.label}</h4>
-        <InfoTooltip label={`About the ${service.label} service`} text={service.purpose} />
-      </div>
-      <p role="status" className={`${STATUS} ${available ? "text-ok" : "text-fg2"}`}>
-        {available ? "Provided by this installation" : "Not available on this installation"}
-      </p>
-      {available ? null : <p className="text-xs text-fg2">{service.missing}</p>}
-    </section>
-  );
-}
-
 /** The state of the Assistant section in words, so a collapsed section still says what it holds. */
 export function keySummary(configured: boolean): string {
   return configured ? "Key saved" : "Key missing";
-}
-
-/** The state of the Data services section in words. */
-export function servicesSummary(available: number, total: number): string {
-  return `${available} of ${total} available`;
 }
 
 interface ContentProps {
@@ -167,9 +120,6 @@ function DrawerContent({ statuses, busy, outcome, loadError, onSave, onClear }: 
   const [expanded, setExpanded] = useState<string[]>(configured ? [] : ["assistant"]);
   const toggle = (id: string) =>
     setExpanded((now) => (now.includes(id) ? now.filter((item) => item !== id) : [...now, id]));
-  const availableCount = statuses
-    ? SERVICES.filter((service) => statuses.services[service.name].available).length
-    : 0;
 
   return (
     <div className="@container w-full">
@@ -182,22 +132,6 @@ function DrawerContent({ statuses, busy, outcome, loadError, onSave, onClear }: 
       >
         <KeyForm configured={configured} busy={busy} outcome={outcome} onSave={onSave} onClear={onClear} />
       </AccordionSection>
-      <AccordionSection
-        title="Data services"
-        summary={statuses ? servicesSummary(availableCount, SERVICES.length) : null}
-        open={expanded.includes("data")}
-        onToggle={() => toggle("data")}
-      >
-        <div className="flex flex-col gap-5">
-          {SERVICES.map((service) => (
-            <ServiceEntry
-              key={service.name}
-              service={service}
-              available={statuses?.services[service.name].available === true}
-            />
-          ))}
-        </div>
-      </AccordionSection>
     </div>
   );
 }
@@ -208,8 +142,8 @@ interface SettingsDrawerProps extends ContentProps {
 }
 
 /**
- * The user's own OpenAI key (stored encrypted for their account) and which data services this
- * installation provides, in a bottom drawer. No key is kept in the browser.
+ * The user's own OpenAI key (stored encrypted for their account) in a bottom drawer. The operator's
+ * data services are not listed: users never configure them. No key is kept in the browser.
  */
 export function SettingsDrawer({ open, onClose, ...content }: SettingsDrawerProps) {
   return (

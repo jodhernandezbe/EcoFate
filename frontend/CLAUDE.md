@@ -10,7 +10,7 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   Playwright Chromium (light and dark) and compares screenshots with `__screenshots__/`; after a
   deliberate change, look at every new image before approving it with `-u` (references are per OS).
 - Feature-driven layout with one-way imports: `components/` (`layout/`, `ui/`: domain-agnostic
-  HIG primitives) -> `features/` (`overview/`, `map/`, `chat/`, `settings/`, `monitoring/`, `exposure-chain/`, `auth/`) -> `App.tsx`.
+  HIG primitives) -> `features/` (`overview/`, `map/`, `chat/`, `settings/`, `monitoring/`, `exposure-chain/`, `auth/`, `welcome/`) -> `App.tsx`.
   `hooks/` (stream, stores, key status) and `services/apiClient.ts` serve features;
   `components/` never import `features/`, and features never import each other's internals.
 - `features/exposure-chain` is the Overview's "Exposure chain" tab (composed by `App.tsx` as a slot):
@@ -43,7 +43,7 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   token is read into memory, removed from the address bar and sent only in a request body. The rail
   shows Monitoring to `role === "admin"` only; its Account entry opens `features/auth/AccountDrawer`
   (sign out, change password, sign out everywhere, delete account behind a password dialog).
-- Browser storage holds panel sizes only (through `lib/safeStorage`, which never throws); never
+- Browser storage holds panel sizes and the welcome sheet's per-user seen flag only (through `lib/safeStorage`, which never throws); never
   keys, runs, messages, passwords, tokens or the account. The page holds one workspace (one thread) at a time; the conversation
   lives on the server, and "Clear workspace" (always behind `components/ui/ConfirmDialog`)
   discards it there. The Word report is built by the server; the browser only saves the file

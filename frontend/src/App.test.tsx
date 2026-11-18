@@ -49,10 +49,36 @@ describe("App", () => {
     expect(screen.getByRole("region", { name: "Map" })).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Assistant" }));
     expect(await screen.findByText("Key stored encrypted for your account")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Data services" }));
-    expect(screen.getAllByText("Not available on this installation")).toHaveLength(2); // Census and CompTox
+    expect(screen.queryByRole("button", { name: "Data services" })).toBeNull();
+    expect(within(screen.getByRole("dialog", { name: "Settings" })).queryByText(/Census|CompTox/)).toBeNull();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("shows the welcome on a first visit, remembers its dismissal, and reopens it from the rail", async () => {
+    stubApi(true);
+    const user = userEvent.setup();
+    localStorage.clear();
+    const first = await renderApp(undefined, { welcome: true });
+    expect(screen.getByRole("dialog", { name: "Welcome to EcoFate" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Map" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Get started" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    first.unmount();
+    await renderApp(undefined, { welcome: true });
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Welcome" }));
+    expect(screen.getByRole("dialog", { name: "Welcome to EcoFate" })).toBeInTheDocument();
+  });
+
+  it("closes the welcome before opening Settings from its first step", async () => {
+    stubApi(false);
+    const user = userEvent.setup();
+    localStorage.clear();
+    await renderApp(undefined, { welcome: true });
+    await user.click(within(screen.getByRole("dialog", { name: "Welcome to EcoFate" })).getByRole("button", { name: "Open Settings" }));
+    expect(screen.queryByRole("dialog", { name: "Welcome to EcoFate" })).toBeNull();
+    expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument();
   });
 
   it("opens the drawer from the composer's link while no key is stored", async () => {

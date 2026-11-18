@@ -32,11 +32,10 @@ describe("settings drawer, in a real browser", () => {
     await expectShot(drawer(NO_KEY), "settings-no-key");
   });
 
-  it("key stored, with the data services open: availability in words and no input", async () => {
+  it("key stored, Assistant section open: the key state in words and no other section", async () => {
     const view = drawer(STORED, { kind: "success", message: "Key saved." });
     await userEvent.click(page.getByRole("button", { name: "Assistant" }).element());
-    await userEvent.click(page.getByRole("button", { name: "Data services" }).element());
-    await expectShot(view, "settings-stored-services");
+    await expectShot(view, "settings-stored");
   });
 
   it("a rejected key shows the error in the Assistant section", async () => {
