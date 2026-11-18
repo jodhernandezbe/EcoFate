@@ -60,7 +60,8 @@ services:
     # Outbound-only connection to Cloudflare, which serves https://ecofate.org and forwards to
     # http://api:8000 (public hostname configured on the tunnel in the Cloudflare dashboard).
     # Its token lives in its own file, so the API and worker never hold it.
-    image: cloudflare/cloudflared:2026.10.7
+    # 2026.10.7, pinned by digest (amd64 and arm64).
+    image: cloudflare/cloudflared:2026.10.7@sha256:4955524aeaa379e154023d5a027c250f7b35041a2e7e950cf13f144bc9b9c5ba
     command: ["tunnel", "--no-autoupdate", "run"]
     env_file:
       - /opt/ecofate/tunnel.env

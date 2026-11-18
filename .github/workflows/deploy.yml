@@ -1,0 +1,105 @@
+# Release: a version tag (vX.Y.Z) builds the arm64 api and worker images, publishes them to GHCR,
+# and deploys that version to the Oracle Cloud VM; a manual run redeploys an earlier tag
+# (rollback) without building. The VM opens no inbound port: the deploy reaches it over SSH
+# through the Cloudflare tunnel (Access service token), with a key that can only run
+# deploy/deploy.sh. See docs/deployment.md.
+name: Deploy
+
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      rollback_tag:
+        description: "Earlier release tag to redeploy (vX.Y.Z); its images must already exist"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  images:
+    name: images (${{ matrix.target }})
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        target: [api, worker]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Image tags
+        id: tags
+        env:
+          TAG: ${{ github.ref_name }}
+          TARGET: ${{ matrix.target }}
+          SHA: ${{ github.sha }}
+        run: |
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::not a release tag"; exit 1; }
+          image="ghcr.io/jodhernandezbe/ecofate-${TARGET}"
+          echo "tags=${image}:${TAG},${image}:sha-${SHA::12}" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          platforms: linux/arm64
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          cache-from: type=gha,scope=deploy-${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=deploy-${{ matrix.target }}
+
+  deploy:
+    name: deploy
+    needs: images
+    # Runs after the images on a tag push, or alone for a manual rollback.
+    if: always() && (needs.images.result == 'success' || (github.event_name == 'workflow_dispatch' && needs.images.result == 'skipped'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      # Inputs reach the shell only as environment variables, never interpolated into a script.
+      RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.rollback_tag }}
+      ACTION: ${{ github.event_name == 'push' && 'deploy' || 'rollback' }}
+      SSH_HOST: ${{ vars.DEPLOY_SSH_HOST }}
+    steps:
+      - name: Validate the request
+        run: |
+          [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::not a release tag"; exit 1; }
+          [[ "$SSH_HOST" =~ ^[a-z0-9.-]+$ ]] || { echo "::error::set the DEPLOY_SSH_HOST variable (e.g. ssh.ecofate.org)"; exit 1; }
+      - name: Write the deploy key and the pinned host key
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/deploy_key ~/.ssh/known_hosts
+      - name: Deploy over the Cloudflare tunnel
+        env:
+          TUNNEL_SERVICE_TOKEN_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          TUNNEL_SERVICE_TOKEN_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: |
+          proxy="docker run --rm -i -e TUNNEL_SERVICE_TOKEN_ID -e TUNNEL_SERVICE_TOKEN_SECRET cloudflare/cloudflared:2026.10.7@sha256:4955524aeaa379e154023d5a027c250f7b35041a2e7e950cf13f144bc9b9c5ba access ssh --hostname %h"
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts" -o ProxyCommand="$proxy" \
+            "ecofate@${SSH_HOST}" "${ACTION} ${RELEASE_TAG}"
+      - name: Remove the key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

@@ -155,7 +155,10 @@ def test_production_images_are_pinned_and_app_images_come_from_ghcr() -> None:
     for name in ("api", "worker", "migrate"):
         assert SERVICES[name]["image"].startswith("ghcr.io/jodhernandezbe/ecofate-"), name
         assert ":${ECOFATE_TAG:?" in SERVICES[name]["image"], name
-    assert re.fullmatch(r"cloudflare/cloudflared:\d{4}\.\d+\.\d+", SERVICES["cloudflared"]["image"])
+    assert re.fullmatch(
+        r"cloudflare/cloudflared:\d{4}\.\d+\.\d+@sha256:[0-9a-f]{64}",
+        SERVICES["cloudflared"]["image"],
+    )
 
 
 def test_the_tunnel_token_stays_out_of_the_app_containers() -> None:

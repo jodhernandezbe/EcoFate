@@ -23,8 +23,8 @@
 
 ## 5. Deploy path
 
-- [ ] 5.1 `deploy/deploy.sh <tag>`: validates the tag pattern, checks `.env.prod` mode/owner and required variables (names only), records `RELEASE` → `RELEASE.prev`, `pull`, `up -d` (migrate first), polls `https://ecofate.org/api/health`; on failure redeploys `RELEASE.prev` and exits non-zero. Installed as the deploy key's forced command (`authorized_keys` options documented).
-- [ ] 5.2 `.github/workflows/deploy.yml`: on tags `v*.*.*` and `workflow_dispatch` (`rollback_tag`, validated against the pattern, passed via `env:`); `permissions: contents: read, packages: write`; build and push both images on `ubuntu-24.04-arm` tagged version + `sha-<short>`; deploy job uses `cloudflared access ssh` with the Access service token and the deploy key from secrets; all actions SHA-pinned; `environment: production`.
+- [x] 5.1 `deploy/deploy.sh <tag>`: runs from a private copy (it moves its own checkout), accepts only `deploy|rollback vX.Y.Z`, validates the tag pattern, takes a lock, checks `.env.prod` mode/owner and required variables (names only), records `RELEASE` → `RELEASE.prev`, `pull`, `up -d` (migrate first), polls `https://ecofate.org/api/health`; on failure redeploys `RELEASE.prev` and exits non-zero. Installed as the deploy key's forced command (`authorized_keys` options documented).
+- [x] 5.2 `.github/workflows/deploy.yml`: on tags `v*.*.*` and `workflow_dispatch` (`rollback_tag`, validated against the pattern, passed via `env:`); `permissions: contents: read, packages: write`; build and push both images on `ubuntu-24.04-arm` tagged version + `sha-<short>`; deploy job uses the pinned `cloudflared` image as SSH `ProxyCommand` (`access ssh`, Access service token via environment), the deploy key and a pinned `known_hosts` from secrets, and the `DEPLOY_SSH_HOST` variable; all actions SHA-pinned; `environment: production`.
 
 ## 6. Backups and restore
 
