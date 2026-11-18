@@ -79,6 +79,11 @@ the name in bold.
    - subdomain empty, domain `ecofate.org`, URL `http://api:8000` (**http**, not https: the
      tunnel encrypts, the API speaks plain HTTP inside the VM; https gives a 502)
    - subdomain `ssh`, domain `ecofate.org`, URL `ssh://host.docker.internal:22`
+
+   Each route needs its own hostname: a route saved with an empty subdomain takes over
+   `ecofate.org`. Editing a route can also move its DNS record, so afterwards check **DNS →
+   Records** shows both `ecofate.org` and `ssh` as proxied CNAMEs to `<tunnel-id>.cfargotunnel.com`
+   (add a missing one by hand).
 3. **Service Tokens** (Zero Trust → Access → Service credentials) → **Create Service Token**
    named `github-deploy`, non-expiring (or a year). Copy the Client ID and Client Secret (the
    secret is shown once) for the GitHub secrets in step 6.
@@ -187,6 +192,10 @@ A deploy whose health check fails redeploys the previous release by itself. To g
 earlier release on purpose: **Actions → Deploy → Run workflow**, `rollback_tag` = `vX.Y.Z`
 (its images must still be in GHCR). Database migrations only add to the schema within a release
 (expand, then contract in a later release), so an older release runs on the migrated schema.
+
+**Rollback drill**: 2026-11-18, tag `v0.2.1` (a deliberately wrong `public_origin`, never merged)
+failed its health check; the job redeployed v0.2.0 by itself and the site answered 200 again.
+The red deploy job is the expected result. `v0.2.1` stays as the record; never deploy it.
 
 ## Logs
 

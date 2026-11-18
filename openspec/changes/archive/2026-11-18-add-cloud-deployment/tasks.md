@@ -40,7 +40,7 @@
 ## 8. Verification
 
 - [x] 8.1 `shellcheck` on every script, `actionlint` on the workflow, compose config validates, `uv run pre-commit run --all-files` passes (detect-secrets clean).
-- [ ] 8.2 Provision, deploy `v0.2.0`, sign up with a real mailbox (email arrives, SPF/DKIM pass), run one assessment at `https://ecofate.org`, confirm the HSTS header, the `Secure` cookie, and a long turn's stream staying open; confirm `trusted_proxy_hops = 1` by checking that two visitors' sign-in throttles are counted separately (cloudflared does not append its own address to `X-Forwarded-For`).
-- [ ] 8.3 Deploy a tag whose health check fails on purpose and confirm the automatic rollback.
+- [x] 8.2 Provision, deploy `v0.2.0`, sign up with a real mailbox (email arrives, SPF/DKIM pass), run one assessment at `https://ecofate.org`, confirm the HSTS header, the `Secure` cookie, and a long turn's stream staying open; confirm `trusted_proxy_hops = 1` by checking that two visitors' sign-in throttles are counted separately (cloudflared does not append its own address to `X-Forwarded-For`).
+- [x] 8.3 Deploy a tag whose health check fails on purpose and confirm the automatic rollback.
 - [x] 8.4 Run one backup, restore it into a fresh database, record the drill (date, dump size, time) in `docs/deployment.md`.
 - [x] 8.5 Confirm in the OCI console and with a port scan from the internet that no port answers, that the Bastion accepts only the operator's /32, that the deploy key cannot open a shell, and that `.env.prod` is mode 0600.
