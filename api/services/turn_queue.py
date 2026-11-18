@@ -17,6 +17,7 @@ from uuid import UUID
 from redis.exceptions import RedisError
 
 from api.services.agent_runner import RelayTiming
+from api.services.health import HealthCheck, always_healthy
 from api.services.threads import ThreadStore
 from app.task_queue import EnqueueError, TurnEnqueuer, TurnJob
 from app.telemetry import TurnSegment, enqueue_span
@@ -50,6 +51,7 @@ class QueueSetup:
         timing: How a reader waits.
         background: Timing of a turn run in this process (and the stream lifetimes).
         running: Turns running in this process, kept until they end.
+        health_check: Whether the queue's Redis answers (always True without Redis).
     """
 
     bus: TurnEventBus
@@ -57,6 +59,7 @@ class QueueSetup:
     timing: RelayTiming
     background: BackgroundSettings
     running: set[asyncio.Task[None]] = field(default_factory=set[asyncio.Task[None]])
+    health_check: HealthCheck = always_healthy
 
 
 @dataclass(frozen=True)

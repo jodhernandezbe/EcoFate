@@ -1,0 +1,63 @@
+#cloud-config
+# First boot of the EcoFate VM (Ubuntu 24.04 aarch64 on Oracle Cloud Always Free).
+# Installs Docker Engine and the compose plugin from Docker's repository, the OCI CLI (backups
+# with the instance principal), unattended security updates, and an unprivileged `ecofate` user
+# that owns /opt/ecofate. No inbound port is opened: the site and SSH arrive through the
+# Cloudflare tunnel, which the stack starts as a container.
+
+package_update: true
+package_upgrade: true
+packages:
+  - ca-certificates
+  - curl
+  - git
+  - gnupg
+  - make
+  - pipx
+  - unattended-upgrades
+
+users:
+  - default
+  - name: ecofate
+    shell: /bin/bash
+    groups: [docker]
+    lock_passwd: true
+    ssh_authorized_keys:
+      - "__OPERATOR_SSH_PUBLIC_KEY__"
+
+write_files:
+  # SSH: keys only, no root, no client-supplied environment, the ecofate user only. sshd is
+  # reachable only through the Bastion (subnet) and the Cloudflare tunnel (behind Access).
+  - path: /etc/ssh/sshd_config.d/10-ecofate.conf
+    permissions: "0644"
+    content: |
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      PermitRootLogin no
+      PermitUserEnvironment no
+      AllowUsers ecofate
+  - path: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+
+runcmd:
+  - systemctl reload ssh || systemctl reload sshd
+  # Docker Engine and the compose plugin (Docker's documented apt repository).
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  - chmod a+r /etc/apt/keyrings/docker.asc
+  - echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list
+  - apt-get update
+  - apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  - systemctl enable --now docker
+  - usermod -aG docker ecofate
+  # OCI CLI for the ecofate user (backups authenticate as the instance, no keys on disk).
+  - sudo -u ecofate pipx install oci-cli
+  # The application checkout and its state; deploy.sh moves it to each release tag.
+  - install -d -o ecofate -g ecofate -m 0750 /opt/ecofate
+  - sudo -u ecofate git clone https://github.com/jodhernandezbe/EcoFate.git /opt/ecofate/app
+  # The nightly backup (it fails visibly in the journal until /opt/ecofate/.env.prod exists).
+  - cp /opt/ecofate/app/deploy/ecofate-backup.service /opt/ecofate/app/deploy/ecofate-backup.timer /etc/systemd/system/
+  - systemctl daemon-reload
+  - systemctl enable --now ecofate-backup.timer

@@ -1,0 +1,77 @@
+# EcoFate production overrides, laid over compose.yaml on the Oracle Cloud VM (docs/deployment.md):
+#
+#   docker compose --env-file /opt/ecofate/.env.prod -f compose.yaml -f compose.prod.yaml up -d
+#
+# Images come from GHCR at ECOFATE_TAG (set by deploy/deploy.sh) instead of being built. Nothing
+# publishes a host port: the site is reached only through the Cloudflare Tunnel (`cloudflared`),
+# which connects out to Cloudflare. ECOFATE_SETTINGS_PROFILE=production lays
+# config/settings.production.toml over the shipped settings (public origin, secure cookie, ...).
+# The dev-only services (db-port, redis-port, mailpit) stay off: their `dev` profile is not used.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-production: &production
+  ECOFATE_SETTINGS_PROFILE: production
+
+services:
+  db:
+    mem_limit: 2g
+    logging: *logging
+
+  redis:
+    mem_limit: 512m
+    logging: *logging
+
+  migrate:
+    image: ghcr.io/jodhernandezbe/ecofate-api:${ECOFATE_TAG:?set ECOFATE_TAG (deploy.sh does)}
+    pull_policy: always
+    environment:
+      <<: *production
+    mem_limit: 1g
+    logging: *logging
+
+  api:
+    image: ghcr.io/jodhernandezbe/ecofate-api:${ECOFATE_TAG:?set ECOFATE_TAG (deploy.sh does)}
+    pull_policy: always
+    env_file: !override
+      - /opt/ecofate/.env.prod
+    environment:
+      <<: *production
+    ports: !reset []
+    mem_limit: 3g
+    logging: *logging
+
+  worker:
+    image: ghcr.io/jodhernandezbe/ecofate-worker:${ECOFATE_TAG:?set ECOFATE_TAG (deploy.sh does)}
+    pull_policy: always
+    env_file: !override
+      - /opt/ecofate/.env.prod
+    environment:
+      <<: *production
+    # [worker].concurrency = 4 in production; each child loads PyTorch and the read-across model.
+    mem_limit: 14g
+    logging: *logging
+
+  cloudflared:
+    # Outbound-only connection to Cloudflare, which serves https://ecofate.org and forwards to
+    # http://api:8000 (public hostname configured on the tunnel in the Cloudflare dashboard).
+    # Its token lives in its own file, so the API and worker never hold it.
+    # 2026.10.7, pinned by digest (amd64 and arm64).
+    image: cloudflare/cloudflared:2026.10.7@sha256:4955524aeaa379e154023d5a027c250f7b35041a2e7e950cf13f144bc9b9c5ba
+    command: ["tunnel", "--no-autoupdate", "run"]
+    env_file:
+      - /opt/ecofate/tunnel.env
+    # The tunnel's ssh.<domain> hostname points at ssh://host.docker.internal:22, the VM's own sshd
+    # (reachable from this container only; the VM's security list admits nothing from outside).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+    mem_limit: 256m
+    logging: *logging

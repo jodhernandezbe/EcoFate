@@ -1,0 +1,27 @@
+# Production profile: laid over settings.toml when ECOFATE_SETTINGS_PROFILE=production (set by
+# compose.prod.yaml). Only keys that already exist in settings.toml may appear here, and nothing
+# secret: secrets come from the server's environment file. See docs/deployment.md.
+
+[ui]
+# The site is served by Cloudflare (through the tunnel) at this origin.
+public_origin = "https://ecofate.org"
+
+[mail]
+# Links in verification and password-reset emails open the public site.
+app_base_url = "https://ecofate.org"
+
+[auth]
+# The session cookie travels only over HTTPS.
+cookie_secure = true
+# Requests reach the API through cloudflared from Cloudflare's edge, which appends the visitor's
+# address to X-Forwarded-For; the last entry is that address (verified at the first deploy).
+trusted_proxy_hops = 1
+
+[telemetry]
+environment = "production"
+
+[worker]
+# Assessment turns the worker runs at once. The Always Free VM has 4 OCPUs and 24 GB; each slot
+# loads PyTorch and the read-across model (about 1.5-2.5 GB), so one per OCPU leaves ample room.
+# Turns beyond this wait in the queue ("Waiting for a worker"); local runs keep the base value.
+concurrency = 4
