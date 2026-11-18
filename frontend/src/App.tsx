@@ -10,6 +10,8 @@ import { MapPanel } from "./features/map/MapPanel";
 import { MonitoringView } from "./features/monitoring/MonitoringView";
 import { OverviewPanel } from "./features/overview/OverviewPanel";
 import { SettingsDrawer } from "./features/settings/SettingsDrawer";
+import { useWelcome } from "./features/welcome/useWelcome";
+import { WelcomeSheet } from "./features/welcome/WelcomeSheet";
 import { useAgentStream } from "./hooks/useAgentStream";
 import { useClientConfig } from "./hooks/useClientConfig";
 import { useKeyStatus } from "./hooks/useKeyStatus";
@@ -48,6 +50,7 @@ function Workspace({ user, onSignOut, onGone }: WorkspaceProps) {
   const report = useReportDownload();
   const key = useKeyStatus();
   const config = useClientConfig();
+  const welcome = useWelcome(user.id);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const [confirmingClear, setConfirmingClear] = useState(false);
@@ -95,6 +98,11 @@ function Workspace({ user, onSignOut, onGone }: WorkspaceProps) {
             reporting={report.busy}
             reportError={report.error}
             onOpenSettings={() => setSettingsOpen(true)}
+            onWelcome={() => {
+              setSettingsOpen(false);
+              setAccountOpen(false);
+              welcome.show();
+            }}
             email={user.email}
             admin={user.role === "admin"}
             onAccount={() => setAccountOpen(true)}
@@ -142,6 +150,21 @@ function Workspace({ user, onSignOut, onGone }: WorkspaceProps) {
         onClose={() => setAccountOpen(false)}
         onSignOut={onSignOut}
         onGone={onGone}
+      />
+      <WelcomeSheet
+        open={welcome.open}
+        hasKey={key.statuses?.openai.configured === true}
+        suggestions={config?.suggestions}
+        busy={chat.busy}
+        onPick={(prompt) => {
+          welcome.dismiss();
+          void chat.send(prompt);
+        }}
+        onOpenSettings={() => {
+          welcome.dismiss();
+          setSettingsOpen(true);
+        }}
+        onClose={welcome.dismiss}
       />
       <SettingsDrawer
         open={settingsOpen}

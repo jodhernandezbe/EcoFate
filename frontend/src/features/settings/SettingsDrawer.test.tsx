@@ -6,10 +6,9 @@ import type { KeysStatusResponse } from "../../types/workspace";
 import { SettingsDrawer } from "./SettingsDrawer";
 
 const KEY = "sk-test-0123456789abcdef"; // pragma: allowlist secret
-const NO_SERVICES = { census: { available: false }, comptox: { available: false } };
-const BOTH_SERVICES = { census: { available: true }, comptox: { available: true } };
-const NO_KEY: KeysStatusResponse = { openai: { configured: false }, services: NO_SERVICES };
-const STORED: KeysStatusResponse = { openai: { configured: true }, services: BOTH_SERVICES };
+const SERVICES = { census: { available: false }, comptox: { available: false } }; // still sent by the API, not shown
+const NO_KEY: KeysStatusResponse = { openai: { configured: false }, services: SERVICES };
+const STORED: KeysStatusResponse = { openai: { configured: true }, services: SERVICES };
 
 function setup(overrides: Partial<Parameters<typeof SettingsDrawer>[0]> = {}) {
   const props = {
@@ -28,7 +27,6 @@ function setup(overrides: Partial<Parameters<typeof SettingsDrawer>[0]> = {}) {
 }
 
 const openai = () => screen.getByRole("region", { name: "OpenAI API key", hidden: true });
-const service = (label: string) => screen.getByRole("region", { name: `${label} service`, hidden: true });
 const open = async (title: string) => {
   const button = screen.getByRole("button", { name: title });
   if (button.getAttribute("aria-expanded") === "false") await userEvent.click(button);
@@ -45,10 +43,9 @@ describe("SettingsDrawer", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("says the state of each section in words while collapsed", () => {
-    setup({ statuses: { openai: { configured: true }, services: { ...NO_SERVICES, census: { available: true } } } });
+  it("says the state of the Assistant section in words while collapsed", () => {
+    setup({ statuses: STORED });
     expect(screen.getByText("Key saved")).toBeInTheDocument();
-    expect(screen.getByText("1 of 2 available")).toBeInTheDocument();
   });
 
   it("says a key is missing, and nothing before the statuses are known", () => {
@@ -59,23 +56,25 @@ describe("SettingsDrawer", () => {
     unmount();
     setup();
     expect(screen.getByText("Key missing")).toBeInTheDocument();
-    expect(screen.getByText("0 of 2 available")).toBeInTheDocument();
   });
 
-  it("has an Assistant section for the OpenAI key and a read-only Data services section", async () => {
+  it("has only an Assistant section, for the OpenAI key", () => {
     setup();
-    await open("Data services");
     const assistant = screen.getByRole("region", { name: "Assistant" });
-    const data = screen.getByRole("region", { name: "Data services" });
     expect(within(assistant).getByRole("region", { name: "OpenAI API key" })).toBeInTheDocument();
-    expect(within(data).getByRole("region", { name: "Census service" })).toBeInTheDocument();
-    expect(within(data).getByRole("region", { name: "CompTox service" })).toBeInTheDocument();
+    expect(screen.getAllByRole("region", { hidden: true }).filter((r) => r.getAttribute("aria-label") !== "OpenAI API key")).toHaveLength(1);
+  });
+
+  it("shows no Census or CompTox entry and no Data services section", () => {
+    setup({ statuses: STORED });
+    expect(screen.queryByRole("button", { name: "Data services" })).toBeNull();
+    expect(screen.queryByText(/Census|CompTox|Data services/)).toBeNull();
+    expect(document.querySelectorAll("input")).toHaveLength(1); // the OpenAI key only
   });
 
   it("opens the Assistant section by itself while the key is missing, and not otherwise", () => {
     setup();
     expect(screen.getByRole("button", { name: "Assistant" })).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("button", { name: "Data services" })).toHaveAttribute("aria-expanded", "false");
   });
 
   it("starts collapsed when the key is stored", () => {
@@ -102,32 +101,6 @@ describe("SettingsDrawer", () => {
       setup();
       expect(within(openai()).getByRole("status")).toHaveTextContent("No key configured");
     });
-  });
-
-  it("renders no input for the Census or CompTox keys", async () => {
-    setup();
-    await open("Data services");
-    expect(document.querySelectorAll("input")).toHaveLength(1); // the OpenAI key only
-    expect(screen.queryByLabelText("Census API key")).toBeNull();
-    expect(screen.queryByLabelText("CompTox API key")).toBeNull();
-    for (const label of ["Census", "CompTox"]) {
-      expect(within(service(label)).queryByRole("textbox")).toBeNull();
-      expect(within(service(label)).queryByRole("button", { name: /save|clear|reset/i })).toBeNull();
-    }
-  });
-
-  it("says whether each data service is provided by this installation", async () => {
-    setup({ statuses: { openai: { configured: true }, services: { census: { available: false }, comptox: { available: true } } } });
-    await open("Data services");
-    expect(within(service("CompTox")).getByRole("status")).toHaveTextContent("Provided by this installation");
-    expect(within(service("Census")).getByRole("status")).toHaveTextContent("Not available on this installation");
-  });
-
-  it("says which lookups are missing for an unavailable service only", async () => {
-    setup({ statuses: { openai: { configured: true }, services: { census: { available: false }, comptox: { available: true } } } });
-    await open("Data services");
-    expect(service("Census")).toHaveTextContent("population counts fall back");
-    expect(service("CompTox")).not.toHaveTextContent("cannot be looked up");
   });
 
   it("saves the typed key, empties the input and never uses browser storage", async () => {

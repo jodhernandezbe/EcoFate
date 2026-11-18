@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 
 import { LeftNavRail } from "./LeftNavRail";
 
-const ENTRIES = ["Workspace", "Clear workspace", "Generate report", "Monitoring", "Account", "Settings"];
+const ENTRIES = ["Workspace", "Clear workspace", "Generate report", "Monitoring", "Welcome", "Account", "Settings"];
 
 function setup(over: Partial<Parameters<typeof LeftNavRail>[0]> = {}) {
   const props = {
@@ -19,6 +19,7 @@ function setup(over: Partial<Parameters<typeof LeftNavRail>[0]> = {}) {
     reporting: false,
     reportError: null,
     onOpenSettings: vi.fn(),
+    onWelcome: vi.fn(),
     email: "ana@example.com",
     admin: true,
     onAccount: vi.fn(),
@@ -66,6 +67,13 @@ describe("LeftNavRail expanded", () => {
     expect(props.onOpenSettings).toHaveBeenCalledTimes(1);
   });
 
+  it("reopens the welcome from its entry, expanded or collapsed", async () => {
+    const user = userEvent.setup();
+    const props = setup();
+    await user.click(screen.getByRole("button", { name: "Welcome" }));
+    expect(props.onWelcome).toHaveBeenCalledTimes(1);
+  });
+
   it("shows the signed-in email under the Account entry and opens the account sheet from it", async () => {
     const user = userEvent.setup();
     const props = setup();
@@ -76,7 +84,7 @@ describe("LeftNavRail expanded", () => {
 
   it("shows a regular user every entry but Monitoring, Account and Settings last", () => {
     setup({ admin: false });
-    expect(names()).toEqual(["Workspace", "Clear workspace", "Generate report", "Account", "Settings"]);
+    expect(names()).toEqual(["Workspace", "Clear workspace", "Generate report", "Welcome", "Account", "Settings"]);
     expect(screen.queryByRole("button", { name: "Monitoring" })).toBeNull();
   });
 
@@ -137,6 +145,15 @@ describe("LeftNavRail collapsed", () => {
     }
     expect(screen.getByRole("button", { name: "Settings" })).toHaveAttribute("title", "Settings");
     expect(screen.getByRole("button", { name: "Monitoring" })).toHaveAttribute("title", "Monitoring");
+  });
+
+  it("names and titles the Welcome icon and opens the welcome from it", async () => {
+    const user = userEvent.setup();
+    const props = setup({ collapsed: true });
+    const welcome = screen.getByRole("button", { name: "Welcome" });
+    expect(welcome).toHaveAttribute("title", "Welcome");
+    await user.click(welcome);
+    expect(props.onWelcome).toHaveBeenCalledTimes(1);
   });
 
   it("opens Settings from its icon", async () => {

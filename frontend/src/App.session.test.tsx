@@ -84,7 +84,7 @@ describe("rail entries per role", () => {
       .getAllByRole("button")
       .map((b) => b.getAttribute("aria-label") ?? b.textContent ?? "")
       .filter((name) => !name.includes("navigation"));
-    expect(names).toEqual(["Workspace", "Clear workspace", "Generate report", "Monitoring", "Account", "Settings"]);
+    expect(names).toEqual(["Workspace", "Clear workspace", "Generate report", "Monitoring", "Welcome", "Account", "Settings"]);
     expect(rail().getByText(ADMIN.email)).toBeInTheDocument();
   });
 
@@ -243,7 +243,9 @@ describe("browser storage", () => {
     stub({ me: () => meResponse(MEMBER) });
     await renderApp(MEMBER);
     for (const store of [localStorage, sessionStorage]) {
-      const everything = JSON.stringify({ ...store });
+      // The welcome's seen flag is named after the user id (a convenience, spec'd); nothing else is.
+      const kept = Object.fromEntries(Object.entries({ ...store }).filter(([name]) => !name.startsWith("ecofate.welcome.seen.")));
+      const everything = JSON.stringify(kept);
       expect(everything).not.toContain(MEMBER.email);
       expect(everything).not.toContain(MEMBER.id);
     }
