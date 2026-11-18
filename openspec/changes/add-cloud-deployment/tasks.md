@@ -28,8 +28,8 @@
 
 ## 6. Backups and restore
 
-- [ ] 6.1 `deploy/backup.sh` + systemd `ecofate-backup.service`/`.timer` (03:15 UTC): `pg_dump -Fc` in `db`, upload with `oci os object put --auth instance_principal --no-overwrite` as `pg/<UTC date>T<UTC time>.dump` (the VM may create and read dumps but not overwrite or delete them), remove the local file, exit non-zero on any failure.
-- [ ] 6.2 `deploy/restore.sh <date>`: download, restore into a new database, check row counts of the core tables, then switch and restart `api`/`worker`.
+- [x] 6.1 `deploy/backup.sh` + systemd `ecofate-backup.service`/`.timer` (03:15 UTC): `pg_dump -Fc` in `db`, upload with `oci os object put --auth instance_principal --no-overwrite` as `pg/<UTC date>T<UTC time>.dump` (the VM may create and read dumps but not overwrite or delete them), remove the local file, exit non-zero on any failure.
+- [x] 6.2 `deploy/restore.sh <timestamp>`: download, restore into a new database, show row counts of the core tables, switch only after typing `switch`, in one transaction (a failed switch leaves the live database live and restarts the app); the previous database is kept, renamed. Shared paths and the compose call live in `deploy/lib.sh`.
 
 ## 7. Makefile and documentation
 

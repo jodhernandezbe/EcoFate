@@ -1,0 +1,14 @@
+# Installed to /etc/systemd/system/ (docs/deployment.md, "Backups"); started by the timer.
+[Unit]
+Description=EcoFate nightly database backup to Object Storage
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+User=ecofate
+Group=ecofate
+ExecStart=/opt/ecofate/app/deploy/backup.sh
+# The script needs docker and its own files only.
+NoNewPrivileges=true
+PrivateTmp=true

@@ -14,18 +14,27 @@ umask 077
 
 # Run from a private copy: the checkout this file lives in is moved to the new tag below, and bash
 # reads a script as it runs, so editing it underneath would execute whatever the new version holds.
-if [[ -z "${ECOFATE_DEPLOY_COPY:-}" ]]; then
+# The copy learns where it came from through its arguments, never the environment (a forced-command
+# SSH key cannot add arguments).
+if [[ "${1:-}" != "--from-copy" ]]; then
   copy="$(mktemp)"
   cp "${BASH_SOURCE[0]}" "${copy}"
-  ECOFATE_DEPLOY_COPY="${copy}" exec bash "${copy}" "$@"
+  exec bash "${copy}" --from-copy "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)" "$@"
 fi
-trap 'rm -f "${ECOFATE_DEPLOY_COPY}"' EXIT
+DEPLOY_DIR="$2"
+shift 2
+# Remove the private copy on exit, and only a temporary file (never the checkout's own script).
+SELF="${BASH_SOURCE[0]}"
+[[ "${SELF}" == "${TMPDIR:-/tmp}"/tmp.* ]] && trap 'rm -f "${SELF}"' EXIT
 
-ROOT="/opt/ecofate"
-APP="${ROOT}/app"
-ENV_FILE="${ROOT}/.env.prod"
-TUNNEL_FILE="${ROOT}/tunnel.env"
-RELEASE="${ROOT}/RELEASE"
+# Paths and the compose invocation, read now: the checkout moves to another tag further down.
+# shellcheck source=deploy/lib.sh
+source "${DEPLOY_DIR}/lib.sh"
+ROOT="${ECOFATE_ROOT}"
+APP="${ECOFATE_APP}"
+ENV_FILE="${ECOFATE_ENV_FILE}"
+TUNNEL_FILE="${ECOFATE_TUNNEL_FILE}"
+RELEASE="${ECOFATE_RELEASE_FILE}"
 TAG_PATTERN='^v[0-9]+\.[0-9]+\.[0-9]+$'
 HEALTH_TRIES=10
 HEALTH_PAUSE_SECONDS=6
@@ -66,8 +75,7 @@ checkout() {
 }
 
 compose() {
-  ECOFATE_TAG="${CURRENT}" docker compose --env-file "${ENV_FILE}" \
-    -f "${APP}/compose.yaml" -f "${APP}/compose.prod.yaml" --project-directory "${APP}" "$@"
+  ECOFATE_TAG="${CURRENT}" ecofate_compose "$@"
 }
 
 public_health_ok() {
