@@ -3,7 +3,9 @@
 ### Requirement: Scripted provisioning and teardown on Oracle Cloud Always Free
 The repository SHALL provide a provisioning script that creates, from one configuration file, a
 single Ubuntu virtual machine on Oracle Cloud using only Always Free shapes and limits, with at
-least 4 GB of memory, a network whose security list allows no inbound traffic, a permission that
+least 4 GB of memory, a network whose security list allows no inbound traffic from the internet (only SSH
+from inside the VM's own subnet, for a managed bastion that accepts only the operator's address), a
+permission that
 lets only that VM write to one backup bucket without stored keys, and a private backup bucket with
 a retention rule. Running it twice SHALL NOT create duplicates, and a capacity error SHALL be
 retried and then reported with what to try next. A teardown script SHALL delete every resource the
@@ -14,9 +16,13 @@ the expected monthly cost is zero and how to keep it so.
 - **WHEN** the operator runs the provisioning script with a filled configuration file
 - **THEN** the VM, network, permission and bucket exist and the script prints the next steps
 
-#### Scenario: Nothing open inbound
+#### Scenario: Nothing open to the internet
 - **WHEN** the VM's security rules are inspected
-- **THEN** no inbound port is open, including 22, 80 and 443
+- **THEN** no inbound rule admits traffic from outside the VM's subnet, and the only rule admits SSH from inside it
+
+#### Scenario: Bastion limited to the operator
+- **WHEN** the bastion's allowed client addresses are inspected
+- **THEN** they are exactly the operator's single address, never an open range
 
 #### Scenario: Never beyond Always Free
 - **WHEN** the configuration asks for more OCPUs or memory than the Always Free limits

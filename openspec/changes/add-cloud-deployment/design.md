@@ -49,8 +49,12 @@ See proposal.md for motivation. What shapes the approach:
    compose service with the tunnel token from its own `/opt/ecofate/tunnel.env` (so the API and
    worker processes never hold it); the tunnel's public hostname
    `ecofate.org` points at `http://api:8000`; `www.ecofate.org` redirects with a Cloudflare rule;
-   "Always Use HTTPS" and HSTS are turned on in the zone. The VM's security list allows no
-   inbound traffic at all. Alternative: Caddy with Let's Encrypt and ports 80/443 open; rejected
+   "Always Use HTTPS" and HSTS are turned on in the zone. The VM's security list admits nothing
+   from the internet; its one inbound rule is SSH from its own subnet, for the OCI Bastion (Always
+   Free) that accepts only the operator's /32. A Bastion port-forwarding session is the first
+   login, before the tunnel exists, and the emergency path; it needs no agent plugin on the VM.
+   Alternatives for the first login: the tunnel token in cloud-init (left readable in instance
+   metadata) or temporary SSH from the operator's IP (briefly internet-facing); rejected. Alternative: Caddy with Let's Encrypt and ports 80/443 open; rejected
    (open ports, certificate management, no benefit once DNS is on Cloudflare).
 3. **arm64 images built natively on GitHub's Arm runners** (`ubuntu-24.04-arm`, free for public
    repositories), pushed to GHCR (free, public packages need no pull token). Alternative: QEMU

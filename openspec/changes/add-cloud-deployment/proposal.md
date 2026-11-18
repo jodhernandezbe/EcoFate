@@ -12,7 +12,8 @@ there for USD 0 a month, always on, reachable at `https://ecofate.org` through a
 - **Provisioning on Oracle Cloud**: `deploy/oci/provision.sh` (OCI CLI) creates, from
   `deploy/oci/config.env`, one Always Free Ampere A1 Flex VM (Ubuntu 24.04 aarch64; 4 OCPU /
   24 GB by default, never above the Always Free limits), its VCN and subnet with a security list
-  that allows **no inbound traffic**, a dynamic group and policy letting that VM write to one
+  that admits **nothing from the internet** (only SSH from inside the subnet, for an OCI Bastion that
+  accepts only the operator's address and is the first login before the tunnel exists), a dynamic group and policy letting that VM write to one
   Object Storage backup bucket (instance principal, no keys), the private bucket itself with a
   30-day retention rule, and a `cloud-init.yaml` that installs Docker Engine and the compose
   plugin, creates a non-root `ecofate` user and enables unattended security updates. Capacity
@@ -73,7 +74,7 @@ there for USD 0 a month, always on, reachable at `https://ecofate.org` through a
 
 ## Impact
 
-- New: `deploy/oci/{config.env.example,provision.sh,teardown.sh,cloud-init.yaml}`,
+- New: `deploy/oci/{config.env.example,provision.sh,teardown.sh,bastion-ssh.sh,cloud-init.yaml}`,
   `deploy/{deploy.sh,backup.sh,restore.sh,ecofate-backup.service,ecofate-backup.timer,env.prod.example}`,
   `compose.prod.yaml`, `.github/workflows/deploy.yml`, `docs/deployment.md`.
 - App code: a production settings override (origin, cookie, proxy hops, telemetry environment),

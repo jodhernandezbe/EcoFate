@@ -16,10 +16,10 @@
 
 ## 4. Provisioning and teardown on Oracle Cloud
 
-- [ ] 4.1 `deploy/oci/config.env.example` (region, availability domain, OCPUs, memory, boot size, bucket name, compartment) and git-ignore `deploy/oci/config.env`.
-- [ ] 4.2 `deploy/oci/cloud-init.yaml`: Docker Engine + compose plugin from Docker's apt repo (arm64), OCI CLI, `ecofate` user, `/opt/ecofate`, unattended-upgrades.
-- [ ] 4.3 `deploy/oci/provision.sh` (idempotent, `set -euo pipefail`): refuses shapes beyond Always Free; VCN, subnet and a security list with no inbound rules; A1 Flex instance with cloud-init (retry with backoff across availability domains on capacity errors); dynamic group + policy for objects in the one bucket; private bucket with a 30-day retention rule; prints next steps.
-- [ ] 4.4 `deploy/oci/teardown.sh`: deletes everything `provision.sh` created after typing the bucket name.
+- [x] 4.1 `deploy/oci/config.env.example` (compartment, tenancy, OCPUs, memory, boot size, operator SSH key, Bastion client /32, bucket name, capacity retries) and git-ignore `deploy/oci/config.env`.
+- [x] 4.2 `deploy/oci/cloud-init.yaml`: Docker Engine + compose plugin from Docker's apt repo (arm64), OCI CLI, `ecofate` user, `/opt/ecofate`, unattended-upgrades.
+- [x] 4.3 `deploy/oci/provision.sh` (idempotent, `set -euo pipefail`): refuses shapes beyond Always Free and a Bastion range wider than /32; VCN, internet gateway, subnet and a security list whose only inbound rule is SSH from the subnet (re-applied each run); an OCI Bastion accepting only the operator's /32, with `deploy/oci/bastion-ssh.sh` opening a one-hour port-forwarding session for the first login; A1 Flex instance with cloud-init (retry with backoff across availability domains on capacity errors); dynamic group + policy for objects in the one bucket; private bucket with a 30-day retention rule; prints next steps.
+- [x] 4.4 `deploy/oci/teardown.sh`: deletes everything `provision.sh` created after typing the bucket name.
 
 ## 5. Deploy path
 
@@ -28,7 +28,7 @@
 
 ## 6. Backups and restore
 
-- [ ] 6.1 `deploy/backup.sh` + systemd `ecofate-backup.service`/`.timer` (03:15 UTC): `pg_dump -Fc` in `db`, upload with `oci os object put --auth instance_principal` as `pg/<UTC date>.dump`, remove the local file, exit non-zero on any failure.
+- [ ] 6.1 `deploy/backup.sh` + systemd `ecofate-backup.service`/`.timer` (03:15 UTC): `pg_dump -Fc` in `db`, upload with `oci os object put --auth instance_principal --no-overwrite` as `pg/<UTC date>T<UTC time>.dump` (the VM may create and read dumps but not overwrite or delete them), remove the local file, exit non-zero on any failure.
 - [ ] 6.2 `deploy/restore.sh <date>`: download, restore into a new database, check row counts of the core tables, then switch and restart `api`/`worker`.
 
 ## 7. Makefile and documentation
@@ -43,4 +43,4 @@
 - [ ] 8.2 Provision, deploy `v0.2.0`, sign up with a real mailbox (email arrives, SPF/DKIM pass), run one assessment at `https://ecofate.org`, confirm the HSTS header, the `Secure` cookie, and a long turn's stream staying open; confirm `trusted_proxy_hops = 1` by checking that two visitors' sign-in throttles are counted separately (cloudflared does not append its own address to `X-Forwarded-For`).
 - [ ] 8.3 Deploy a tag whose health check fails on purpose and confirm the automatic rollback.
 - [ ] 8.4 Run one backup, restore it into a fresh database, record the drill (date, dump size, time) in `docs/deployment.md`.
-- [ ] 8.5 Confirm in the OCI console and with a port scan that no inbound port is open, that the deploy key cannot open a shell, and that `.env.prod` is mode 0600.
+- [ ] 8.5 Confirm in the OCI console and with a port scan from the internet that no port answers, that the Bastion accepts only the operator's /32, that the deploy key cannot open a shell, and that `.env.prod` is mode 0600.
