@@ -48,7 +48,9 @@ come from one Logfire project (Settings -> Write tokens / Read tokens):
   default). Without the write token no traces are sent; without the read token the Monitoring view
   says so and shows nothing else. See [deployment](deployment/first-login-and-secrets.md#4-first-login-and-the-secret-files).
 
-The production settings overlay sets `[telemetry].environment = "production"`.
+The production settings overlay sets `[telemetry].environment = "production"`. Production uses its
+own Logfire project (its own pair of tokens), so its traces never mix with development's: look
+for them in that project, not in the one a developer's `.env` points at.
 
 ## How the data flows
 
