@@ -5,17 +5,19 @@ from __future__ import annotations
 import copy
 import logging
 import threading
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
 
 from commons.cas import format_cas
+from commons.stop import StopCheck, never_stop, raise_if_stopped
 from config.assessment import AssessmentSettings, get_assessment_settings
 from config.occupational import get_occupational_settings
 from config.read_across import get_read_across_settings
 from tools.assessment.helpers.chain import Refined, assess_all, refine_all, worst_case_only
+from tools.assessment.helpers.job_input import parse_job_input
 from tools.assessment.helpers.occupational import Workplace, no_limits
 from tools.assessment.helpers.scenarios import drivers_of
 from tools.assessment.helpers.screened_workers import with_workers
@@ -41,6 +43,7 @@ from tools.schemas import (
     EmissionRecord,
     FacilityAssessment,
     FacilityExposure,
+    JobResult,
     Meteorology,
     MissingEntry,
     NeiStackResult,
@@ -238,6 +241,7 @@ class _Call:
     settings: AssessmentSettings
     workplace: Workplace
     worker_ids: frozenset[str] = frozenset()
+    should_stop: StopCheck = never_stop
 
 
 def _up_to_cap(
@@ -259,6 +263,7 @@ def _by_id(call: _Call, frs_ids: list[str]) -> Findings:
     chosen, skipped = _chosen(call.records, frs_ids, call.worker_ids)
     candidates = [(r, None) for r in _resolved(chosen)]
     refined = refine_all(candidates, call.toxicity, call.steps, call.settings)
+    raise_if_stopped(call.should_stop)  # between the refining and the full chain
     full, worst = _up_to_cap(call, refined)
     tox = (call.toxicity, call.source)
     return Findings(
@@ -280,6 +285,7 @@ def _refined(call: _Call, first: Screen, possible: bool) -> Split:
     resolved = _resolved([record for record, _ in first.candidates])
     candidates = [(r, bound) for r, (_, bound) in zip(resolved, first.candidates, strict=True)]
     refined = refine_all(candidates, call.toxicity, call.steps, call.settings)
+    raise_if_stopped(call.should_stop)  # end of tier 2: before the full chain
     return split(refined, possible, call.settings)
 
 
@@ -322,6 +328,7 @@ def _screened(call: _Call) -> Findings:
     unit = unit_bound(call.steps, call.toxicity, s.screening.ambient_temperatures_k)
     possible = can_screen(unit)
     first = screen(call.records, unit if possible else None, s)
+    raise_if_stopped(call.should_stop)  # end of tier 1: before refining
     return _found(call, possible, first, _refined(call, first, possible))
 
 
@@ -514,14 +521,25 @@ def run_assessment(
     toxicity: Toxicity | None,
     steps: Steps,
     config: RunnableConfig | None = None,
+    should_stop: StopCheck = never_stop,
 ) -> Outcome:
     """Screen (or select) the facilities, get the benchmarks, run the tiers, build both views.
 
     If TRI cannot be read, nothing is assessed and the result says the assessment was not
     completed: a failed read is never taken for "no releases", so no category is substituted.
+    ``should_stop`` is asked between the tiers; when it says so the run raises
+    ``commons.stop.StoppedError`` and nothing partial is returned (the default never stops).
     """
     try:
-        return _assess(cas_number, frs_ids, place, radius_km, toxicity, steps, config)
+        return _assess(
+            cas_number,
+            frs_ids,
+            place,
+            radius_km,
+            toxicity,
+            (steps, should_stop),
+            config,
+        )
     except TriReadError as exc:
         return _not_completed(cas_number, str(exc))
 
@@ -573,11 +591,11 @@ def _call_of(
     inventory: _Inventory,
     benchmarks: tuple[Toxicity, str, list[str]],
     found: ChemicalProperties | None,
-    run: tuple[float | None, Steps, AssessmentSettings],
+    run: tuple[float | None, Steps, AssessmentSettings, StopCheck],
 ) -> _Call:
     """What every path of this call shares, from the inventory, benchmarks and run settings."""
     toxicity, source, warnings = benchmarks
-    radius_km, steps, settings = run
+    radius_km, steps, settings, should_stop = run
     return _Call(
         cas,
         inventory.records,
@@ -589,6 +607,7 @@ def _call_of(
         settings,
         _workplace(found, cas),
         frozenset(w["frs_id"] for w in inventory.worker_only),
+        should_stop,
     )
 
 
@@ -625,13 +644,19 @@ def _asking(
     return view, _artifact(f)
 
 
+def _prepared(steps: Steps, inventory: _Inventory) -> Steps:
+    """The steps with the inventory's industry titles prefetched and one SCC search per title."""
+    steps.prefetch(sorted({r["naics_title"] for r in inventory.records if r["naics_title"]}))
+    return replace(steps, scc=_once_per_title(steps.scc))
+
+
 def _assess(
     cas_number: str,
     frs_ids: list[str] | None,
     place: tuple[str | None, str | None],
     radius_km: float | None,
     toxicity: Toxicity | None,
-    steps: Steps,
+    run_with: tuple[Steps, StopCheck],
     config: RunnableConfig | None = None,
 ) -> Outcome:
     settings = get_assessment_settings()
@@ -644,14 +669,29 @@ def _assess(
     missing = _still_missing(found, tox)
     if missing:
         return _asking(cas, (tox, source), warnings, missing)
-    steps.prefetch(sorted({r["naics_title"] for r in inventory.records if r["naics_title"]}))
-    steps = replace(steps, scc=_once_per_title(steps.scc))
-    run = (radius_km, steps, settings)
+    run = (radius_km, _prepared(run_with[0], inventory), settings, run_with[1])
     call = _call_of(cas, inventory, (tox, source, [*warnings, *inventory.notes]), found, run)
     findings = _by_id(call, frs_ids) if frs_ids else _screened(call)
     findings = _with_worker_only(findings, inventory, frs_ids, call)
     listed = (settings.max_worst_case_listed, settings.max_screened_out_listed)
     return assessment_view(findings, *listed), _artifact(findings)
+
+
+def run_assessment_job(arguments: Mapping[str, object], should_stop: StopCheck) -> JobResult:
+    """Run ``assess_facilities`` as a background job: the stored input, the default steps, and a
+    stop check asked between the tiers.
+
+    Args:
+        arguments: The job's stored input (``tools.assessment.helpers.job_input``), untrusted.
+        should_stop: True when the job must stop (its limit or a cancel request).
+
+    Raises:
+        InvalidJobInputError: The input does not fit the tool.
+        commons.stop.StoppedError: ``should_stop`` said so between two tiers.
+    """
+    request = parse_job_input(arguments)
+    args = (request.cas_number, request.frs_ids, request.place, request.radius_km)
+    return run_assessment(*args, request.toxicity, default_steps(), request.config, should_stop)
 
 
 @tool(response_format="content_and_artifact")

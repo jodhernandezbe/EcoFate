@@ -7,9 +7,9 @@
 
 ## 2. Jobs (stage 2)
 
-- [ ] 2.1 `storage/`: `jobs` table and Alembic migration; a job store with owner-scoped reads, atomic per-user cap, status transitions, heartbeat; PostgreSQL tests (`postgres` marker) and in-memory store tests.
-- [ ] 2.2 `app/jobs/`: the job runner (queued → running → ended, heartbeat, soft limit between assessment tiers, cancel flag, hard limit backstop, failure reasons without secrets) and the stale sweep; in-process runner for eager mode; tests with the memory bus.
-- [ ] 2.3 `worker/tasks.py`: `ecofate.run_job(job_id, owner_id)` validating its ids; operator keys only; `task_failure` marks the job `interrupted`.
+- [x] 2.1 `storage/`: `jobs` table and Alembic migration; a job store with owner-scoped reads, atomic per-user cap, status transitions, heartbeat; PostgreSQL tests (`postgres` marker) and in-memory store tests.
+- [x] 2.2 `app/jobs/`: the job runner (queued → running → ended, heartbeat, soft limit between assessment tiers, cancel flag, hard limit backstop, failure reasons without secrets) and the stale sweep; in-process runner for eager mode; tests with the memory bus.
+- [x] 2.3 `worker/tasks.py`: `ecofate.run_job(job_id, owner_id)` validating its ids; operator keys only; `task_failure` marks the job `interrupted`.
 - [ ] 2.4 `tools/`: the heavy-tool submitter (same name, schema and docstring) that runs the missing-value check, records and enqueues the job and answers `{job_id, status, position}`; over-cap message; `check_job_status` tool (owner and thread from config); registry, registry test and tool tests.
 - [ ] 2.5 `app/turns/`: follow-up turns (recorded when a job ends, `waiting` while the thread is leased, enqueued once by the turn finisher, flagged `automatic`), workspace filled from the job's artifact; tests for idle thread, busy thread, at-most-once.
 - [ ] 2.6 Quota: automatic follow-ups not counted; tests.

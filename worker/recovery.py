@@ -18,11 +18,14 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
-from app.task_queue import TurnJob
+from app.jobs.failures import JobFailure
+from app.jobs.recovery import interrupt_lost_job, sweep_stale_jobs
+from app.task_queue import ToolJob, TurnJob
 from app.turns.failures import FailureReason
 from config.database import get_database_settings
 from config.worker import get_worker_settings
 from storage.engine import create_engine, database_url
+from storage.jobs import PostgresJobStore
 from storage.keys import ThreadKey
 from storage.threads import release_lease
 from storage.turn_model import Turn
@@ -98,6 +101,17 @@ def job_of(args: Sequence[object] | None) -> TurnJob | None:
         return None
 
 
+def tool_job_of(args: Sequence[object] | None) -> ToolJob | None:
+    """The job a failed ``ecofate.run_job`` task named (its arguments are untrusted); None when
+    they do not fit."""
+    if args is None or len(args) != _JOB_ARGS:
+        return None
+    try:
+        return ToolJob.from_payload(args[0], args[1])
+    except ValueError:
+        return None
+
+
 # --- wired to PostgreSQL ------------------------------------------------------------------------
 
 
@@ -134,5 +148,33 @@ async def interrupt_lost_env(
     engine = _engine(environ)
     try:
         return await interrupt_lost(*_stores(engine), job, reason)
+    finally:
+        await engine.dispose()
+
+
+def _job_store(engine: AsyncEngine) -> PostgresJobStore:
+    return PostgresJobStore(async_sessionmaker(engine, expire_on_commit=False))
+
+
+async def sweep_stale_jobs_env(environ: Mapping[str, str]) -> int:
+    """``sweep_stale_jobs`` against the database the environment names."""
+    engine = _engine(environ)
+    try:
+        stale_after = timedelta(seconds=get_worker_settings().stale_after_seconds)
+        return await sweep_stale_jobs(_job_store(engine), stale_after)
+    finally:
+        await engine.dispose()
+
+
+async def interrupt_lost_job_env(
+    job: ToolJob,
+    reason: FailureReason,
+    environ: Mapping[str, str],
+) -> bool:
+    """``interrupt_lost_job`` against the database the environment names (the reason is the
+    lost child's or the hard limit's, the same codes a turn uses)."""
+    engine = _engine(environ)
+    try:
+        return await interrupt_lost_job(_job_store(engine), job, JobFailure(reason.value))
     finally:
         await engine.dispose()

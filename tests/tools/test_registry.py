@@ -52,3 +52,10 @@ def test_a_misspelt_heavy_tool_fails_when_the_registry_is_built(
     monkeypatch.setattr(module, "get_worker_settings", lambda: bad)
     with pytest.raises(ValueError, match="assess_facilitiez"):
         module._build_default_registry()  # pyright: ignore[reportPrivateUsage]
+
+
+def test_every_job_runner_is_a_registered_tool() -> None:
+    from tools.registry import get_job_runners
+
+    names = {tool.name for tool in get_all_tools()}
+    assert set(get_job_runners()) <= names and "assess_facilities" in get_job_runners()

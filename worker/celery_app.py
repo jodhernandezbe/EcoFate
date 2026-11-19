@@ -27,8 +27,16 @@ from celery.signals import (
 
 from app.process_secrets import process_secret_values
 from app.redaction import REDACTED_LOGGERS, install_redaction, protect_for_process
-from app.task_queue import BrokerSetupError, TurnJob, build_celery, redis_url
+from app.task_queue import (
+    JOB_TASK_NAME,
+    BrokerSetupError,
+    ToolJob,
+    TurnJob,
+    build_celery,
+    redis_url,
+)
 from app.telemetry import configure_telemetry, instrument_task_queue
+from app.turns.failures import FailureReason
 from config.telemetry import get_telemetry_settings
 from config.worker import get_worker_settings
 from storage.errors import DATABASE_ERRORS
@@ -52,9 +60,11 @@ def _celery() -> Celery:
 
 
 class ChildRunner(Protocol):
-    """Runs turns in this process (``worker.resources.ChildRuntime``)."""
+    """Runs turns and jobs in this process (``worker.resources.ChildRuntime``)."""
 
     def run(self, job: TurnJob) -> None: ...
+
+    def run_job(self, job: ToolJob) -> None: ...
 
     def close(self) -> None: ...
 
@@ -105,19 +115,49 @@ def _sweep_stale(**_: object) -> None:
         asyncio.run(recovery.sweep_stale_env(os.environ))
     except DATABASE_ERRORS as error:
         logger.warning("Stale turn sweep failed: %s", type(error).__name__)
+    try:
+        asyncio.run(recovery.sweep_stale_jobs_env(os.environ))
+    except DATABASE_ERRORS as error:
+        logger.warning("Stale job sweep failed: %s", type(error).__name__)
 
 
 @task_failure.connect
-def _task_failed(args: object = None, exception: BaseException | None = None, **_: object) -> None:
-    """A task whose child was lost or hit the hard limit leaves its turn resumable."""
+def _task_failed(
+    sender: object = None,
+    args: object = None,
+    exception: BaseException | None = None,
+    **_: object,
+) -> None:
+    """A task whose child was lost or hit the hard limit leaves its turn (or job) resumable
+    (a turn) or interrupted (a job); nothing is re-run."""
     reason = recovery.lost_reason(exception)
-    job = recovery.job_of(cast(Sequence[object], args) if isinstance(args, list | tuple) else None)
-    if reason is None or job is None:
+    arguments = cast(Sequence[object], args) if isinstance(args, list | tuple) else None
+    if reason is None:
+        return
+    if getattr(sender, "name", None) == JOB_TASK_NAME:
+        _interrupt_job(arguments, reason)
+    else:
+        _interrupt_turn(arguments, reason)
+
+
+def _interrupt_turn(arguments: Sequence[object] | None, reason: FailureReason) -> None:
+    job = recovery.job_of(arguments)
+    if job is None:
         return
     try:
         asyncio.run(recovery.interrupt_lost_env(job, reason, os.environ))
     except DATABASE_ERRORS as error:
         logger.warning("Could not interrupt turn %s: %s", job.turn_id, type(error).__name__)
+
+
+def _interrupt_job(arguments: Sequence[object] | None, reason: FailureReason) -> None:
+    job = recovery.tool_job_of(arguments)
+    if job is None:
+        return
+    try:
+        asyncio.run(recovery.interrupt_lost_job_env(job, reason, os.environ))
+    except DATABASE_ERRORS as error:
+        logger.warning("Could not interrupt job %s: %s", job.job_id, type(error).__name__)
 
 
 celery = _celery()

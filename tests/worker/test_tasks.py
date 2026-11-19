@@ -17,8 +17,10 @@ from app.task_queue import (
     TASK_NAME,
     BrokerSetupError,
     CeleryEnqueuer,
+    CeleryToolJobEnqueuer,
     EnqueueError,
     InProcessEnqueuer,
+    ToolJob,
     TurnJob,
     build_celery,
     redis_url,
@@ -26,11 +28,12 @@ from app.task_queue import (
 from commons.payload_guard import PayloadRefusedError
 from config.worker import get_worker_settings
 from worker.celery_app import ChildRunner, celery, child_runtime, install_child_runtime
-from worker.tasks import run_turn_task
+from worker.tasks import run_job_task, run_turn_task
 
 pytestmark = pytest.mark.anyio
 OWNER = UUID(int=7)
 TURN = "b" * 32
+JOB = "c" * 32
 KEY = "sk-proj-" + "w0R1k2E3r4" * 3  # pragma: allowlist secret
 
 
@@ -39,9 +42,13 @@ class Recorder:
 
     def __init__(self) -> None:
         self.jobs: list[TurnJob] = []
+        self.tool_jobs: list[ToolJob] = []
 
     def run(self, job: TurnJob) -> None:
         self.jobs.append(job)
+
+    def run_job(self, job: ToolJob) -> None:
+        self.tool_jobs.append(job)
 
     def close(self) -> None:
         pass
@@ -174,3 +181,61 @@ def test_the_redis_url_must_be_set() -> None:
         redis_url({settings.redis_url_env_var: " redis://r:6379/0 "}, settings)
         == "redis://r:6379/0"
     )
+
+
+def test_the_job_task_runs_eagerly_on_the_child_runtime(child: Recorder) -> None:
+    result = cast(EagerResult, run_job_task.apply(args=[JOB, str(OWNER)]))  # pyright: ignore[reportUnknownMemberType]
+    assert result.successful()
+    assert child.tool_jobs == [ToolJob(JOB, OWNER)] and child.jobs == []
+
+
+@pytest.mark.parametrize(
+    "args",
+    [["not-a-job", str(OWNER)], [JOB, "not-a-uuid"], [JOB.upper(), str(OWNER)], [3, str(OWNER)]],
+)
+def test_a_malformed_job_message_runs_nothing(child: Recorder, args: list[object]) -> None:
+    result = cast(EagerResult, run_job_task.apply(args=args))  # pyright: ignore[reportUnknownMemberType]
+    assert result.failed()
+    assert child.tool_jobs == []
+
+
+def test_a_job_message_with_a_turn_task_shape_still_has_its_own_check(child: Recorder) -> None:
+    result = cast(EagerResult, run_job_task.apply(args=[JOB]))  # pyright: ignore[reportUnknownMemberType]
+    assert result.failed() and child.tool_jobs == []
+
+
+async def test_the_serialized_job_message_carries_the_ids_only_on_the_tools_queue(
+    published: list[tuple[object, object]],
+) -> None:
+    settings = get_worker_settings()
+    enqueuer = CeleryToolJobEnqueuer(build_celery(settings, "memory://"), settings, protected=[KEY])
+    await enqueuer.enqueue(ToolJob(JOB, OWNER))
+    ((body, headers),) = published
+    serialized = json.dumps([body, headers], default=str)
+    assert JOB in serialized and str(OWNER) in serialized and KEY not in serialized
+    args, kwargs, _ = body  # type: ignore[misc]
+    assert args == [JOB, str(OWNER)] and kwargs == {}
+    assert cast(Mapping[str, object], headers)["task"] == JOB_TASK_NAME
+
+
+async def test_a_job_payload_carrying_a_secret_is_refused_before_it_is_sent(
+    published: list[tuple[object, object]],
+) -> None:
+    settings = get_worker_settings()
+    enqueuer = CeleryToolJobEnqueuer(build_celery(settings, "memory://"), settings, protected=[JOB])
+    with pytest.raises(PayloadRefusedError):
+        await enqueuer.enqueue(ToolJob(JOB, OWNER))
+    assert published == []
+
+
+async def test_an_unreachable_broker_fails_the_job_enqueue_in_time() -> None:
+    settings = replace(get_worker_settings(), broker_timeout_seconds=1)
+    app = build_celery(settings, "redis://127.0.0.1:1/0")
+    with pytest.raises(EnqueueError):
+        await CeleryToolJobEnqueuer(app, settings).enqueue(ToolJob(JOB, OWNER))
+
+
+def test_a_tool_job_names_only_ids_of_the_right_shape() -> None:
+    assert ToolJob(JOB, OWNER).payload() == [JOB, str(OWNER)]
+    with pytest.raises(ValueError, match="job id"):
+        ToolJob.from_payload(TURN.upper(), str(OWNER))

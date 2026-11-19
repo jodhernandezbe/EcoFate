@@ -35,6 +35,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 
+from storage import job_model
 from storage.account_model import Role, TokenPurpose
 from storage.turn_model import OPEN_STATUSES, REASONED_STATUSES, TurnStatus
 
@@ -200,6 +201,43 @@ turns = Table(
     Index("ix_turns_user_id_thread_id_created_at", "user_id", "thread_id", "created_at"),
 )
 
+_JOB_OPEN_VALUES = _in(tuple(str(status) for status in job_model.OPEN_STATUSES))
+
+# Background tool jobs: one per heavy tool call, run by the tools worker (task messages carry the
+# job id and owner only; the input is read from here). The result is the model's view and the
+# workspace's artifact, stored when the job succeeds.
+jobs = Table(
+    "jobs",
+    metadata,
+    Column("id", Text, primary_key=True),
+    *_owned_thread("owner_id"),
+    Column("tool", Text, nullable=False),
+    Column("input", JSONB, nullable=False),
+    Column("status", Text, nullable=False),
+    _created_at("queued_at"),
+    Column("started_at", DateTime(timezone=True), nullable=True),
+    Column("ended_at", DateTime(timezone=True), nullable=True),
+    Column("heartbeat_at", DateTime(timezone=True), nullable=True),
+    Column("cancel_requested", Boolean, nullable=False, server_default=text("false")),
+    Column("result_content", JSONB, nullable=True),
+    Column("result_artifact", JSONB, nullable=True),
+    Column("failure_reason", Text, nullable=True),
+    CheckConstraint(f"status IN ({_in(tuple(job_model.JobStatus))})", name="status_known"),
+    CheckConstraint("tool <> ''", name="tool_not_blank"),
+    CheckConstraint(
+        f"(status IN ({_in(tuple(str(s) for s in job_model.REASONED_STATUSES))})) "
+        "= (failure_reason IS NOT NULL)",
+        name="reason_matches_status",
+    ),
+    # The owner's open jobs are counted on every new job; a thread's jobs are listed by time.
+    Index(
+        "ix_jobs_owner_id_open",
+        "owner_id",
+        postgresql_where=text(f"status IN ({_JOB_OPEN_VALUES})"),
+    ),
+    Index("ix_jobs_owner_id_thread_id_queued_at", "owner_id", "thread_id", "queued_at"),
+)
+
 # Agent turns a user started on one UTC day (the daily quota); the day comes from the database.
 daily_turn_usage = Table(
     "daily_turn_usage",
@@ -276,6 +314,7 @@ TABLES = (
     daily_turn_usage,
     threads,
     turns,
+    jobs,
     thread_usage,
     thread_tool_messages,
     thread_workspaces,

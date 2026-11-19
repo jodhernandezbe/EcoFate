@@ -7,12 +7,12 @@ from datetime import timedelta
 import pytest
 from celery.exceptions import TimeLimitExceeded, WorkerLostError
 
-from app.task_queue import TurnJob
+from app.task_queue import ToolJob, TurnJob
 from app.turns.failures import FailureReason
 from storage.keys import ThreadKey
 from storage.turn_model import TurnStatus
 from tests.fakes import OWNER_ID, InMemoryThreadStore
-from worker.recovery import interrupt_lost, job_of, lost_reason, sweep_stale
+from worker.recovery import interrupt_lost, job_of, lost_reason, sweep_stale, tool_job_of
 
 pytestmark = pytest.mark.anyio
 KEY = ThreadKey(OWNER_ID, "lost")
@@ -86,3 +86,15 @@ async def test_the_start_up_sweep_interrupts_only_stale_turns() -> None:
     turn = await store.turns.get(OWNER_ID, turn_id)
     assert turn is not None and turn.reason == "worker_lost"
     assert not await store.running(KEY)
+
+
+@pytest.mark.parametrize(
+    "args",
+    [None, [], ["a" * 32], ["a" * 32, str(OWNER_ID), "x"], ["../x", str(OWNER_ID)], [1, 2]],
+)
+def test_job_task_arguments_that_do_not_fit_name_no_job(args: list[object] | None) -> None:
+    assert tool_job_of(args) is None
+
+
+def test_job_task_arguments_name_their_job() -> None:
+    assert tool_job_of(("a" * 32, str(OWNER_ID))) == ToolJob("a" * 32, OWNER_ID)

@@ -19,10 +19,13 @@ from pydantic import BaseModel, SecretStr
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
+from agent.jobs import job_runners
 from app.chat_model import build_chat_model
 from app.checkpointer import open_checkpointer
+from app.jobs.runner import run_background_job
+from app.jobs.services import JobServices, JobSettings
 from app.operator_keys import OperatorKeys, load_operator_keys
-from app.task_queue import TurnJob, redis_url
+from app.task_queue import ToolJob, TurnJob, redis_url
 from app.turns.bus import RedisStreamBus
 from app.turns.job import run_background_turn
 from app.turns.keys import load_turn_keys
@@ -37,6 +40,7 @@ from config.population import get_population_settings
 from config.ui import get_ui_settings
 from config.worker import WorkerSettings, get_worker_settings
 from storage.engine import DatabaseSetupError, create_engine, database_url
+from storage.jobs import PostgresJobStore
 from storage.quota import QuotaRepository
 from storage.revisions import is_at_head
 from storage.threads import PostgresThreadStore
@@ -46,17 +50,29 @@ logger = logging.getLogger("worker")
 NOT_MIGRATED = "The database is not at the latest migration. Run `make migrate` first."
 
 
+@dataclass(frozen=True)
+class WorkerServices:
+    """What one child runs its two tasks with: the turn's services and the job's."""
+
+    turns: BackgroundServices
+    jobs: JobServices
+
+
 @dataclass
 class ChildRuntime:
     """One child's loop, its services and what closes them."""
 
     loop: asyncio.AbstractEventLoop
-    services: BackgroundServices
+    services: WorkerServices
     stack: AsyncExitStack
 
     def run(self, job: TurnJob) -> None:
         """Run one turn on the child's loop (returns when its stream has ended)."""
-        self.loop.run_until_complete(run_background_turn(job, self.services))
+        self.loop.run_until_complete(run_background_turn(job, self.services.turns))
+
+    def run_job(self, job: ToolJob) -> None:
+        """Run one background tool job on the child's loop (returns when it has ended)."""
+        self.loop.run_until_complete(run_background_job(job, self.services.jobs))
 
     def close(self) -> None:
         """Close the services and the loop."""
@@ -78,7 +94,7 @@ def open_child(environ: Mapping[str, str]) -> ChildRuntime:
     return ChildRuntime(loop, services, stack)
 
 
-async def open_services(environ: Mapping[str, str], stack: AsyncExitStack) -> BackgroundServices:
+async def open_services(environ: Mapping[str, str], stack: AsyncExitStack) -> WorkerServices:
     """The worker's collaborators over PostgreSQL and Redis, closed by ``stack``."""
     database, worker = get_database_settings(), get_worker_settings()
     url = database_url(environ, database)
@@ -87,16 +103,32 @@ async def open_services(environ: Mapping[str, str], stack: AsyncExitStack) -> Ba
     await _require_latest_migration(engine)
     saver = await stack.enter_async_context(open_checkpointer(url, database))
     sessions = async_sessionmaker(engine, expire_on_commit=False)
-    vault = _vault(environ, sessions)
-    return BackgroundServices(
+    vault, operator = _vault(environ, sessions), _operator_keys(environ)
+    turns = BackgroundServices(
         # The worker never reads a workspace, so no workspace model is needed to validate one.
         threads=PostgresThreadStore(sessions, saver, database, BaseModel),
         bus=RedisStreamBus(await _redis(environ, worker, stack), worker.event_stream_max_length),
-        load_keys=partial(load_turn_keys, vault, _operator_keys(environ)),
+        load_keys=partial(load_turn_keys, vault, operator),
         build_model=partial(_build_model, get_agent_settings()),
         refund=QuotaRepository(sessions).refund,
         turn_settings=web_turn_settings(),
         settings=BackgroundSettings.from_config(worker, get_agent_settings().max_resumes_per_turn),
+    )
+    return WorkerServices(turns, _job_services(sessions, operator, worker))
+
+
+def _job_services(
+    sessions: async_sessionmaker[AsyncSession],
+    operator: OperatorKeys,
+    worker: WorkerSettings,
+) -> JobServices:
+    """The job runner's collaborators: the jobs table, the heavy tools and the operator's keys
+    (a job never reads the user's model key, so it has no vault)."""
+    return JobServices(
+        store=PostgresJobStore(sessions),
+        runners=job_runners(),
+        operator=operator,
+        settings=JobSettings.from_config(worker),
     )
 
 

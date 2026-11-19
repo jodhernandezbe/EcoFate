@@ -30,6 +30,13 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   messages carry ids only), `start` moves it to `running` once (a second delivery does nothing),
   the worker renews `heartbeat_at` and the thread's lease (`extend`), `cancel_requested` asks it
   to stop, and a resume queues it again.
+- Jobs: `jobs` (one row per background tool job; same composite thread key and cascade, owner column
+  `owner_id`), `job_model.py` (`Job`, `JobStatus`, `JobOutcome`, the `JobStore` contract),
+  `job_codec.py` (untrusted rows), `jobs.py` (`PostgresJobStore`). `create` takes a per-owner
+  advisory lock, counts the owner's queued+running jobs and inserts (over the cap: `None`, nothing
+  recorded); `claim` moves queued to running once; `finish` only from running; `interrupt` and
+  `interrupt_stale` (the one cross-user call) never re-run anything. Task messages carry the job
+  id and owner only; the input is read from here. Its in-memory twin is `tests/fakes_jobs.py`.
 - Daily quota: `daily_turn_usage(user_id, day, turns)`; counting is one atomic upsert guarded by
   `WHERE turns < limit`, the day is the database's UTC date, a refund is guarded by
   `turns.quota_refunded`, and old rows go in the idle-retention purge.

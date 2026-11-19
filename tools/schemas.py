@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping
 from typing import Literal, NotRequired, TypedDict
 
 from commons.bands import Band
+from commons.stop import StopCheck
 
 
 class ChemicalProperties(TypedDict):
@@ -861,3 +863,15 @@ class ConfirmationRequest(TypedDict):
 
     request_id: str
     entries: list[MissingEntry]
+
+
+# --- background jobs ----------------------------------------------------------------------------
+
+# What a heavy tool returns to a job runner: the model's view and the workspace's data, both data.
+JobResult = tuple[Mapping[str, object], Mapping[str, object]]
+# A heavy tool as a job runs it: its stored arguments (untrusted) and a check for a stop request.
+JobRunner = Callable[[Mapping[str, object], StopCheck], JobResult]
+
+
+class InvalidJobInputError(ValueError):
+    """A job's stored arguments do not fit its tool (the message never carries the arguments)."""

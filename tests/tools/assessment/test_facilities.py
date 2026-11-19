@@ -781,3 +781,79 @@ def test_given_benchmarks_that_fill_every_missing_value_let_the_assessment_run(
     _lookup_missing(monkeypatch, "iur")
     view, artifact = _run(toxicity=Toxicity(rfc=2.0, iur=1e-6))
     assert "missing" not in view and view["assessed"] > 0 and artifact["assessed"]
+
+
+def _stops_after(asks: int) -> tuple[list[int], object]:
+    """A stop check that says stop from its ``asks``-th question on, and the questions asked."""
+    asked: list[int] = []
+
+    def check() -> bool:
+        asked.append(len(asked) + 1)
+        return len(asked) >= asks
+
+    return asked, check
+
+
+def test_the_stop_check_is_asked_between_the_tiers_and_by_default_never_stops() -> None:
+    asked, check = _stops_after(10**6)
+    run_assessment(
+        "50-00-0",
+        None,
+        (None, None),
+        None,
+        None,
+        facilities.default_steps(),
+        None,
+        check,  # type: ignore[arg-type]
+    )
+    assert asked == [1, 2]  # after tier 1 and after tier 2, before the full chain
+
+
+@pytest.mark.parametrize("asks", [1, 2])
+def test_a_stop_between_tiers_raises_and_returns_nothing(
+    asks: int,
+    _offline: FakeSteps,
+) -> None:
+    from commons.stop import StoppedError
+
+    _, check = _stops_after(asks)
+    with pytest.raises(StoppedError):
+        run_assessment(
+            "50-00-0",
+            None,
+            (None, None),
+            None,
+            None,
+            facilities.default_steps(),
+            None,
+            check,  # type: ignore[arg-type]
+        )
+    assert not any(name == "weather" for name, _ in _offline.calls)  # the full chain never ran
+
+
+def test_a_stop_before_the_full_chain_also_applies_to_facilities_asked_by_id() -> None:
+    from commons.stop import StoppedError
+
+    with pytest.raises(StoppedError):
+        run_assessment(
+            "50-00-0",
+            ["MID"],
+            (None, None),
+            None,
+            None,
+            facilities.default_steps(),
+            None,
+            lambda: True,
+        )
+
+
+def test_the_job_runner_validates_its_input_and_runs_the_same_assessment() -> None:
+    from tools.schemas import InvalidJobInputError
+
+    content, artifact = facilities.run_assessment_job(
+        {"arguments": {"cas_number": "50-00-0"}},
+        lambda: False,
+    )
+    assert content["assessed"] == 3 and len(artifact["assessed"]) == 3  # type: ignore[arg-type]
+    with pytest.raises(InvalidJobInputError):
+        facilities.run_assessment_job({"arguments": {"cas_number": 5}}, lambda: False)

@@ -5,7 +5,7 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
 - The background worker of the web program: a thin Celery shell. `celery_app.py` builds the app
   (`app.task_queue.build_celery`, configured from `[worker]`; the Redis URL from the variable it
   names; `pool.py` and `__main__.py` start one pool, `python -m worker chat|tools`, on its own
-  queue from `[worker.chat]`/`[worker.tools]`) and wires the process signals; `tasks.py` holds the task `ecofate.run_turn` (`ecofate.run_job` is routed to the `tools` queue);
+  queue from `[worker.chat]`/`[worker.tools]`) and wires the process signals; `tasks.py` holds `ecofate.run_turn` and `ecofate.run_job(job_id, owner_id)` (the latter is routed to the `tools` queue and runs `app.jobs.runner.run_background_job` with the operator's keys only);
   `resources.py` opens a child's services; `recovery.py` interrupts turns whose worker is gone.
   Running, recording and publishing a turn is `app.turns.job.run_background_turn`, so the API's
   in-process mode (`[worker].eager`, tests) runs exactly the same code. Never put turn logic here.
@@ -29,7 +29,7 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
 - Reliability: acknowledged late, prefetch from `[worker]`, never re-run when a worker is lost
   (`task_reject_on_worker_lost=False`), the hard time limit from `[worker]` (the soft one is
   enforced by the job between graph steps), Redis visibility timeout above it. The main process
-  sweeps running turns with a stale heartbeat at `worker_ready` and interrupts the turn of a task
+  sweeps running turns and jobs with a stale heartbeat at `worker_ready` and interrupts the turn or job of a task
   whose child was lost or killed (`task_failure`); the user resumes, the worker never does.
 - Tests (`tests/worker/`) run the task eagerly on an installed stand-in runtime and a `memory://`
   broker (no Redis, no running worker); the job itself is tested in `tests/app/turns/test_job.py`

@@ -52,6 +52,15 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   and publishes the end only after the final status is stored and the lease released).
   `web_turn.py` builds the web turn settings (guards, prompt, prices) for both processes;
   `process_secrets.py` lists the secret variables both protect.
+- `jobs/` is the one background tool job runner (task 2.2), mirroring `turns/job.py`:
+  `run_background_job(ToolJob, JobServices)` claims the job, runs its tool (`JobServices.runners`,
+  from `agent.jobs`) on a thread with a `should_stop` check, supervises heartbeat, cancel flag, soft
+  limit (`[worker.tools]`) and the hard-limit backstop, and stores the result (`result.py`: strict
+  JSON, redacted) or a fixed `JobFailure` code, never exception text. `keys.py` provides the
+  operator's Census/CompTox keys only: a job never reads the user's model key and has no vault.
+  `recovery.py` is the stale sweep and the lost-task interrupt. `JobServices.on_job_ended` is the
+  seam where the follow-up turn plugs in (default `no_follow_up`). `task_queue.ToolJob` is the
+  ids-only message; `CeleryToolJobEnqueuer` sends it to the tools queue.
 - `redaction.py` is the one log-redaction filter (`protect_secrets` per turn, `protect_for_process`
   for the life of the process, `redact`, `install_redaction`); it holds no HTTP knowledge. Front
   ends only configure their loggers. `telemetry.scrubbing_options(settings, protected)` hides the same
