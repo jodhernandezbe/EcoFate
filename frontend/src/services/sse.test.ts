@@ -1,4 +1,4 @@
-import { parseSseFrames } from "./sse";
+import { parseSseFrames, parseThreadFrames } from "./sse";
 
 const frame = (event: object) => `data: ${JSON.stringify(event)}\n\n`;
 
@@ -27,5 +27,26 @@ describe("parseSseFrames", () => {
   it("rejects a malformed event instead of guessing", () => {
     expect(() => parseSseFrames("data: {not json\n\n")).toThrow("Malformed event");
     expect(() => parseSseFrames('data: {"no_type": 1}\n\n')).toThrow("Malformed event");
+  });
+});
+
+describe("parseThreadFrames", () => {
+  const entry = (id: string, event: object) => `id: ${id}\ndata: ${JSON.stringify(event)}\n\n`;
+
+  it("returns the id and event of each complete entry", () => {
+    const text = entry("1-0", { kind: "job.queued", job_id: "j", status: "queued" }) + ": ping\n\n";
+    const { entries, rest } = parseThreadFrames(text + entry("2-0", { kind: "turn.ended", status: "completed" }));
+    expect(entries.map((e) => [e.id, e.event.kind])).toEqual([
+      ["1-0", "job.queued"],
+      ["2-0", "turn.ended"],
+    ]);
+    expect(rest).toBe("");
+  });
+
+  it("keeps an unfinished entry and skips unknown, malformed or id-less ones", () => {
+    const whole = entry("3-0", { kind: "job.running", status: "running" });
+    expect(parseThreadFrames(whole.slice(0, 12)).entries).toEqual([]);
+    const junk = entry("4-0", { kind: "job.exploded" }) + "id: 5-0\ndata: {nope\n\n" + 'data: {"kind":"job.ended"}\n\n';
+    expect(parseThreadFrames(junk).entries).toEqual([]);
   });
 });

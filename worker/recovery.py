@@ -223,6 +223,24 @@ async def sweep_stale_jobs_env(environ: Mapping[str, str]) -> int:
         await engine.dispose()
 
 
+async def start_orphaned_follow_ups_env(environ: Mapping[str, str]) -> int:
+    """Start the waiting follow-up of every thread that has one and no live lease (a process died
+    between recording it and starting it); how many threads were tried."""
+    engine = _engine(environ)
+    worker = get_worker_settings()
+    url = redis_url(environ, worker)
+    client = Redis.from_url(
+        url,
+        decode_responses=True,
+        socket_timeout=worker.broker_timeout_seconds,
+    )
+    try:
+        return await _follow_ups(environ, engine, client, url).release_orphans()
+    finally:
+        await client.aclose()
+        await engine.dispose()
+
+
 async def interrupt_lost_job_env(
     job: ToolJob,
     reason: FailureReason,

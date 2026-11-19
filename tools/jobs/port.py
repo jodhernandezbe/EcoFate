@@ -21,6 +21,7 @@ from tools.schemas import JobStatusEntry, SubmittedJob
 
 OWNER_KEY = "job_owner_id"
 THREAD_KEY = "job_thread_id"
+AUTOMATIC_KEY = "job_automatic"
 
 
 class JobUnavailableError(Exception):
@@ -76,9 +77,16 @@ def provided_port(port: JobPort | None) -> Generator[None]:
         _PORT.set(None)
 
 
-def scope_config(owner_id: UUID, thread_id: str) -> dict[str, str]:
-    """The ``configurable`` entries that name the turn's user and thread for the job tools."""
-    return {OWNER_KEY: str(owner_id), THREAD_KEY: thread_id}
+def scope_config(owner_id: UUID, thread_id: str, automatic: bool = False) -> dict[str, object]:
+    """The ``configurable`` entries that name the turn's user and thread for the job tools, and
+    whether the system (not the user) started the turn."""
+    return {OWNER_KEY: str(owner_id), THREAD_KEY: thread_id, AUTOMATIC_KEY: automatic}
+
+
+def is_automatic(config: RunnableConfig | None) -> bool:
+    """Whether the run is an automatic follow-up turn (only an explicit True counts)."""
+    configurable = cast(Mapping[str, object], (config or {}).get("configurable") or {})
+    return configurable.get(AUTOMATIC_KEY) is True
 
 
 def job_scope(config: RunnableConfig | None) -> tuple[UUID, str] | None:

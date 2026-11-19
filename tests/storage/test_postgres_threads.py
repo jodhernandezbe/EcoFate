@@ -310,3 +310,19 @@ async def test_a_follow_up_turn_is_recorded_waiting_once_per_job_and_activated_o
         assert started is not None and started.status is TurnStatus.QUEUED
         assert await turns.activate(OWNER, first.id) is None  # activated at most once
         assert await turns.next_waiting(KEY) is None
+
+
+async def test_a_follow_up_of_a_reset_thread_is_not_recorded_and_orphans_are_found() -> None:
+    from storage.turn_model import PlannedInput
+
+    async with database([OWNER]) as db:
+        await db.store.touch(KEY)
+        planned = PlannedInput("n", "n", "", False)
+        assert await db.store.turns.begin_follow_up(KEY, "k" * 32, planned) is not None
+        assert await db.store.idle_with_waiting_follow_up() == [KEY]  # no live lease
+        assert await db.store.claim(KEY)
+        assert await db.store.idle_with_waiting_follow_up() == []  # a live lease
+        await db.store.release(KEY)
+        assert await db.store.reset(KEY)
+        assert await db.store.idle_with_waiting_follow_up() == []
+        assert await db.store.turns.begin_follow_up(KEY, "m" * 32, planned) is None  # no thread

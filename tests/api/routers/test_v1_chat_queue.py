@@ -230,6 +230,26 @@ def test_the_snapshot_names_a_queued_or_running_turn_only(
     assert snapshot["running_turn"] == {"turn_id": queued.id, "resumed": False, "question": None}
 
 
+def test_a_follow_up_in_the_snapshot_shows_no_question(
+    client: TestClient,
+    threads: InMemoryThreadStore,
+) -> None:
+    from storage.turn_model import PlannedInput
+
+    async def record() -> str:
+        await threads.touch(owned("q4"))
+        planned = PlannedInput("Background job x ended: succeeded", "n", "", False)
+        waiting = await threads.turns.begin_follow_up(owned("q4"), "a" * 32, planned)
+        assert waiting is not None
+        started = await threads.turns.activate(OWNER, waiting.id)
+        assert started is not None
+        return started.id
+
+    turn_id = asyncio.run(record())
+    snapshot = client.get("/api/v1/chat/threads/q4", headers=OWN).json()
+    assert snapshot["running_turn"] == {"turn_id": turn_id, "resumed": False, "question": None}
+
+
 # --- the current thread ---------------------------------------------------------------------
 
 

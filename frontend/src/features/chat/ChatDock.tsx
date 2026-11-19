@@ -1,10 +1,11 @@
 import { TopHeaderBar, type AssistantStatus } from "../../components/layout/TopHeaderBar";
 import type { ChatMessage, LiveStatus, UsageView } from "../../hooks/chatState";
-import type { ConfirmationAnswers, ConfirmationPrompt, QuotaStatus, TurnInterruption } from "../../types/workspace";
+import type { ConfirmationAnswers, ConfirmationPrompt, JobInfo, QuotaStatus, TurnInterruption } from "../../types/workspace";
 import { ChatComposer } from "./ChatComposer";
 import { ClearChatButton } from "./ClearChatButton";
 import { clearBlockedReason } from "./clearBlockedReason";
 import { ConfirmationCard } from "./ConfirmationCard";
+import { JobControls } from "./JobControls";
 import { MessageStream } from "./MessageStream";
 import { QuotaMeter } from "./QuotaMeter";
 import { limitReachedReason } from "./quotaText";
@@ -37,6 +38,13 @@ interface ChatDockProps {
   stopping?: boolean | undefined;
   /** Stop the running turn after its current step. */
   onStop?: (() => void) | undefined;
+  /** The thread's queued or running background jobs (their status line sits under the header). */
+  jobs?: readonly JobInfo[] | undefined;
+  /** The ids of the jobs the user asked to stop. */
+  cancellingJobs?: ReadonlySet<string> | undefined;
+  /** Why the last job cancel failed. */
+  jobError?: string | null | undefined;
+  onCancelJob?: ((jobId: string) => void) | undefined;
   onOpenSettings: () => void;
   onCollapse: () => void;
 }
@@ -73,6 +81,10 @@ export function ChatDock({
   status = null,
   stopping = false,
   onStop,
+  jobs = [],
+  cancellingJobs,
+  jobError,
+  onCancelJob,
   onOpenSettings,
   onCollapse,
 }: ChatDockProps) {
@@ -97,6 +109,7 @@ export function ChatDock({
         onResume={onResume}
         onOpenSettings={onOpenSettings}
       />
+      <JobControls jobs={jobs} cancelling={cancellingJobs} error={jobError} onCancel={onCancelJob} />
       <MessageStream
         messages={messages}
         suggestions={suggestions ?? []}

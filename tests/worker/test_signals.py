@@ -86,6 +86,12 @@ def test_the_start_up_sweep_covers_jobs_too(monkeypatch: pytest.MonkeyPatch) -> 
         return 0
 
     monkeypatch.setattr(celery_app.recovery, "sweep_stale_env", turns)
+
+    async def follow_ups(environ: Any) -> int:
+        swept.append("follow_ups")
+        return 0
+
     monkeypatch.setattr(celery_app.recovery, "sweep_stale_jobs_env", jobs)
+    monkeypatch.setattr(celery_app.recovery, "start_orphaned_follow_ups_env", follow_ups)
     celery_app._sweep_stale()  # pyright: ignore[reportPrivateUsage]
-    assert swept == ["turns", "jobs"]
+    assert swept == ["turns", "jobs", "follow_ups"]

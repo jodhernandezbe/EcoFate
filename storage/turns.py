@@ -91,6 +91,26 @@ def _begin(key: ThreadKey, planned: PlannedInput | None) -> Executable:
     )
 
 
+def _follow_up_insert(key: ThreadKey, job_id: str, planned: PlannedInput) -> Executable:
+    """The insert of a job's follow-up turn as ``waiting`` (a second one for the job is ignored)."""
+    return (
+        pg_insert(turns)
+        .values(
+            id=uuid.uuid4().hex,
+            user_id=key.owner_id,
+            thread_id=key.thread_id,
+            status=TurnStatus.WAITING.value,
+            planned_input=codec.planned_to_json(planned),
+            job_id=job_id,
+        )
+        .on_conflict_do_nothing(
+            index_elements=[turns.c.job_id],
+            index_where=turns.c.job_id.is_not(None),
+        )
+        .returning(*turns.c)
+    )
+
+
 class TurnRepository:
     """Records turns and moves them through their statuses.
 
@@ -121,24 +141,12 @@ class TurnRepository:
     ) -> Turn | None:
         """Record the automatic follow-up turn of a job as ``waiting``; None (nothing recorded)
         when the job already has one (the unique index on ``job_id``: at most once per job)."""
-        statement = (
-            pg_insert(turns)
-            .values(
-                id=uuid.uuid4().hex,
-                user_id=key.owner_id,
-                thread_id=key.thread_id,
-                status=TurnStatus.WAITING.value,
-                planned_input=codec.planned_to_json(planned),
-                job_id=job_id,
-            )
-            .on_conflict_do_nothing(
-                index_elements=[turns.c.job_id],
-                index_where=turns.c.job_id.is_not(None),
-            )
-            .returning(*turns.c)
-        )
-        async with self._sessions.begin() as session:
-            return _decoded((await session.execute(statement)).mappings().first())
+        statement = _follow_up_insert(key, job_id, planned)
+        try:
+            async with self._sessions.begin() as session:
+                return _decoded((await session.execute(statement)).mappings().first())
+        except IntegrityError:  # the thread was reset (deleted) since the job began
+            return None
 
     async def next_waiting(self, key: ThreadKey) -> Turn | None:
         """The thread's oldest waiting follow-up; None when there is none."""

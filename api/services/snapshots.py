@@ -139,7 +139,8 @@ async def thread_snapshot(
 def _running(turn: Turn | None) -> RunningTurn | None:
     if turn is None:
         return None
-    question = turn.planned.question if turn.planned is not None else None
+    # A follow-up's input is the system's notice, not something the user said: never shown.
+    question = turn.planned.question if turn.planned is not None and not turn.automatic else None
     return RunningTurn(turn_id=turn.id, resumed=turn.resume_count > 0, question=question)
 
 

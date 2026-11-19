@@ -76,6 +76,8 @@ class FollowUpThreads(Protocol):
 
     async def release(self, key: ThreadKey) -> None: ...
 
+    async def idle_with_waiting_follow_up(self) -> list[ThreadKey]: ...
+
 
 def notice(job: Job) -> str:
     """The fixed message that tells the agent a job ended (no result, no reason text)."""
@@ -137,6 +139,9 @@ class FollowUps:
         """Record the job's follow-up (once) and start it when the thread is free."""
         if job.status not in EXPLAINED:
             return
+        if job.cancel_requested:  # the user asked to stop it (or cleared the workspace)
+            logger.info("Job %s was cancelled by the user; no follow-up", job.id)
+            return
         planned = PlannedInput(notice(job), notice(job), "", counted=False)
         turn = await self.threads.turns.begin_follow_up(job.key, job.id, planned)
         if turn is None:
@@ -154,6 +159,14 @@ class FollowUps:
             await self.threads.release(key)
             return
         await self._enqueue(turn)
+
+    async def release_orphans(self) -> int:
+        """Start the waiting follow-up of every thread that has one and no live lease (the
+        process that recorded it died before starting it); how many threads were tried."""
+        keys = await self.threads.idle_with_waiting_follow_up()
+        for key in keys:
+            await self.release_next(key)
+        return len(keys)
 
     async def _activated(self, key: ThreadKey) -> Turn | None:
         waiting = await self.threads.turns.next_waiting(key)

@@ -48,7 +48,9 @@ from storage.tables import (
     thread_usage,
     thread_workspaces,
     threads,
+    turns,
 )
+from storage.turn_model import TurnStatus
 from storage.turns import TurnRepository
 from tools.schemas import ConfirmationRequest
 
@@ -105,6 +107,22 @@ async def release_lease(sessions: Sessions, key: ThreadKey) -> None:
         await session.execute(statement)
 
 
+async def idle_threads_with_waiting_follow_up(sessions: Sessions) -> list[ThreadKey]:
+    """Threads that hold a ``waiting`` follow-up turn and no unexpired lease: the process that
+    should have started it died before it could (a recovery sweep starts it)."""
+    statement = (
+        select(turns.c.user_id, turns.c.thread_id)
+        .join(
+            threads,
+            (threads.c.owner_id == turns.c.user_id) & (threads.c.id == turns.c.thread_id),
+        )
+        .where(turns.c.status == TurnStatus.WAITING.value, _idle())
+        .distinct()
+    )
+    async with sessions() as session:
+        return [ThreadKey(row.user_id, row.thread_id) for row in await session.execute(statement)]
+
+
 class ThreadLeases:
     """The thread leases and turn records alone, for a process with no checkpointer (the worker's
     recovery starting a job's follow-up turn).
@@ -126,6 +144,10 @@ class ThreadLeases:
     async def release(self, key: ThreadKey) -> None:
         """Clear the lease (safe to call more than once)."""
         await release_lease(self._sessions, key)
+
+    async def idle_with_waiting_follow_up(self) -> list[ThreadKey]:
+        """Threads with a waiting follow-up and no live lease (orphaned by a dead process)."""
+        return await idle_threads_with_waiting_follow_up(self._sessions)
 
 
 class PostgresThreadStore[WorkspaceT: BaseModel]:
@@ -172,6 +194,10 @@ class PostgresThreadStore[WorkspaceT: BaseModel]:
     async def release(self, key: ThreadKey) -> None:
         """Clear the lease (safe to call more than once)."""
         await release_lease(self._sessions, key)
+
+    async def idle_with_waiting_follow_up(self) -> list[ThreadKey]:
+        """Threads with a waiting follow-up and no live lease (orphaned by a dead process)."""
+        return await idle_threads_with_waiting_follow_up(self._sessions)
 
     async def touch(self, key: ThreadKey) -> None:
         """Mark the thread as most recently used, creating it when it is new."""

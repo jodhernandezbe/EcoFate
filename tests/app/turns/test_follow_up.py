@@ -170,6 +170,41 @@ async def test_a_job_the_user_cancelled_starts_no_follow_up() -> None:
     assert bench.enqueuer.sent == [] and await bench.turns_of() == []
 
 
+async def test_a_job_that_finished_after_a_cancel_request_starts_no_follow_up() -> None:
+    bench = Bench()
+    job = await bench.store.jobs.create(THREAD, "assess_facilities", _input(), 5)
+    assert job is not None
+    await bench.store.jobs.claim(OWNER_ID, job.id)
+    assert await bench.store.jobs.request_cancel(OWNER_ID, job.id)
+    outcome = JobOutcome(JobStatus.SUCCEEDED, CONTENT, ARTIFACT)
+    ended = await bench.store.jobs.finish(OWNER_ID, job.id, outcome)  # the tool beat the cancel
+    assert ended is not None and ended.cancel_requested
+    await bench.follow_ups.job_ended(ended)
+    assert bench.enqueuer.sent == [] and await bench.turns_of() == []
+
+
+async def test_a_job_of_a_reset_thread_cannot_end_nor_record_anything() -> None:
+    bench = Bench()
+    job = await bench.store.jobs.create(THREAD, "assess_facilities", _input(), 5)
+    assert job is not None
+    await bench.store.jobs.claim(OWNER_ID, job.id)
+    assert await bench.store.reset(THREAD)  # Clear workspace deletes the thread and its jobs
+    outcome = JobOutcome(JobStatus.SUCCEEDED, CONTENT, ARTIFACT)
+    assert await bench.store.jobs.finish(OWNER_ID, job.id, outcome) is None
+    assert bench.enqueuer.sent == [] and await bench.turns_of() == []
+
+
+async def test_a_waiting_follow_up_whose_starter_died_is_started_by_the_sweep() -> None:
+    bench = Bench()
+    assert await bench.store.claim(THREAD)  # a turn runs; the job ends meanwhile
+    await bench.follow_ups.job_ended(await bench.ended_job())
+    assert await bench.follow_ups.release_orphans() == 0  # the lease is live: left alone
+    await bench.store.release(THREAD)  # the process died; its lease is gone, the turn waits
+    assert await bench.follow_ups.release_orphans() == 1
+    assert len(bench.enqueuer.sent) == 1
+    assert await bench.follow_ups.release_orphans() == 0  # started once; nothing waits now
+
+
 async def test_the_result_is_given_as_a_tool_result_never_as_the_users_words() -> None:
     bench = Bench()
     job = await bench.ended_job()

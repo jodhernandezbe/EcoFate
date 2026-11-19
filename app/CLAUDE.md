@@ -83,3 +83,7 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   for the life of the process, `redact`, `install_redaction`); it holds no HTTP knowledge. Front
   ends only configure their loggers. `telemetry.scrubbing_options(settings, protected)` hides the same
   values in spans; the protected values must be known when Logfire is configured.
+- Orphaned follow-ups: `FollowUps.release_orphans` starts the waiting follow-up of every thread with
+  one and no live lease (a process died between claiming the lease and activating); the worker's
+  `worker_ready` sweep calls it. A job whose cancel was requested records no follow-up, and an
+  automatic turn cannot start a job (`tools.jobs.port.is_automatic`: the submitter answers a fixed notice).

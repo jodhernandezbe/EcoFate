@@ -119,6 +119,10 @@ def _sweep_stale(**_: object) -> None:
         asyncio.run(recovery.sweep_stale_jobs_env(os.environ))
     except DATABASE_ERRORS as error:
         logger.warning("Stale job sweep failed: %s", type(error).__name__)
+    try:  # after the job sweep: a job it interrupted may have recorded a follow-up
+        asyncio.run(recovery.start_orphaned_follow_ups_env(os.environ))
+    except (*DATABASE_ERRORS, OSError, TimeoutError) as error:
+        logger.warning("Orphaned follow-up sweep failed: %s", type(error).__name__)
 
 
 @task_failure.connect

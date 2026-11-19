@@ -104,3 +104,14 @@ def test_workers_and_neighbours_side_by_side_and_not_compliance() -> None:
     assert "side by side" in text
     assert "never as a compliance finding" in text
     assert "reported as not computed, with the reason" in text
+
+
+def test_teaches_how_to_talk_about_background_work() -> None:
+    lowered = " ".join(PROMPT.lower().split())
+    for text in (
+        "it has started, not finished",
+        "state nothing about its outcome",
+        "the person can ask something else",
+        "explain it as an ordinary answer",
+    ):
+        assert text in lowered

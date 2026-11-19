@@ -132,6 +132,24 @@ async def test_what_the_tool_must_settle_first_is_returned_and_no_job_is_recorde
     assert port.submitted == []
 
 
+async def test_an_automatic_follow_up_turn_cannot_start_a_job() -> None:
+    port = FakePort()
+    config: RunnableConfig = {"configurable": scope_config(OWNER, "t1", automatic=True)}
+    with provided_port(port):
+        result = await _submitter().ainvoke({"cas_number": "110-54-3"}, config)
+    assert isinstance(result, dict) and result["status"] == "unavailable"
+    assert port.submitted == []
+    assert CALLS == []
+
+
+async def test_only_an_explicit_true_marks_a_turn_automatic() -> None:
+    port = FakePort()
+    config = _config(job_automatic="yes")
+    with provided_port(port):
+        await _submitter().ainvoke({"cas_number": "110-54-3"}, config)
+    assert len(port.submitted) == 1
+
+
 async def test_over_the_cap_answers_a_fixed_message_and_records_nothing() -> None:
     port = FakePort(over_cap=True)
     with provided_port(port):

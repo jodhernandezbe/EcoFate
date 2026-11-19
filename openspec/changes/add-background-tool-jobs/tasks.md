@@ -15,8 +15,8 @@
 - [x] 2.6 Quota: automatic follow-ups not counted; tests.
 - [x] 2.7 Thread-level stream: `thread:{id}` Redis Stream, `GET /api/v1/chat/threads/{id}/events` with `Last-Event-ID`; job and turn lifecycle events; tests for reconnect and tenancy (foreign thread 404).
 - [x] 2.8 API: cancel a job (`POST /api/v1/chat/jobs/{id}/cancel`), job status in the workspace response; `Clear workspace` cancels the thread's jobs.
-- [ ] 2.9 Frontend: subscribe to the thread stream; a job status line under the chat header ("Assessment queued (2 ahead)", "Assessment running, 1 min 20 s", Cancel), sending allowed while a job runs; the follow-up answer appears as a normal message; DESIGN.md-compliant; `/ui-check`.
-- [ ] 2.10 Prompt and docstrings: how to talk about a queued or running job; never state its results before the follow-up.
+- [x] 2.9 Frontend: subscribe to the thread stream; a job status line under the chat header ("Assessment queued (2 ahead)", "Assessment running, 1 min 20 s", Cancel), sending allowed while a job runs; the follow-up answer appears as a normal message; DESIGN.md-compliant; `/ui-check`.
+- [x] 2.10 Prompt and docstrings: how to talk about a queued or running job; never state its results before the follow-up.
 
 ## 3. Evaluations
 

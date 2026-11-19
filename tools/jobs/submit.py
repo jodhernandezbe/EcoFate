@@ -18,12 +18,16 @@ from typing import cast
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool, StructuredTool
 
-from tools.jobs.port import JobUnavailableError, current_port, job_scope
+from tools.jobs.port import JobUnavailableError, current_port, is_automatic, job_scope
 from tools.schemas import JobNotice
 
 LIMIT_REACHED = (
     "The limit of background jobs at once is reached: wait for a running job to end (or cancel "
     "it) before starting another. Nothing was started."
+)
+NOT_NOW = (
+    "No new background job can be started while explaining a finished one. Nothing was started; "
+    "tell the user they can ask for it again."
 )
 UNAVAILABLE = "Background jobs cannot be started right now. Nothing was started; try again later."
 BACKGROUND_NOTE = (
@@ -84,6 +88,8 @@ class _Submitter:
         """The async call: the tool's own result for what must be settled first, else a job."""
         if current_port() is None:
             return await asyncio.to_thread(self.run_here, arguments, config)
+        if is_automatic(config):
+            return _notice("unavailable", NOT_NOW)
         early = await asyncio.to_thread(self._preflight, arguments, config)
         return early if early is not None else await _start(self._tool, arguments, config)
 

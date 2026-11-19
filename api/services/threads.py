@@ -231,6 +231,10 @@ class ThreadStore(Protocol):
         """Keep the user's answers; a supplied value is never replaced and beats a decline."""
         ...
 
+    async def idle_with_waiting_follow_up(self) -> list[ThreadKey]:
+        """Threads with a waiting follow-up turn and no live lease (a dead process left it)."""
+        ...
+
     async def reset(self, key: ThreadKey) -> bool:
         """Delete the thread's state; False (nothing changed) while a turn runs."""
         ...

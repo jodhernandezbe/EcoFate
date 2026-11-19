@@ -485,6 +485,10 @@ class InMemoryThreadStore:
         if key in self._rows:
             self._rows[key].busy_until = None
 
+    async def idle_with_waiting_follow_up(self) -> list[ThreadKey]:
+        waiting = {t.key for t in self.turns._turns.values() if t.status is TurnStatus.WAITING}  # pyright: ignore[reportPrivateUsage]
+        return sorted((k for k in waiting if not self._busy(k)), key=lambda k: k.thread_id)
+
     async def touch(self, key: ThreadKey) -> None:
         self._row(key).last_used_at = self._clock()
 

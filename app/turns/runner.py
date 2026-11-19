@@ -360,13 +360,13 @@ async def _run_config(
     }
 
 
-def _job_scope(request: TurnRequest) -> dict[str, str]:
+def _job_scope(request: TurnRequest) -> dict[str, object]:
     """Who the job tools act for: the authenticated user and thread this turn belongs to (never
     anything the model supplies); none for a run without a user."""
     if request.user_id is None:
         return {}
     try:
-        return scope_config(UUID(request.user_id), request.thread_id)
+        return scope_config(UUID(request.user_id), request.thread_id, request.automatic)
     except ValueError:
         return {}
 
