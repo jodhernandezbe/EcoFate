@@ -42,6 +42,7 @@ from tools.schemas import (
     FacilityAssessment,
     FacilityExposure,
     Meteorology,
+    MissingEntry,
     NeiStackResult,
     NotAssessed,
     Population,
@@ -591,6 +592,39 @@ def _call_of(
     )
 
 
+_BENCHMARKS = ("rfc", "iur")
+
+
+def _still_missing(found: ChemicalProperties | None, tox: Toxicity) -> list[MissingEntry]:
+    """The values the chemical's lookup listed as missing that this call has not filled.
+
+    A benchmark given to the call (or taken from an in-domain analogue) is no longer missing;
+    every other entry stands, so the turn asks for it before anything is assessed.
+    """
+    if found is None:
+        return []
+    return [
+        entry
+        for entry in found.get("missing", [])
+        if not (entry["quantity"] in _BENCHMARKS and tox.get(entry["quantity"]) is not None)
+    ]
+
+
+def _asking(
+    cas: str,
+    toxicity: tuple[Toxicity, str],
+    warnings: list[str],
+    missing: list[MissingEntry],
+) -> Outcome:
+    """Nothing assessed yet: the result lists the missing values so the turn asks for them first."""
+    settings = get_assessment_settings()
+    note = "nothing was assessed yet: the values in `missing` are asked for first"
+    f = Findings(cas, toxicity, 0, [], [], [], None, True, [], [*warnings, note])
+    view = assessment_view(f, settings.max_worst_case_listed, settings.max_screened_out_listed)
+    view["missing"] = missing
+    return view, _artifact(f)
+
+
 def _assess(
     cas_number: str,
     frs_ids: list[str] | None,
@@ -607,6 +641,9 @@ def _assess(
     inventory = _inventory(cas, place)
     tox, source, warnings, found = _toxicity(cas, toxicity, config)
     tox, source, warnings = _analogue_toxicity(cas, tox, source, warnings)
+    missing = _still_missing(found, tox)
+    if missing:
+        return _asking(cas, (tox, source), warnings, missing)
     steps.prefetch(sorted({r["naics_title"] for r in inventory.records if r["naics_title"]}))
     steps = replace(steps, scc=_once_per_title(steps.scc))
     run = (radius_km, steps, settings)
@@ -684,6 +721,9 @@ def assess_facilities(
         A dict with:
         - cas_number, toxicity (the rfc and iur used) and toxicity_source ("CompTox" or
           "given"); warnings say when a benchmark is missing (the matching risk is then null)
+        - missing (only when present): values the chemical's lookup could not find and the user
+          may enter; nothing was assessed yet and the turn stops to ask for them, so do not
+          write an analysis around this result
         - facilities_found: facilities in the inventory (for the place)
         - screening (null when facilities were asked for by ID): possible (false when there
           is neither an RfC nor an IUR, so nothing could be screened out), hq_threshold and

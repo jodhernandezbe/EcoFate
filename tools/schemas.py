@@ -833,6 +833,7 @@ class AssessmentResult(TypedDict):
     note: str | None  # what was left out of the listing
     warnings: list[str]
     drivers: NotRequired[list[ScenarioDriver]]  # the facility behind each pathway's top value
+    missing: NotRequired[list[MissingEntry]]  # values to ask for before anything is assessed
 
 
 class TriCategoryResult(TypedDict):
