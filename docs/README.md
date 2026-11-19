@@ -16,6 +16,7 @@ The cross-cutting documents. The folder READMEs are indexed in the
 
 | File | What it covers |
 |---|---|
+| [demo.md](demo.md) | one real assessment in screenshots, from the question to monitoring and evaluation |
 | [getting-started.md](getting-started.md) | Docker, the `make` targets, local development with uv, the command line |
 | [reviewers.md](reviewers.md) | where each capstone criterion is and how to check it |
 | [citation.md](citation.md) | licence, the Zenodo DOI, releasing a version |

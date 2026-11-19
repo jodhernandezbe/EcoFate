@@ -20,19 +20,19 @@
 
 ## 3. README
 
-- [ ] 3.1 Scan layer (about 80 lines max): title, pitch, CI badge, live URL or demo GIF/video, prompt-and-answer screenshot, the problem (who, what is hard today, what EcoFate does), three "what it does" bullets, highlights table, headline evaluation numbers (judge 78% accuracy / 0.95 recall vs. human labels; latest scenario pass rate), Monitoring screenshot, `docker compose up` quick start.
+- [x] 3.1 (the root README stays an index; the scan content is `docs/demo.md`) Scan layer (about 80 lines max): title, pitch, CI badge, live URL or demo GIF/video, prompt-and-answer screenshot, the problem (who, what is hard today, what EcoFate does), three "what it does" bullets, highlights table, headline evaluation numbers (judge 78% accuracy / 0.95 recall vs. human labels; latest scenario pass rate), Monitoring screenshot, `docker compose up` quick start.
 - [x] 3.0 Documentation index section (grouped: use it, understand it, extend it, operate it) linking every folder README and `docs/` file.
 - [x] 3.2 (as `docs/reviewers.md`, one table; the root README is an index of short pages, with `DEVELOPMENT.md` at the root for developers and long documents split into subpages under `docs/security/`, `docs/deployment/`, `api/docs/`, `evals/docs/`; no text diagrams, only draw.io) Reviewer sections in rubric order, each with what / where (code links) / check it (command) / details link: Problem description; Knowledge base and retrieval; Agent, LLM and tools; Code organization (tree + layer rules); Testing (unit, smoke, frontend, judge tests, exact commands); Evaluation; Monitoring; Reproducibility (prerequisites, keys and which are operator vs. user, `docker compose up`, `make` targets, `uv` path, data in `data/` and rebuild scripts); Best coding practices (Docker, compose, Makefile, uv, CI/CD, pre-commit gates); Deployment (URL or recording, link to `docs/deployment.md`).
-- [ ] 3.3 Self-evaluation table at the end: every criterion and bonus item, max points, claimed points, evidence links; unmet items shown as 0 with a link to the ROADMAP backlog. Fill it from what is merged at the time.
+- [x] 3.3 Self-evaluation table at the end: every criterion and bonus item, max points, claimed points, evidence links; unmet items shown as 0 with a link to the ROADMAP backlog. Fill it from what is merged at the time.
 - [x] 3.4 Root `CLAUDE.md`: one line pointing to `docs/README.md`; confirm `tests/test_claude_md.py` still passes.
 
 ## 4. Screenshots and demo
 
-- [ ] 4.1 With `docker compose up` and a demo account, capture into `docs/images/`: sign-in, prompt + answer with dashboard and map, progress during a turn, resume after an interruption, OpenAI-key settings showing only status, admin Monitoring list and a session detail, an evaluation report / judge output. 1440×900, light theme, cropped, each PNG under 500 KB; no key, token or personal email visible.
-- [ ] 4.2 Record one full assessment as a GIF under 1000 KB (or upload a video and link it); add `docs/images/README.md` listing each image, the screen and how to reproduce it.
+- [x] 4.1 With `docker compose up` and a demo account, capture into `docs/images/`: sign-in, prompt + answer with dashboard and map, progress during a turn, resume after an interruption, OpenAI-key settings showing only status, admin Monitoring list and a session detail, an evaluation report / judge output. 1440×900, light theme, cropped, each PNG under 500 KB; no key, token or personal email visible.
+- [x] 4.2 (done as `docs/demo.md`: a screenshot walk-through with the story, which the course accepts instead of a video; no GIF) Record one full assessment as a GIF under 1000 KB (or upload a video and link it); add `docs/images/README.md` listing each image, the screen and how to reproduce it.
 
 ## 5. Verification
 
-- [ ] 5.1 `uv run pytest tests/test_docs_links.py tests/test_claude_md.py` and `uv run pre-commit run --all-files` pass (large-file and detect-secrets hooks clean on the images and docs).
-- [ ] 5.2 Read the README top as a hiring manager (two screens: problem, demo, evaluation, monitoring visible) and as a reviewer (each rubric criterion findable from the table of contents); fix gaps.
+- [x] 5.1 `uv run pytest tests/test_docs_links.py tests/test_claude_md.py` and `uv run pre-commit run --all-files` pass (large-file and detect-secrets hooks clean on the images and docs).
+- [x] 5.2 Read the README top as a hiring manager (two screens: problem, demo, evaluation, monitoring visible) and as a reviewer (each rubric criterion findable from the table of contents); fix gaps.
 - [ ] 5.3 Run the course project scorer (module 5 evaluator agent) on the repository and compare its scores with the self-evaluation; note any difference.

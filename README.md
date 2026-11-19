@@ -33,6 +33,7 @@ Quick start: `cp .env.example .env`, fill it in, then `docker compose --profile 
 
 | Page | What it covers |
 |---|---|
+| [Demo](docs/demo.md) | One real assessment in screenshots: question, answer, dashboard, map, monitoring, evaluation |
 | [Getting started](docs/getting-started.md) | Docker, the `make` targets, local development with uv, the command line |
 | [For reviewers](docs/reviewers.md) | Where each capstone criterion is and how to check it |
 | [Architecture](docs/architecture.md) | Layers and dependency rules, runtime containers, a turn's path |
