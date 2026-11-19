@@ -268,22 +268,18 @@ without page-level scroll. Both stay mounted, so nothing is lost when switching.
 - **WHEN** a remembered chat width exceeds the current window's maximum
 - **THEN** the dock opens at the maximum, not at the remembered width
 
-### Requirement: Settings drawer for the API keys
+### Requirement: Settings drawer for the OpenAI key
 Choosing Settings in the navigation rail SHALL open a bottom drawer over the workspace. The drawer
 SHALL keep the workspace and the chat mounted, can be resized and maximized, closes with
 Escape or its close control, and keeps focus inside it while open, returning focus on close. The
-drawer SHALL hold collapsible sections: an Assistant section for the user's OpenAI key and a
-read-only Data services section. The OpenAI key SHALL have a label with an info tooltip stating
+drawer SHALL hold the Assistant section for the user's OpenAI key and nothing about the
+operator's data services (Census, CompTox), which users never configure. The OpenAI key SHALL have a label with an info tooltip stating
 that it runs the assistant and is billed to the user's own OpenAI account, a password-type input
 that can be cleared, a status reading "Key stored encrypted for your account" or "No key
 configured" (never any part of the key), and "Clear key", "Reset" and "Save" actions. Save SHALL
 be disabled while the input is blank or a request is running. The outcome of a save or clear
 SHALL be shown in an inline success or error message in the section. Inputs SHALL be cleared
-after saving and by Reset, and no key SHALL be written to browser storage, the URL or logs. The
-Data services section SHALL list the Census service (counts the people around a facility) and
-the CompTox service (looks up chemical properties and toxicity), each with "Provided by this
-installation" or "Not available on this installation" and, when unavailable, which lookups will
-be missing; it SHALL have no input for any key. When the OpenAI key is not configured, the chat
+after saving and by Reset, and no key SHALL be written to browser storage, the URL or logs. When the OpenAI key is not configured, the chat
 input SHALL point the user to Settings and the Assistant section SHALL open expanded.
 
 #### Scenario: Open from the rail
@@ -298,13 +294,9 @@ input SHALL point the user to Settings and the Assistant section SHALL open expa
 - **WHEN** the server rejects a key
 - **THEN** the section shows an error message and the stored state is unchanged
 
-#### Scenario: Data services are read-only
+#### Scenario: No data services section
 - **WHEN** the drawer is open
-- **THEN** the Data services section shows each service's availability and contains no input or save action
-
-#### Scenario: Optional keys missing
-- **WHEN** the installation has no Census key
-- **THEN** the Census entry says it is not available on this installation and which lookups will be missing
+- **THEN** it shows no Census or CompTox entry and no Data services section
 
 #### Scenario: No browser storage
 - **WHEN** a key has been saved

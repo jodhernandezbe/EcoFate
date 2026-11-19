@@ -48,8 +48,9 @@ status shape.
 ### Requirement: Only the OpenAI key is required to chat
 A chat turn SHALL require the signed-in user's OpenAI key and SHALL start without the Census
 and CompTox operator keys. A missing operator key SHALL be treated as that service being
-unavailable on this installation: the tools report their own missing-key outcome, and the
-interface says in Settings which data services are unavailable and what each is used for.
+unavailable on this installation: the tools report their own missing-key outcome in the answer.
+The operator keys are the operator's concern only; the interface SHALL NOT ask users about them
+or list them in Settings.
 
 #### Scenario: Only the model key stored
 - **WHEN** a turn runs with the user's OpenAI key stored and no Census or CompTox operator key set

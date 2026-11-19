@@ -53,6 +53,8 @@ reads in both schemes; the words carry the meaning, the colour confirms it.
 | Chat body | `text-[15px]` | `px-5` | Assistant and user messages only |
 | Drawer section heading | `text-sm font-semibold` | `gap-2` below it | A section inside a drawer (Settings, Account), under the drawer's `text-lg` title |
 | Section title | `text-lg` or `text-xl font-semibold tracking-tight` | `gap-3` | Card and drawer titles; never larger |
+| Welcome title | `text-3xl font-semibold tracking-tight` | `gap-3` under the mark | The welcome sheet's title only, the one large title in the app |
+| Welcome feature | `text-[15px] font-semibold` title over `text-sm text-fg2`; accent Lucide icon `size-7` | `gap-4` icon to text, `gap-6` between features | The welcome sheet's three features and its full-width Continue |
 | Card interior | | `p-4`, children `gap-3` | Ribbon cards, inspector sections |
 
 Everything numeric is tabular (`font-variant-numeric: tabular-nums` on `body`). Digits come from

@@ -732,3 +732,52 @@ def test_category_facilities_with_a_fugitive_release_only_are_merged_once(
     found = facilities.category_records(MEMBER, (None, None))
     assert [r["frs_id"] for r in found.records] == ["PLANT_A"]
     assert [w["frs_id"] for w in found.worker_only] == ["SOLO"]  # PLANT_A is a stack source
+
+
+def _missing(quantity: str) -> dict[str, object]:
+    return {
+        "entry_id": f"{quantity}:50-00-0",
+        "quantity": quantity,
+        "subject": "50-00-0",
+        "accepted_units": ["mg/m3"],
+        "minimum": 1.0,
+        "maximum": 2.0,
+        "purpose": "a test purpose",
+    }
+
+
+def _lookup_missing(monkeypatch: pytest.MonkeyPatch, *quantities: str) -> None:
+    class Properties:
+        @staticmethod
+        def invoke(args: dict[str, str], config: object = None) -> dict[str, object]:
+            PROPERTIES_CALLS.append(args["cas_number"])
+            missing = [_missing(q) for q in quantities]
+            return {**BENCHMARKS, "warnings": ["iur: not found in CompTox"], "missing": missing}
+
+    monkeypatch.setattr(facilities, "fetch_chemical_properties", Properties)
+
+
+def test_values_the_lookup_lists_as_missing_are_asked_for_before_anything_is_assessed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _lookup_missing(monkeypatch, "iur", "oel_twa")
+    view, artifact = _run()
+    assert [e["quantity"] for e in view.get("missing", [])] == ["iur", "oel_twa"]
+    assert view["assessed"] == 0 and artifact["assessed"] == []
+    assert any("asked for first" in w for w in view["warnings"])
+
+
+def test_a_given_benchmark_is_not_asked_for_but_other_missing_values_still_are(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _lookup_missing(monkeypatch, "iur", "oel_twa")
+    view, _ = _run(toxicity=Toxicity(rfc=2.0, iur=1e-6))
+    assert [e["quantity"] for e in view.get("missing", [])] == ["oel_twa"]
+
+
+def test_given_benchmarks_that_fill_every_missing_value_let_the_assessment_run(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _lookup_missing(monkeypatch, "iur")
+    view, artifact = _run(toxicity=Toxicity(rfc=2.0, iur=1e-6))
+    assert "missing" not in view and view["assessed"] > 0 and artifact["assessed"]

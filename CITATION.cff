@@ -17,7 +17,7 @@ abstract: >-
 doi: "10.5281/zenodo.24327281"
 repository-code: "https://github.com/jodhernandezbe/EcoFate"
 license: Apache-2.0
-version: "0.2.3"
+version: "0.2.4"
 date-released: "2026-11-18"
 keywords:
   - chemical exposure
