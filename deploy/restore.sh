@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Restore a nightly dump on the VM (docs/deployment.md, "Restore").
+# Restore a nightly dump on the VM (docs/deployment/logs-backups-restore.md, "Restore").
 #
 # Usage: deploy/restore.sh <UTC timestamp, e.g. 20261118T031500Z>
 #

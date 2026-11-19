@@ -13,7 +13,10 @@ ROOT = Path(__file__).resolve().parent.parent
 DOCKERFILE = (ROOT / "Dockerfile").read_text()
 COMPOSE = (ROOT / "compose.yaml").read_text()
 MAKEFILE = (ROOT / "Makefile").read_text()
-README = (ROOT / "README.md").read_text()
+# The Makefile targets are documented in the getting-started page and the development guide.
+README = "\n".join(
+    (ROOT / name).read_text() for name in ("docs/getting-started.md", "DEVELOPMENT.md")
+)
 _SECRET_NAME = re.compile(r"^\s*(?:ENV|ARG)\s+.*?\b\w*(?:_KEY|_TOKEN|_PASSWORD)\b", re.I | re.M)
 
 
@@ -116,7 +119,7 @@ def test_api_target_launches_in_container_mode() -> None:
 def test_every_makefile_target_in_the_readme_exists() -> None:
     targets = set(re.findall(r"^([a-z-]+):", MAKEFILE, re.M))
     mentioned = set(re.findall(r"`make ([a-z-]+)`", README))
-    assert mentioned, "the README lists the Makefile targets"
+    assert mentioned, "the documentation lists the Makefile targets"
     assert mentioned <= targets
 
 

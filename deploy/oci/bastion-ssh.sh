@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SSH into the EcoFate VM as `ecofate` through the OCI Bastion (docs/deployment.md, "First login"):
+# SSH into the EcoFate VM as `ecofate` through the OCI Bastion (docs/deployment/first-login-and-secrets.md, "First login"):
 # opens a one-hour port-forwarding session to the VM's private address, forwards a local port
 # through it, and logs in with the operator key from config.env. Needed before the Cloudflare
 # tunnel exists (to write /opt/ecofate/.env.prod and tunnel.env) and in an emergency.

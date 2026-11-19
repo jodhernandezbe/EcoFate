@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Create EcoFate's Oracle Cloud Always Free resources (docs/deployment.md, "Provision"):
+# Create EcoFate's Oracle Cloud Always Free resources (docs/deployment/prerequisites-and-provision.md, "Provision"):
 # a VCN whose security list allows no inbound traffic from the internet (only SSH from inside its
 # own subnet, where the OCI Bastion's endpoint sits), one Ampere A1 Flex VM (Ubuntu 24.04 aarch64)
 # started with cloud-init.yaml, an OCI Bastion that accepts only the operator's IP, a private
@@ -171,7 +171,7 @@ ensure_instance() {
     (( attempt < OCI_CAPACITY_ATTEMPTS )) && sleep "${OCI_CAPACITY_RETRY_SECONDS}"
   done
   rm -f "${user_data}" "${err}"
-  die "no A1 capacity after ${OCI_CAPACITY_ATTEMPTS} attempts; try again later or see docs/deployment.md (capacity)"
+  die "no A1 capacity after ${OCI_CAPACITY_ATTEMPTS} attempts; try again later or see docs/deployment/prerequisites-and-provision.md (capacity)"
 }
 
 # The way in before the tunnel exists: sessions are opened with deploy/oci/bastion-ssh.sh.
@@ -225,7 +225,7 @@ ensure_backup_permission() {
     oci iam dynamic-group create --compartment-id "${OCI_TENANCY_OCID}" --name "${group}" \
       --description "The EcoFate VM (backups)" --matching-rule "instance.id = '${INSTANCE_ID}'" \
       --wait-for-state ACTIVE >/dev/null \
-      || die "could not create dynamic group ${group}; on an Identity Domains tenancy create it in the console (docs/deployment.md)"
+      || die "could not create dynamic group ${group}; on an Identity Domains tenancy create it in the console (docs/deployment/README.md)"
   fi
   id="$(oci iam policy list --compartment-id "${OCI_TENANCY_OCID}" --all \
     --query "data[?name=='${policy}'].id | [0]" --raw-output 2>/dev/null | grep -v '^null$' || true)"
@@ -254,7 +254,7 @@ main() {
   cat <<EOF
 
 Done. The VM accepts no connection from the internet; it reaches out to Cloudflare once the
-stack starts. Next steps (docs/deployment.md):
+stack starts. Next steps (docs/deployment/README.md):
   1. Create the Cloudflare Tunnel and copy its token.
   2. Open a session with deploy/oci/bastion-ssh.sh and write /opt/ecofate/.env.prod and
      /opt/ecofate/tunnel.env (templates in deploy/).

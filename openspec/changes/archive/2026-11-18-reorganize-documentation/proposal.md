@@ -30,23 +30,27 @@ accounts, BYOK, the worker, CI and the deployment.
     practices (Docker, compose, Makefile, uv, CI/CD, pre-commit gates, security); Deployment.
   - *Self-evaluation* at the end: a table with every criterion and bonus item, the score
     claimed, and a link to the evidence; items not met are listed as not met.
-- **Detail moved to `docs/`**, each file self-contained and linked from the README:
+- **Detail moved next to the code**: a `README.md` in each package folder (`agent/`, `tools/`,
+  `models/`, `prompts/`, `config/`, `storage/`, `api/`, `worker/`, `frontend/`, `evals/`, `deploy/`)
+  takes over its part of today's README; the root README gets a documentation index and every
+  document a navigation line back to it. Cross-cutting topics go to `docs/`:
   `architecture.md` (layers, dependency rules, runtime diagram of the compose services and a
-  turn's path through api → worker → agent → tools), `tools.md` (today's tool reference,
-  moved verbatim then tidied), `evaluation.md` (datasets, how they were made, labelling
-  procedure, judge prompt iterations table, model/prompt tuning decisions, how to
-  reproduce), `monitoring.md` (Logfire set-up, what a session records, redaction, admin
+  turn's path through api → worker → agent → tools), `monitoring.md` (Logfire set-up, what a session records, redaction, admin
   dashboard), `deployment.md` (from `add-cloud-deployment`), `security.md` (BYOK, key
   encryption, tenancy isolation, redaction, rate limit, threat model summary, how secrets
   are handled in CI and production). Existing `docs/design-principles.md` and the UI audits
   stay; a `docs/README.md` index lists every file.
+- **draw.io diagrams** (`.drawio.svg`, editable and rendered by GitHub) in `docs/diagrams/`: high
+  level (system context, containers, package layers) in `docs/architecture.md`; low level (agent
+  graph, a turn's sequence, the batch assessment, the evaluation pipeline, release and rollback)
+  in the folder READMEs they explain.
 - **Screenshots and a short demo** under `docs/images/` captured from the running app
   (sign-in, prompt and answer with dashboard and map, progress while a turn runs, resume
   after an interruption, evaluation report/judge output, admin Monitoring list and session
   detail), each with alt text, PNG under 500 KB (the pre-commit large-file limit is 1000 KB),
   plus a GIF or a linked video of one full assessment.
 - **Evaluation results checked in as evidence**: a compact `docs/evaluation-results.md` (or
-  a section of `evaluation.md`) generated from `evals/reports/20261102-195041/` with the
+  a section of `evals/README.md`) generated from `evals/reports/20261102-195041/` with the
   per-iteration judge accuracy/precision/recall, and the latest scenario-run pass rate.
 - **Link check**: a test `tests/test_docs_links.py` that parses every relative link and image
   in `README.md` and `docs/*.md` and fails when a target file or heading anchor does not
@@ -67,7 +71,7 @@ accounts, BYOK, the worker, CI and the deployment.
 
 ## Impact
 
-- `README.md` (rewritten), new `docs/{README,architecture,tools,evaluation,monitoring,security}.md`,
+- `README.md` (rewritten), new folder READMEs, `docs/diagrams/*.drawio.svg`, new `docs/{README,architecture,monitoring,security}.md`,
   `docs/deployment.md` extended (created by `add-cloud-deployment`), `docs/images/*`,
   `tests/test_docs_links.py`, root `CLAUDE.md` (one line).
 - No change to application code. Screenshots need the running stack and an OpenAI key once

@@ -2,7 +2,7 @@
 # and deploys that version to the Oracle Cloud VM; a manual run redeploys an earlier tag
 # (rollback) without building. The VM opens no inbound port: the deploy reaches it over SSH
 # through the Cloudflare tunnel (Access service token), with a key that can only run
-# deploy/deploy.sh. See docs/deployment.md.
+# deploy/deploy.sh. See docs/deployment/README.md.
 name: Deploy
 
 on:

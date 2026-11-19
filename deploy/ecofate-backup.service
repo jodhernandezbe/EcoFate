@@ -1,4 +1,4 @@
-# Installed to /etc/systemd/system/ (docs/deployment.md, "Backups"); started by the timer.
+# Installed to /etc/systemd/system/ (docs/deployment/logs-backups-restore.md, "Backups"); started by the timer.
 [Unit]
 Description=EcoFate nightly database backup to Object Storage
 Wants=network-online.target

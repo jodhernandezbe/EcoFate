@@ -1,4 +1,4 @@
-# EcoFate production overrides, laid over compose.yaml on the Oracle Cloud VM (docs/deployment.md):
+# EcoFate production overrides, laid over compose.yaml on the Oracle Cloud VM (docs/deployment/README.md):
 #
 #   docker compose --env-file /opt/ecofate/.env.prod -f compose.yaml -f compose.prod.yaml up -d
 #

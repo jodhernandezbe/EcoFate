@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Delete everything deploy/oci/provision.sh created (docs/deployment.md, "Teardown"): the VM and
+# Delete everything deploy/oci/provision.sh created (docs/deployment/teardown-and-security.md, "Teardown"): the VM and
 # its boot volume, the Bastion, the backup policy and dynamic group, the backup bucket with every
 # dump in it, and the network. Irreversible: the database on the VM and all its backups are gone.
 # Asks you to type the bucket name first; nothing is deleted if it does not match.
@@ -84,4 +84,4 @@ confirm
 delete_compute_and_access
 delete_bucket
 delete_network
-say "done. Also delete the tunnel and the DNS records in Cloudflare (docs/deployment.md)."
+say "done. Also delete the tunnel and the DNS records in Cloudflare (docs/deployment/README.md)."
