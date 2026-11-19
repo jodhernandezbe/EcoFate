@@ -124,8 +124,8 @@ class BackgroundSettings:
         """The timing ``[worker]`` configures, with ``[agent].max_resumes_per_turn``."""
         return cls(
             heartbeat_seconds=worker.heartbeat_seconds,
-            soft_limit_seconds=worker.soft_time_limit_seconds,
-            hard_limit_seconds=worker.time_limit_seconds,
+            soft_limit_seconds=worker.chat.soft_time_limit_seconds,
+            hard_limit_seconds=worker.chat.time_limit_seconds,
             event_ttl_seconds=worker.event_ttl_seconds,
             max_resumes=max_resumes,
         )

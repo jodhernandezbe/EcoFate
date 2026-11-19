@@ -52,8 +52,20 @@ services:
       - /opt/ecofate/.env.prod
     environment:
       <<: *production
-    # [worker].concurrency = 4 in production; each child loads PyTorch and the read-across model.
-    mem_limit: 14g
+    # [worker.chat].concurrency = 4 in production; each child loads PyTorch and the read-across model.
+    # 12g with the tool-worker's 4g leaves the 24 GB VM about 3 GB for the system and page cache.
+    mem_limit: 12g
+    logging: *logging
+
+  tool-worker:
+    image: ghcr.io/jodhernandezbe/ecofate-worker:${ECOFATE_TAG:?set ECOFATE_TAG (deploy.sh does)}
+    pull_policy: always
+    env_file: !override
+      - /opt/ecofate/.env.prod
+    environment:
+      <<: *production
+    # [worker.tools].concurrency = 1: one child loads PyTorch and the read-across model.
+    mem_limit: 4g
     logging: *logging
 
   cloudflared:

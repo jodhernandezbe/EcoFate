@@ -4,7 +4,8 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
 
 - The background worker of the web program: a thin Celery shell. `celery_app.py` builds the app
   (`app.task_queue.build_celery`, configured from `[worker]`; the Redis URL from the variable it
-  names) and wires the process signals; `tasks.py` holds the one task, `ecofate.run_turn`;
+  names; `pool.py` and `__main__.py` start one pool, `python -m worker chat|tools`, on its own
+  queue from `[worker.chat]`/`[worker.tools]`) and wires the process signals; `tasks.py` holds the task `ecofate.run_turn` (`ecofate.run_job` is routed to the `tools` queue);
   `resources.py` opens a child's services; `recovery.py` interrupts turns whose worker is gone.
   Running, recording and publishing a turn is `app.turns.job.run_background_turn`, so the API's
   in-process mode (`[worker].eager`, tests) runs exactly the same code. Never put turn logic here.

@@ -32,3 +32,23 @@ def test_duplicate_registration_rejected() -> None:
     reg.register(tool)
     with pytest.raises(ValueError):
         reg.register(tool)
+
+
+def test_the_shipped_heavy_tools_are_registered() -> None:
+    from config.worker import check_heavy_tools, get_worker_settings
+
+    check_heavy_tools(get_worker_settings(), (tool.name for tool in get_all_tools()))
+
+
+def test_a_misspelt_heavy_tool_fails_when_the_registry_is_built(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from dataclasses import replace
+
+    import tools.registry as module
+    from config.worker import get_worker_settings
+
+    bad = replace(get_worker_settings(), heavy_tools=("assess_facilitiez",))
+    monkeypatch.setattr(module, "get_worker_settings", lambda: bad)
+    with pytest.raises(ValueError, match="assess_facilitiez"):
+        module._build_default_registry()  # pyright: ignore[reportPrivateUsage]

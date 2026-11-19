@@ -74,11 +74,11 @@ def test_production_profile_gives_the_production_values(monkeypatch: pytest.Monk
     assert auth.cookie_secure is True
     assert auth.trusted_proxy_hops == 1
     assert load_telemetry_settings().environment == "production"
-    assert load_worker_settings().concurrency == 4
+    assert load_worker_settings().chat.concurrency == 4
 
 
 def test_without_a_profile_local_values_stay(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv(PROFILE_ENV_VAR, raising=False)
     assert load_ui_settings().origin == "http://127.0.0.1:8000"
     assert load_auth_settings().cookie_secure is False
-    assert load_worker_settings().concurrency == 2
+    assert load_worker_settings().chat.concurrency == 2

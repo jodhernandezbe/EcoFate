@@ -1,9 +1,14 @@
-"""Central tool registry: every tool the agent can bind, exported as one list."""
+"""Central tool registry: every tool the agent can bind, exported as one list.
+
+Building it also checks that ``[worker].heavy_tools`` names only registered tools (``config``
+cannot import the registry), so a misspelt name fails at start-up.
+"""
 
 from __future__ import annotations
 
 from langchain_core.tools import BaseTool
 
+from config.worker import check_heavy_tools, get_worker_settings
 from tools.assessment import TOOLS as ASSESSMENT_TOOLS
 from tools.emissions import TOOLS as EMISSIONS_TOOLS
 from tools.exposure import TOOLS as EXPOSURE_TOOLS
@@ -40,6 +45,7 @@ def _build_default_registry() -> ToolRegistry:
         *EXPOSURE_TOOLS,
         *ASSESSMENT_TOOLS,
     )
+    check_heavy_tools(get_worker_settings(), (tool.name for tool in registry.all()))
     return registry
 
 

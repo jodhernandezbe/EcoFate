@@ -29,22 +29,23 @@ same compose stack runs on the developer's machine.
 
 ## Runtime containers
 
-![Containers: api, worker, db, redis and migrate, plus mailpit locally and cloudflared in production](diagrams/containers.drawio.svg)
+![Containers: api, worker, tool-worker, db, redis and migrate, plus mailpit locally and cloudflared in production](diagrams/containers.drawio.svg)
 
 *Drawn from `compose.yaml`, `compose.prod.yaml` and the `Dockerfile` (targets `api` and `worker`).*
 
 | Service | What it is | Where |
 |---|---|---|
 | `db` | PostgreSQL 16, data in the `pgdata` volume; not published to the host | local and production |
-| `redis` | Redis 7.4: the turn queue (Celery broker) and each turn's live event stream; not published | local and production |
+| `redis` | Redis 7.4: the two Celery queues (`chat` and `tools`, the broker) and each turn's live event stream; not published | local and production |
 | `migrate` | one-shot job: applies the Alembic migrations, then exits | local and production |
 | `api` | the web program: FastAPI, serves the built React app, queues each chat turn, relays its events over SSE; never runs the agent | local and production |
-| `worker` | Celery worker (same code as `api`, image target `worker`): runs the queued turns | local and production |
+| `worker` | Celery worker for the `chat` queue (same code as `api`, image target `worker`; `python -m worker chat`): runs the queued turns | local and production |
+| `tool-worker` | the same image, started on the `tools` queue (`python -m worker tools`): runs background tool jobs, so a long job never delays a chat turn (queue names, sizes and limits: `[worker.chat]`, `[worker.tools]`) | local and production |
 | `mailpit` | mail catcher for verification and reset emails (inbox `http://127.0.0.1:8025`) | local, `dev` profile only |
 | `db-port`, `redis-port` | `socat` forwarders that publish PostgreSQL and Redis on the host's loopback for native runs | local, `dev` profile only |
 | `cloudflared` | outbound-only tunnel to Cloudflare | production only |
 
-`api` and `worker` start only after `migrate` succeeded and `db` and `redis` are healthy. The `api`
+`api`, `worker` and `tool-worker` start only after `migrate` succeeded and `db` and `redis` are healthy. The `api`
 port is published on the host's loopback only (`127.0.0.1:8000`). Folder details:
 [api](../api/README.md), [worker](../worker/README.md), [storage](../storage/README.md),
 [deploy](../deploy/README.md).
@@ -95,8 +96,8 @@ worker never import each other; both run turns through `app/turns/`.
 
 1. The browser posts a message to `POST /api/v1/chat/stream`. The API checks the session, the daily
    limit and the thread, records the turn as `queued` in PostgreSQL with its input, and sends the
-   worker only the turn id and the owner's id through Redis.
-2. A `worker` child picks the task `ecofate.run_turn`, reads the turn's input from PostgreSQL,
+   worker only the turn id and the owner's id through Redis, on the `chat` queue.
+2. A `worker` child (the `chat` pool) picks the task `ecofate.run_turn`, reads the turn's input from PostgreSQL,
    decrypts the owner's OpenAI key itself and reads the operator's keys from its environment.
 3. `app.turns.job.run_background_turn` runs `execute_turn`, which builds the agent
    ([agent](../agent/README.md)) and runs the graph; the tools call the data services
@@ -105,7 +106,8 @@ worker never import each other; both run turns through `app/turns/`.
    usage in PostgreSQL after every graph step.
 5. The API reads the stream and relays it as server-sent events, each with a sequence id, so a
    reloaded page reattaches with `Last-Event-ID` and misses nothing. The sequence diagram is in
-   [worker](../worker/README.md#a-turns-sequence).
+   [worker](../worker/README.md#a-turns-sequence). Tasks named `ecofate.run_job` are routed to the
+   `tools` queue and served by `tool-worker`.
 
 ## Where state lives
 

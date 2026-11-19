@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator, Mapping
 from dataclasses import replace
-from typing import cast
+from typing import Any, cast
 from uuid import UUID
 
 import pytest
@@ -13,6 +13,7 @@ from celery.result import EagerResult
 from celery.signals import before_task_publish
 
 from app.task_queue import (
+    JOB_TASK_NAME,
     TASK_NAME,
     BrokerSetupError,
     CeleryEnqueuer,
@@ -72,12 +73,32 @@ def test_the_queue_settings_never_rerun_a_lost_turn() -> None:
     conf = cast(Mapping[str, object], celery.conf)  # Celery's settings are untyped
     assert conf["task_acks_late"] is True
     assert conf["task_reject_on_worker_lost"] is False
-    assert conf["worker_prefetch_multiplier"] == settings.prefetch_multiplier
-    assert conf["task_time_limit"] == settings.time_limit_seconds
-    assert conf["task_default_queue"] == settings.queue
+    assert conf["task_default_queue"] == settings.chat.queue
     visibility = cast(Mapping[str, object], conf["broker_transport_options"])["visibility_timeout"]
-    assert visibility == settings.visibility_timeout_seconds > settings.time_limit_seconds
+    assert visibility == settings.visibility_timeout_seconds
+    assert isinstance(visibility, int)
+    assert visibility > max(settings.chat.time_limit_seconds, settings.tools.time_limit_seconds)
     assert TASK_NAME in celery.tasks
+
+
+def _queue_of(task_name: str) -> str:
+    """The queue Celery's router picks for a task sent by name (as the API sends it)."""
+    route = cast(Mapping[str, Any], celery.amqp.router.route({}, task_name))  # pyright: ignore[reportUnknownMemberType]
+    return cast(str, route["queue"].name)
+
+
+def test_each_task_name_is_routed_to_its_pools_queue() -> None:
+    settings = get_worker_settings()
+    assert _queue_of(TASK_NAME) == settings.chat.queue
+    assert _queue_of(JOB_TASK_NAME) == settings.tools.queue
+    assert settings.chat.queue != settings.tools.queue
+
+
+def test_each_task_has_the_hard_limit_of_its_pool() -> None:
+    settings = get_worker_settings()
+    limits = cast(Mapping[str, Mapping[str, Mapping[str, object]]], celery.conf)["task_annotations"]
+    assert limits[TASK_NAME]["time_limit"] == settings.chat.time_limit_seconds
+    assert limits[JOB_TASK_NAME]["time_limit"] == settings.tools.time_limit_seconds
 
 
 async def test_the_serialized_task_message_carries_the_ids_only(

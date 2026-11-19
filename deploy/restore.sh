@@ -42,8 +42,8 @@ switch_to() {
   live="$(ecofate_env_value POSTGRES_DB)"
   # PostgreSQL names are at most 63 characters: keep room for the suffix (24).
   kept="${live:0:39}_before_${stamp,,}"
-  echo "==> stopping api and worker"
-  ecofate_compose stop api worker
+  echo "==> stopping api and workers"
+  ecofate_compose stop api worker tool-worker
   # One transaction: if either rename fails, neither happens and the live database stays live.
   if ! db_psql -d postgres --single-transaction -v live="${live}" -v kept="${kept}" -v restored="${restored}" <<'SQL'
 SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = :'live' AND pid <> pg_backend_pid();
@@ -51,11 +51,11 @@ ALTER DATABASE :"live" RENAME TO :"kept";
 ALTER DATABASE :"restored" RENAME TO :"live";
 SQL
   then
-    ecofate_compose up -d api worker
+    ecofate_compose up -d api worker tool-worker
     die "the switch failed; the live database is unchanged and the app is running again"
   fi
   echo "==> starting api and worker on the restored data"
-  ecofate_compose up -d --wait api worker
+  ecofate_compose up -d --wait api worker tool-worker
   echo "Restored. The previous database is kept as ${kept}; drop it once you are satisfied:"
   echo "  docker compose ... exec db dropdb -U <user> ${kept}"
 }

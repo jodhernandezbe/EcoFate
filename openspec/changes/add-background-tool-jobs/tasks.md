@@ -1,9 +1,9 @@
 ## 1. Two queues (stage 1)
 
-- [ ] 1.1 `config/`: `[worker.chat]` and `[worker.tools]` (queue name, concurrency, prefetch, soft/hard limits), `heavy_tools`, `max_open_jobs_per_user`; loader validation and negative tests (limits out of order, unknown heavy tool, bools as numbers).
-- [ ] 1.2 `app/task_queue.py`: route `ecofate.run_turn` to `chat` and `ecofate.run_job` to `tools`; tests that each task name goes to its queue and payloads stay ids only.
-- [ ] 1.3 `worker/`: start each pool on its queue; `compose.yaml` and `compose.prod.yaml` gain a `tool-worker` service from the same image; `make worker-logs` covers both.
-- [ ] 1.4 Docs: `worker/README.md`, `docs/architecture.md`, and the `containers` and `turn-sequence` draw.io diagrams updated.
+- [x] 1.1 `config/`: `[worker.chat]` and `[worker.tools]` (queue name, concurrency, prefetch, soft/hard limits), `heavy_tools`, `max_open_jobs_per_user`; loader validation and negative tests (limits out of order, unknown heavy tool, bools as numbers).
+- [x] 1.2 `app/task_queue.py`: route `ecofate.run_turn` to `chat` and `ecofate.run_job` to `tools`; tests that each task name goes to its queue and payloads stay ids only.
+- [x] 1.3 `worker/`: start each pool on its queue; `compose.yaml` and `compose.prod.yaml` gain a `tool-worker` service from the same image; `make worker-logs` covers both.
+- [x] 1.4 Docs: `worker/README.md`, `docs/architecture.md`, and the `containers` and `turn-sequence` draw.io diagrams updated.
 
 ## 2. Jobs (stage 2)
 

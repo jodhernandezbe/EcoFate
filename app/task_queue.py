@@ -1,6 +1,7 @@
 """The task queue between the web program and its background workers (Celery over Redis).
 
-One task, ``ecofate.run_turn``, runs one queued turn segment. Its message carries the turn id
+``ecofate.run_turn`` runs one queued turn segment on the ``chat`` queue; ``ecofate.run_job``
+(a background tool job, stage 2) is routed to the ``tools`` queue. Its message carries the turn id
 and its owner's id and nothing else (checked by ``commons.payload_guard`` before it is sent):
 the turn's input is in the database, the keys are decrypted by the worker. The web program
 enqueues by task name and never imports the worker; ``build_celery`` configures both sides
@@ -26,6 +27,7 @@ from config.worker import WorkerSettings
 from storage.turn_model import TURN_ID_PATTERN
 
 TASK_NAME = "ecofate.run_turn"
+JOB_TASK_NAME = "ecofate.run_job"
 _TURN_ID = re.compile(TURN_ID_PATTERN)
 
 
@@ -86,22 +88,39 @@ class TurnEnqueuer(Protocol):
         ...
 
 
+def task_routes(settings: WorkerSettings) -> dict[str, dict[str, str]]:
+    """Task name to the queue of its pool (``[worker.chat]`` or ``[worker.tools]``)."""
+    return {
+        TASK_NAME: {"queue": settings.chat.queue},
+        JOB_TASK_NAME: {"queue": settings.tools.queue},
+    }
+
+
+def task_annotations(settings: WorkerSettings) -> dict[str, dict[str, int]]:
+    """The hard time limit of each task, from its pool."""
+    return {
+        TASK_NAME: {"time_limit": settings.chat.time_limit_seconds},
+        JOB_TASK_NAME: {"time_limit": settings.tools.time_limit_seconds},
+    }
+
+
 def build_celery(settings: WorkerSettings, broker_url: str) -> Celery:
-    """The Celery app of both sides: acknowledged late, one task prefetched, never re-run when
-    a worker is lost, the hard time limit (the soft one is enforced by the job itself), and a
-    visibility timeout above it. ``broker_url`` carries a password: never log it."""
+    """The Celery app of both sides: acknowledged late, tasks routed to their pool's queue, never
+    re-run when a worker is lost, each task's hard time limit (the soft one is enforced by the
+    job itself), and a visibility timeout above them. ``broker_url`` carries a password: never
+    log it. Prefetch and concurrency are per pool and set when its worker starts
+    (``worker.pool``)."""
     app = Celery("ecofate", broker=broker_url)  # no result backend: a task returns nothing
     app.conf.update(
         task_acks_late=True,
-        worker_prefetch_multiplier=settings.prefetch_multiplier,
         task_reject_on_worker_lost=False,
-        task_time_limit=settings.time_limit_seconds,
-        task_default_queue=settings.queue,
+        task_routes=task_routes(settings),
+        task_annotations=task_annotations(settings),
+        task_default_queue=settings.chat.queue,
         task_ignore_result=True,
         task_serializer="json",
         accept_content=["json"],
         task_always_eager=settings.eager,
-        worker_concurrency=settings.concurrency,
         worker_hijack_root_logger=False,
         broker_connection_timeout=settings.broker_timeout_seconds,
         broker_connection_retry_on_startup=True,
@@ -140,7 +159,12 @@ class CeleryEnqueuer:
         self._protected = tuple(protected)
 
     def _send(self, payload: list[str]) -> None:
-        self._celery.send_task(TASK_NAME, args=payload, queue=self._settings.queue, retry=False)  # pyright: ignore[reportUnknownMemberType]
+        self._celery.send_task(
+            TASK_NAME,
+            args=payload,
+            queue=self._settings.chat.queue,
+            retry=False,
+        )  # pyright: ignore[reportUnknownMemberType]
 
     async def enqueue(self, job: TurnJob) -> None:
         """Send the task; raises ``EnqueueError`` when the broker refuses or does not answer."""
