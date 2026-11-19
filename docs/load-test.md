@@ -186,3 +186,6 @@ left for their own changes:
   `[worker.tools]` 2 (`config/settings.production.toml`), with memory limits of 10 GB and 6 GB
   (`compose.prod.yaml`). At 50 users the expected chat wait is between the 2-slot and 8-slot
   runs, about a minute. More tools slots would need more memory.
+- **Switching it off.** Background jobs are on in production from 0.3.1. Adding `[worker]`
+  `heavy_tools = []` to `config/settings.production.toml` and deploying puts every assessment
+  back inside its turn, as before 0.3.0.

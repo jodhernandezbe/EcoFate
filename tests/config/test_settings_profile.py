@@ -75,7 +75,7 @@ def test_production_profile_gives_the_production_values(monkeypatch: pytest.Monk
     assert auth.trusted_proxy_hops == 1
     assert load_telemetry_settings().environment == "production"
     assert load_worker_settings().chat.concurrency == 4
-    assert load_worker_settings().heavy_tools == ()  # off in production until switched on
+    assert load_worker_settings().heavy_tools == ("assess_facilities",)  # background jobs on
     assert load_worker_settings().tools.concurrency == 2
 
 
