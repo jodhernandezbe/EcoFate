@@ -10,13 +10,21 @@ automatic follow-up turn explains the result when the job ends.
 A tool marked heavy in configuration (initially only `assess_facilities`) SHALL NOT run inside
 the agent turn. Its call SHALL validate its arguments, record a job and enqueue it on the
 `tools` queue, then answer the tool call at once with the job id, the status `queued` and the
-queue position. The job SHALL run the same tool code with the same arguments and the user's
-answers to missing values. The values the chemical lookup lists as missing SHALL still be asked
-for before any job is queued.
+queue position, plus a fixed note on how to talk about it (started, not done; no result,
+figure, count or facility name; the result comes in a follow-up). The tool's description SHALL
+stay the tool's own, so the model chooses it as it did when it ran in the turn. The job SHALL run
+the same tool code with the same arguments and the user's answers to missing values. The values
+the chemical lookup lists as missing SHALL still be asked for before any job is queued. A turn
+in which a heavy tool queued a job SHALL NOT be reviewed by the completion check: its work is
+running, and sending the agent back to work would make it write results it has not seen.
 
 #### Scenario: Assessment queued
 - **WHEN** the agent calls `assess_facilities` for a chemical with nothing missing
 - **THEN** a job record is `queued`, one task is enqueued on the `tools` queue, and the tool call is answered at once with the job id and `queued`
+
+#### Scenario: No completion review after queuing
+- **WHEN** the agent replies that the queued assessment has started
+- **THEN** the completion check does not send it back to work and the reply ends the turn
 
 #### Scenario: Missing values asked first
 - **WHEN** the chemical lookup lists a missing value the user has not answered
@@ -48,15 +56,22 @@ SHALL run as ordinary turns.
 
 ### Requirement: The agent can report a job's progress
 A quick tool, `check_job_status`, SHALL return the status, queue position, elapsed time and, when
-ended, a short outcome of a job of the current thread. The agent SHALL describe queued or running
-work as started, never as finished, and SHALL NOT invent results of a job that has not ended.
+ended, a short outcome of a job of the current thread. It SHALL be offered to a turn only once
+its thread has a job; a turn of a thread without jobs SHALL get the tools it had before
+background jobs existed. The agent SHALL describe queued or running work as started, never as
+finished, and SHALL NOT invent results of a job that has not ended.
+
+#### Scenario: No job, no status tool
+- **WHEN** a turn runs in a thread that has no job
+- **THEN** `check_job_status` is not among the turn's tools
 
 #### Scenario: Asked while running
 - **WHEN** the user asks how the assessment is going while its job runs
 - **THEN** the agent calls `check_job_status` and reports it as running with its elapsed time
 
 ### Requirement: A finished job starts a follow-up turn
-When a job ends (succeeded or failed), the system SHALL start one follow-up turn in its thread,
+When a job ends succeeded, failed or interrupted (not when the user cancelled it), the system
+SHALL start one follow-up turn in its thread,
 on the `chat` queue, whose input is the job's outcome; it SHALL explain the result as a normal
 answer would and fill the workspace from the job's artifact. When another turn of the thread is
 running, the follow-up SHALL wait until it ends. A follow-up SHALL run at most once per job.

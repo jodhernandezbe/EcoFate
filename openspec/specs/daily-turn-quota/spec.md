@@ -48,12 +48,12 @@ database clock in UTC.
 ### Requirement: Only new turns are counted
 A turn SHALL be counted only after the request is authenticated, the user has an OpenAI key
 stored and the thread was free; a request refused for any of those reasons SHALL NOT consume
-quota. Resuming an interrupted turn and answering the thread's pending confirmation request
-SHALL NOT be counted. A counted turn that ends before its first model call SHALL be refunded
+quota. Resuming an interrupted turn, answering the thread's pending confirmation request, and the
+automatic follow-up turn started when a background job ends SHALL NOT be counted. A counted turn that ends before its first model call SHALL be refunded
 once. A turn that reached the model SHALL NOT be refunded.
 
 #### Scenario: Busy thread
-- **WHEN** a turn is submitted on a thread whose turn is still running
+- **WHEN** a turn is submitted on a thread whose turn (not a background job) is still running
 - **THEN** it is answered 409 and the user's count is unchanged
 
 #### Scenario: Resume is free
@@ -75,6 +75,10 @@ once. A turn that reached the model SHALL NOT be refunded.
 #### Scenario: Provider failure is not refunded
 - **WHEN** a counted turn fails after a model call because the provider rate-limits it
 - **THEN** the count is unchanged and the turn can be resumed for free
+
+#### Scenario: Follow-up is free
+- **WHEN** a background job of a user at the limit ends and its follow-up turn runs
+- **THEN** the follow-up runs and the count is unchanged
 
 ### Requirement: Over-quota answer
 A new turn over the quota SHALL be refused with HTTP 429 before any agent, model, tool or
