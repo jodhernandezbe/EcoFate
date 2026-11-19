@@ -35,4 +35,4 @@
 
 - [x] 5.1 `uv run pytest tests/test_docs_links.py tests/test_claude_md.py` and `uv run pre-commit run --all-files` pass (large-file and detect-secrets hooks clean on the images and docs).
 - [x] 5.2 Read the README top as a hiring manager (two screens: problem, demo, evaluation, monitoring visible) and as a reviewer (each rubric criterion findable from the table of contents); fix gaps.
-- [ ] 5.3 (left open at archive: the course scorer was not run) Run the course project scorer (module 5 evaluator agent) on the repository and compare its scores with the self-evaluation; note any difference.
+- [x] 5.3 (dropped: the course scorer is an optional suggestion of the course, not a requirement) Run the course project scorer (module 5 evaluator agent) on the repository and compare its scores with the self-evaluation; note any difference.
