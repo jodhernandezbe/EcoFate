@@ -58,7 +58,7 @@ working there); read and follow the one that applies before editing there:
 - `evals/CLAUDE.md`   agent evaluation harness, cassettes and scenarios.
 - `api/CLAUDE.md`, `frontend/CLAUDE.md` web backend (contract, keys, redaction) and browser app.
 
-A new layer with rules of its own gets a `CLAUDE.md` in its folder, listed here. Keep this file
+A new layer with rules of its own gets a `CLAUDE.md` in its folder (people-facing docs: its `README.md`, indexed from `docs/README.md`), listed here. Keep this file
 under 80 lines (`tests/test_claude_md.py`); put detail in folder `CLAUDE.md` files or `docs/`.
 
 ## Design principles

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Deploy one EcoFate release on the VM (docs/deployment.md, "Releasing").
+# Deploy one EcoFate release on the VM (docs/deployment/release-and-rollback.md, "Releasing").
 #
 # Installed as the forced command of the deploy key in ~ecofate/.ssh/authorized_keys, so that key
 # can run nothing else. The requested action arrives in SSH_ORIGINAL_COMMAND (or as arguments

@@ -1,3 +1,5 @@
+[← Documentation index](../README.md#documentation) · [All docs](README.md)
+
 # Design principles
 
 Enforced by review (only function length has a hook); call out deliberate exceptions.

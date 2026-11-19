@@ -1,6 +1,6 @@
 # Production profile: laid over settings.toml when ECOFATE_SETTINGS_PROFILE=production (set by
 # compose.prod.yaml). Only keys that already exist in settings.toml may appear here, and nothing
-# secret: secrets come from the server's environment file. See docs/deployment.md.
+# secret: secrets come from the server's environment file. See docs/deployment/README.md.
 
 [ui]
 # The site is served by Cloudflare (through the tunnel) at this origin.

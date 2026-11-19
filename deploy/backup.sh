@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Nightly database backup on the VM (docs/deployment.md, "Backups"), run by ecofate-backup.timer.
+# Nightly database backup on the VM (docs/deployment/logs-backups-restore.md, "Backups"), run by ecofate-backup.timer.
 # Dumps the whole database (pg_dump custom format) inside the `db` container, checks the dump is
 # readable, uploads it to Object Storage as pg/<UTC timestamp>.dump with the VM's own identity
 # (instance principal; it may create and read dumps, never overwrite or delete them), and removes

@@ -87,7 +87,7 @@ test-redis: redis ## Run the Redis tests (pytest -m redis) against the redis ser
 psql: ## Open a psql shell in the db service
 	docker compose exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"'
 
-# --- Production on Oracle Cloud (docs/deployment.md) ---------------------------------------
+# --- Production on Oracle Cloud (docs/deployment/README.md) ---------------------------------------
 # On your machine: deploy-provision, deploy-teardown, deploy-ssh. On the VM: deploy-backup,
 # deploy-restore (as the ecofate user, in /opt/ecofate/app).
 
