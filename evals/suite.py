@@ -6,28 +6,37 @@ The agent's model is always the program's (``[agent]``, built by ``app.chat_mode
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import replace
 from pathlib import Path
 
 from langchain_core.tools import BaseTool
 
+from agent.graph import turn_tools
 from app.chat_model import build_chat_model
 from config.agent import get_agent_settings
 from config.evaluation import get_evaluation_settings
 from evals.cassette import Cassette, Recorder, replay_tools
+from evals.checks import ASSESSMENT
 from evals.record import RunRecord
 from evals.runner import run_scenario
 from evals.scenarios import Scenario
 from evals.scoring import ScenarioScore, new_run_dir, score_run
-from tools.registry import get_all_tools
 
 
 def cassette_path(scenario: Scenario) -> Path:
     """Where the recordings of ``scenario`` live."""
-    return get_evaluation_settings().cassette_dir / f"{scenario.id}.json"
+    return get_evaluation_settings().cassette_dir / f"{scenario.cassette_id or scenario.id}.json"
 
 
-def run_with(scenario: Scenario, tools: Sequence[BaseTool]) -> RunRecord:
-    """Run ``scenario`` with the program's chat model and step limit over ``tools``."""
+def run_with(
+    scenario: Scenario,
+    tools: Sequence[BaseTool],
+    cassette: Cassette | None = None,
+) -> RunRecord:
+    """Run ``scenario`` with the program's chat model and step limit over ``tools``.
+
+    ``cassette`` is what a background scenario's job "runs" from (see ``evals/jobs.py``).
+    """
     settings = get_agent_settings()
     return run_scenario(
         build_chat_model(settings),
@@ -35,14 +44,20 @@ def run_with(scenario: Scenario, tools: Sequence[BaseTool]) -> RunRecord:
         (scenario.id, scenario.query),
         settings,
         follow_up=scenario.follow_up,
+        background=scenario.background,
+        cassette=cassette,
     )
 
 
 def replayed(scenario: Scenario) -> RunRecord:
     """Run ``scenario`` with network tools replayed from its cassette."""
     cassette = Cassette.load(cassette_path(scenario))
-    live = get_evaluation_settings().live_tools
-    return run_with(scenario, replay_tools(get_all_tools(), cassette, live))
+    live = set(get_evaluation_settings().live_tools)
+    if scenario.background:  # the submitter stays: it queues the job, the cassette ends it
+        live.add(ASSESSMENT)
+    # The tools a turn of the program gets: the job-status tool only where a job can exist.
+    tools = turn_tools(has_jobs=scenario.background)
+    return run_with(scenario, replay_tools(tools, cassette, live), cassette)
 
 
 def evaluate(scenario: Scenario, run_dir: Path | None = None) -> tuple[RunRecord, ScenarioScore]:
@@ -59,14 +74,22 @@ def record_extras(scenario: Scenario, recorder: Recorder, tools: Sequence[BaseTo
         recorder.invoke(tools, extra.tool, extra.args)
 
 
+def _own_cassette(scenario: Scenario) -> None:
+    """Recording writes the scenario's own cassette; one that replays another's has none."""
+    if scenario.cassette_id is not None:
+        raise ValueError(f"{scenario.id} replays another scenario's cassette; record that one")
+
+
 def record_live(scenario: Scenario) -> RunRecord:
     """Run ``scenario`` against the live services and save every network tool output.
 
     The cassette is replaced by this run's recordings plus the scenario's extra calls.
     """
+    _own_cassette(scenario)
     recorder = Recorder()
-    tools = recorder.wrap(get_all_tools(), get_evaluation_settings().live_tools)
-    record = run_with(scenario, tools)
+    tools = recorder.wrap(turn_tools(has_jobs=False), get_evaluation_settings().live_tools)
+    # Recorded with no job system, so a background scenario's heavy call runs and is recorded.
+    record = run_with(replace(scenario, background=False), tools)
     record_extras(scenario, recorder, tools)
     recorder.save(cassette_path(scenario))
     return record
@@ -78,9 +101,10 @@ def record_extra_live(scenario: Scenario) -> int:
     Returns:
         The number of extra calls made.
     """
+    _own_cassette(scenario)
     recorder = Recorder()
     recorder.seed(cassette_path(scenario))
-    tools = recorder.wrap(get_all_tools(), get_evaluation_settings().live_tools)
+    tools = recorder.wrap(turn_tools(has_jobs=False), get_evaluation_settings().live_tools)
     record_extras(scenario, recorder, tools)
     recorder.save(cassette_path(scenario))
     return len(scenario.extra_calls)

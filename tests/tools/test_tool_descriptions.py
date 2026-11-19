@@ -105,6 +105,12 @@ REQUIRED = {
         "Never a number recalled from a chemical's name",
         "screening estimates, not regulatory determinations",
     ),
+    "check_job_status": (
+        "It never starts or changes a job",
+        "has been started, not finished",
+        "never state or guess its results",
+        "do not describe them before then",
+    ),
     "calculate_exposure_metrics": (
         "`stack_source` echoes where the stack came from",
         "can be far higher than for the facility's real stack",

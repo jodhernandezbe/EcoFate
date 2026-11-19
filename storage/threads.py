@@ -39,6 +39,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.usage_meter import CallUsage
 from config.database import DatabaseSettings
 from storage import codec
+from storage.jobs import PostgresJobStore
 from storage.keys import ThreadKey
 from storage.tables import (
     thread_answers,
@@ -47,7 +48,9 @@ from storage.tables import (
     thread_usage,
     thread_workspaces,
     threads,
+    turns,
 )
+from storage.turn_model import TurnStatus
 from storage.turns import TurnRepository
 from tools.schemas import ConfirmationRequest
 
@@ -78,12 +81,73 @@ def _new_thread(key: ThreadKey) -> PgInsert:
     return pg_insert(threads).values(owner_id=key.owner_id, id=key.thread_id)
 
 
+async def claim_lease(sessions: Sessions, key: ThreadKey, lease: timedelta) -> bool:
+    """Take the thread for a turn (creating it when new); False while another unexpired lease
+    exists. Also used by the follow-up of a job, which holds no checkpointer."""
+    until = func.now() + lease
+    statement = (
+        _new_thread(key)
+        .values(busy_until=until, last_used_at=func.now())
+        .on_conflict_do_update(
+            index_elements=[threads.c.owner_id, threads.c.id],
+            set_={"busy_until": until, "last_used_at": func.now()},
+            where=_idle(),
+        )
+        .returning(threads.c.id)
+    )
+    async with sessions.begin() as session:
+        return (await session.execute(statement)).first() is not None
+
+
 async def release_lease(sessions: Sessions, key: ThreadKey) -> None:
     """Clear the thread's lease (safe to repeat); also used by a worker's recovery, which holds
     no checkpointer."""
     statement = update(threads).where(_mine(key)).values(busy_until=None)
     async with sessions.begin() as session:
         await session.execute(statement)
+
+
+async def idle_threads_with_waiting_follow_up(sessions: Sessions) -> list[ThreadKey]:
+    """Threads that hold a ``waiting`` follow-up turn and no unexpired lease: the process that
+    should have started it died before it could (a recovery sweep starts it)."""
+    statement = (
+        select(turns.c.user_id, turns.c.thread_id)
+        .join(
+            threads,
+            (threads.c.owner_id == turns.c.user_id) & (threads.c.id == turns.c.thread_id),
+        )
+        .where(turns.c.status == TurnStatus.WAITING.value, _idle())
+        .distinct()
+    )
+    async with sessions() as session:
+        return [ThreadKey(row.user_id, row.thread_id) for row in await session.execute(statement)]
+
+
+class ThreadLeases:
+    """The thread leases and turn records alone, for a process with no checkpointer (the worker's
+    recovery starting a job's follow-up turn).
+
+    Args:
+        sessions: Factory of async sessions (one transaction per call).
+        settings: Provides the turn lease.
+    """
+
+    def __init__(self, sessions: Sessions, settings: DatabaseSettings) -> None:
+        self.turns = TurnRepository(sessions)
+        self._sessions = sessions
+        self._lease = timedelta(seconds=settings.turn_lease_seconds)
+
+    async def claim(self, key: ThreadKey) -> bool:
+        """Take the thread for a turn; False while another unexpired lease exists."""
+        return await claim_lease(self._sessions, key, self._lease)
+
+    async def release(self, key: ThreadKey) -> None:
+        """Clear the lease (safe to call more than once)."""
+        await release_lease(self._sessions, key)
+
+    async def idle_with_waiting_follow_up(self) -> list[ThreadKey]:
+        """Threads with a waiting follow-up and no live lease (orphaned by a dead process)."""
+        return await idle_threads_with_waiting_follow_up(self._sessions)
 
 
 class PostgresThreadStore[WorkspaceT: BaseModel]:
@@ -105,6 +169,7 @@ class PostgresThreadStore[WorkspaceT: BaseModel]:
     ) -> None:
         self.checkpointer = checkpointer
         self.turns = TurnRepository(sessions)
+        self.jobs = PostgresJobStore(sessions)
         self._sessions = sessions
         self._lease = timedelta(seconds=settings.turn_lease_seconds)
         self._workspace_model = workspace_model
@@ -113,19 +178,7 @@ class PostgresThreadStore[WorkspaceT: BaseModel]:
 
     async def claim(self, key: ThreadKey) -> bool:
         """Take the thread for a turn; False while another unexpired lease exists."""
-        lease = func.now() + self._lease
-        statement = (
-            _new_thread(key)
-            .values(busy_until=lease, last_used_at=func.now())
-            .on_conflict_do_update(
-                index_elements=[threads.c.owner_id, threads.c.id],
-                set_={"busy_until": lease, "last_used_at": func.now()},
-                where=_idle(),
-            )
-            .returning(threads.c.id)
-        )
-        async with self._sessions.begin() as session:
-            return (await session.execute(statement)).first() is not None
+        return await claim_lease(self._sessions, key, self._lease)
 
     async def extend(self, key: ThreadKey) -> None:
         """Renew a held lease for another lease period (the worker's heartbeat); an idle thread
@@ -141,6 +194,10 @@ class PostgresThreadStore[WorkspaceT: BaseModel]:
     async def release(self, key: ThreadKey) -> None:
         """Clear the lease (safe to call more than once)."""
         await release_lease(self._sessions, key)
+
+    async def idle_with_waiting_follow_up(self) -> list[ThreadKey]:
+        """Threads with a waiting follow-up and no live lease (orphaned by a dead process)."""
+        return await idle_threads_with_waiting_follow_up(self._sessions)
 
     async def touch(self, key: ThreadKey) -> None:
         """Mark the thread as most recently used, creating it when it is new."""

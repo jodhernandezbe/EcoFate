@@ -34,6 +34,8 @@ class RunRecord:
         calls: Tool calls in the order made.
         report: Text of the final answer; empty if the run ended without one.
         error: Why the run ended early, or None when it finished.
+        interim: The first turn's final reply when a second turn followed it (a background job
+            ended and was explained); empty otherwise.
     """
 
     scenario_id: str
@@ -41,6 +43,7 @@ class RunRecord:
     calls: tuple[ToolCall, ...]
     report: str
     error: str | None
+    interim: str = ""
 
     @property
     def completed(self) -> bool:

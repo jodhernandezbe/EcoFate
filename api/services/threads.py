@@ -22,6 +22,7 @@ from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from api.schemas.workspace import WorkspaceState
 from app.usage_meter import CallUsage
+from storage.job_model import JobStore
 from storage.keys import ThreadKey
 from storage.turn_model import PlannedInput, Turn, TurnStatus
 from tools.schemas import ConfirmationRequest
@@ -36,6 +37,25 @@ class TurnStore(Protocol):
     async def begin(self, key: ThreadKey, planned: PlannedInput | None = None) -> Turn | None:
         """Record a new queued turn of the thread with its input; None while the thread has an
         open turn."""
+        ...
+
+    async def begin_follow_up(
+        self,
+        key: ThreadKey,
+        job_id: str,
+        planned: PlannedInput,
+    ) -> Turn | None:
+        """Record a background job's automatic follow-up turn as ``waiting``; None (nothing
+        recorded) when the job already has one: a job has at most one follow-up."""
+        ...
+
+    async def next_waiting(self, key: ThreadKey) -> Turn | None:
+        """The thread's oldest waiting follow-up; None when it has none."""
+        ...
+
+    async def activate(self, owner_id: UUID, turn_id: str) -> Turn | None:
+        """Move the owner's waiting follow-up to queued, once; None when it is not waiting or
+        the thread has an open turn."""
         ...
 
     async def resume(self, owner_id: UUID, turn_id: str, max_resumes: int) -> Turn | None:
@@ -113,6 +133,11 @@ class ThreadStore(Protocol):
     @property
     def checkpointer(self) -> BaseCheckpointSaver[str]:
         """Keeps each thread's messages; given to the agent."""
+        ...
+
+    @property
+    def jobs(self) -> JobStore:
+        """Every background tool job of the user's threads (owner-scoped reads)."""
         ...
 
     @property
@@ -204,6 +229,10 @@ class ThreadStore(Protocol):
         declined: Iterable[str],
     ) -> None:
         """Keep the user's answers; a supplied value is never replaced and beats a decline."""
+        ...
+
+    async def idle_with_waiting_follow_up(self) -> list[ThreadKey]:
+        """Threads with a waiting follow-up turn and no live lease (a dead process left it)."""
         ...
 
     async def reset(self, key: ThreadKey) -> bool:

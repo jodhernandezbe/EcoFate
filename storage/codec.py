@@ -208,6 +208,7 @@ def _turn(
         heartbeat_at=cast(datetime | None, row.get("heartbeat_at")),
         cancel_requested=row.get("cancel_requested") is True,
         planned=planned_from_json(row.get("planned_input")),
+        job_id=job if isinstance(job := row.get("job_id"), str) else None,
     )
 
 

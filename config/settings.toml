@@ -941,18 +941,16 @@ setup_lock_poll_seconds = 0.25
 # A task message carries only the turn id. Times are seconds.
 [worker]
 redis_url_env_var = "REDIS_URL"
-# The Celery queue the API enqueues turns on and the worker consumes.
-queue = "ecofate.turns"
-# Turns one worker container runs at once (prefork child processes).
-concurrency = 2
-# Tasks a child reserves ahead of the one it runs (1: a long turn never blocks a waiting one).
-prefetch_multiplier = 1
-# A turn still running after the soft limit is stopped and becomes interrupted/time_limit
-# (resumable); the hard limit kills the child as a backstop. soft < hard < visibility timeout.
-soft_time_limit_seconds = 900
-time_limit_seconds = 960
-# Redis redelivers an unacknowledged task after this; it must exceed the hard limit.
-visibility_timeout_seconds = 1200
+# Names of the tools that run as background jobs on the `tools` pool instead of inside the turn.
+# Each must be a registered tool (checked when the tool registry is built). Empty: all synchronous
+# (the rollback switch; config/settings.production.toml can set it per deployment). With no job
+# system provided (the command line, the evaluations' plain scenarios) a heavy tool still runs
+# inside the turn.
+heavy_tools = ["assess_facilities"]
+# Jobs (queued plus running) one user may have at once.
+max_open_jobs_per_user = 2
+# Redis redelivers an unacknowledged task after this; it must exceed both pools' hard limits.
+visibility_timeout_seconds = 1800
 # The worker records a heartbeat on its running turn this often (and extends the thread lease).
 heartbeat_seconds = 15
 # A queued or running turn whose heartbeat is older than this has lost its worker and becomes
@@ -968,6 +966,28 @@ relay_block_seconds = 5
 broker_timeout_seconds = 3
 # True runs each task in the calling process with an in-memory event stream (tests only).
 eager = false
+
+# The pool that runs agent turns (`ecofate.run_turn`): short, interactive work. Each pool is a
+# worker service consuming its own queue (`python -m worker chat`), so a long job never delays a
+# question. soft < hard < visibility timeout.
+[worker.chat]
+queue = "chat"
+# Turns one chat worker runs at once (prefork child processes).
+concurrency = 2
+# Tasks a child reserves ahead of the one it runs (1: a long turn never blocks a waiting one).
+prefetch_multiplier = 1
+# A turn still running after the soft limit is stopped and becomes interrupted/time_limit
+# (resumable); the hard limit kills the child as a backstop.
+soft_time_limit_seconds = 900
+time_limit_seconds = 960
+
+# The pool that runs background tool jobs (`ecofate.run_job`): long assessments.
+[worker.tools]
+queue = "tools"
+concurrency = 1
+prefetch_multiplier = 1
+soft_time_limit_seconds = 1500
+time_limit_seconds = 1560
 
 # Per-user OpenAI keys of the web program (bring your own key). Each key is stored in PostgreSQL
 # sealed with AES-256-GCM under a key-encryption key (KEK). The KEK itself is never written here:
@@ -1108,7 +1128,8 @@ usage_metadata = "langsmith.metadata.usage_metadata"
 judge_provider = "openai"
 judge_model = "gpt-5.5-2026-04-23"
 judge_api_key_env_var = "OPENAI_API_KEY"  # pragma: allowlist secret
-live_tools = ["calculate_exposure_metrics"]
+# `check_job_status` reads the job system the evaluation provides (in memory), never the network.
+live_tools = ["calculate_exposure_metrics", "check_job_status"]
 cassette_dir = "evals/cassettes"
 report_dir = "evals/reports"
 # The reviewed question catalogue (`question,category,type`) that `python -m evals catalogue`
@@ -1189,6 +1210,7 @@ get_meteorological_boundary = "Retrieved meteorology"
 get_population_receptors = "Counted Census receptors"
 calculate_exposure_metrics = "Computed screening dispersion and risk"
 assess_facilities = "Screened every facility and assessed those that may matter"
+check_job_status = "Checked the background assessment"
 
 # Basemap vector styles (CARTO Positron / Dark Matter), the half-angle of the schematic
 # downwind sector drawn on the map (degrees; a drawing choice, not a modelled plume width),

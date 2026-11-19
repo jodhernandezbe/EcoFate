@@ -24,6 +24,7 @@ TURN_ID_PATTERN = r"^[0-9a-f]{32}$"
 class TurnStatus(StrEnum):
     """Where a turn is in its life."""
 
+    WAITING = "waiting"
     QUEUED = "queued"
     RUNNING = "running"
     INTERRUPTED = "interrupted"
@@ -31,6 +32,8 @@ class TurnStatus(StrEnum):
     FAILED = "failed"
 
 
+# A ``waiting`` turn is an automatic follow-up recorded while its thread was busy: it holds nothing,
+# and the finisher of the turn that held the thread moves it to ``queued`` when it releases it.
 # The statuses of a turn that holds its thread; at most one per thread (a partial unique index).
 OPEN_STATUSES = (TurnStatus.QUEUED, TurnStatus.RUNNING)
 # The statuses that carry a reason (and only these).
@@ -38,12 +41,12 @@ REASONED_STATUSES = (TurnStatus.INTERRUPTED, TurnStatus.FAILED)
 # Target status -> the statuses a turn may move to it from.
 ALLOWED_FROM = MappingProxyType(
     {
-        TurnStatus.QUEUED: frozenset({TurnStatus.INTERRUPTED}),
+        TurnStatus.QUEUED: frozenset({TurnStatus.INTERRUPTED, TurnStatus.WAITING}),
         TurnStatus.RUNNING: frozenset({TurnStatus.QUEUED, TurnStatus.INTERRUPTED}),
         TurnStatus.INTERRUPTED: frozenset(OPEN_STATUSES),
         TurnStatus.COMPLETED: frozenset({TurnStatus.RUNNING, TurnStatus.INTERRUPTED}),
         TurnStatus.FAILED: frozenset(
-            {TurnStatus.QUEUED, TurnStatus.RUNNING, TurnStatus.INTERRUPTED},
+            {TurnStatus.WAITING, TurnStatus.QUEUED, TurnStatus.RUNNING, TurnStatus.INTERRUPTED},
         ),
     },
 )
@@ -90,6 +93,8 @@ class Turn:
         heartbeat_at: When its worker last reported it alive; None before it ran.
         cancel_requested: The user asked to stop it; its worker stops after the current step.
         planned: The input of a new turn; None for a turn recorded without one.
+        job_id: The background job whose end this automatic follow-up turn explains; None for a
+            turn the user started. At most one turn exists per job.
     """
 
     id: str
@@ -105,6 +110,12 @@ class Turn:
     heartbeat_at: datetime | None = None
     cancel_requested: bool = False
     planned: PlannedInput | None = None
+    job_id: str | None = None
+
+    @property
+    def automatic(self) -> bool:
+        """Whether the system started this turn (a job's follow-up) rather than the user."""
+        return self.job_id is not None
 
     @property
     def key(self) -> ThreadKey:

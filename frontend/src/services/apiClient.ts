@@ -11,7 +11,7 @@ import type {
   ThreadSnapshot,
   UserInfo,
 } from "../types/workspace";
-import { parseSseFrames } from "./sse";
+import { parseSseFrames, parseThreadFrames, type ThreadEntry } from "./sse";
 
 const BASE = "/api/v1";
 const JSON_HEADERS = { "content-type": "application/json" };
@@ -178,6 +178,18 @@ async function* events(response: Response): AsyncGenerator<StreamEvent> {
   }
 }
 
+/** Read a response body as text chunks as they arrive. */
+async function* chunks(response: Response): AsyncGenerator<string> {
+  if (!response.body) throw new ApiError("The server sent no stream.", response.status);
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    yield decoder.decode(value, { stream: true });
+  }
+}
+
 /** Stream the events of one chat turn as they arrive. */
 export async function* streamChat(
   body: ChatRequest,
@@ -218,6 +230,32 @@ export async function* turnEvents(
   const headers: Record<string, string> = afterSeq === null ? {} : { "Last-Event-ID": String(afterSeq) };
   const path = `/chat/turns/${encodeURIComponent(turnId)}/events`;
   yield* events(await request(path, { headers, signal }));
+}
+
+/**
+ * The thread's own stream (job and turn lifecycle) after the entry `lastId` (from its first
+ * entry when null). It stays open until the signal aborts or the connection drops; rejects with a
+ * 404 `ApiError` when the thread is not held.
+ */
+export async function* threadEvents(
+  threadId: string,
+  lastId: string | null,
+  signal?: AbortSignal,
+): AsyncGenerator<ThreadEntry> {
+  const headers: Record<string, string> = lastId === null ? {} : { "Last-Event-ID": lastId };
+  const response = await request(`/chat/threads/${encodeURIComponent(threadId)}/events`, { headers, signal });
+  let buffer = "";
+  for await (const text of chunks(response)) {
+    const { entries, rest } = parseThreadFrames(buffer + text);
+    buffer = rest;
+    yield* entries;
+  }
+}
+
+/** Ask a queued or running background job to stop; rejects with a 409 `ApiError` when it has
+ * already ended and 404 when it is unknown. */
+export async function cancelJob(jobId: string): Promise<void> {
+  await request(`/chat/jobs/${encodeURIComponent(jobId)}/cancel`, { method: "POST" });
 }
 
 /** Ask a running turn to stop after its current step; rejects with a 409 `ApiError` when it

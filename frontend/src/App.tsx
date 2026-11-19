@@ -18,6 +18,7 @@ import { useKeyStatus } from "./hooks/useKeyStatus";
 import { useQuota } from "./hooks/useQuota";
 import { useReportDownload } from "./hooks/useReportDownload";
 import { useSession } from "./hooks/useSession";
+import { useThreadEvents } from "./hooks/useThreadEvents";
 import { useWorkspaceStore } from "./hooks/useWorkspaceStore";
 import type { UserInfo, WorkspaceState } from "./types/workspace";
 
@@ -45,6 +46,12 @@ function Workspace({ user, onSignOut, onGone }: WorkspaceProps) {
   const chat = useAgentStream({
     onWorkspace: store.apply,
     onReplace: (state) => (state ? store.replace(state) : store.clear()),
+  });
+  const threadJobs = useThreadEvents({
+    threadId: chat.threadId,
+    held: chat.held,
+    initialJobs: chat.jobs,
+    onAutomaticTurn: (turnId) => void chat.attach(turnId),
   });
   const quota = useQuota(chat.busy, chat.refusal);
   const report = useReportDownload();
@@ -139,6 +146,10 @@ function Workspace({ user, onSignOut, onGone }: WorkspaceProps) {
             status={chat.status}
             stopping={chat.stopping}
             onStop={() => void chat.stop()}
+            jobs={threadJobs.openJobs}
+            cancellingJobs={threadJobs.cancelling}
+            jobError={threadJobs.error}
+            onCancelJob={(jobId) => void threadJobs.cancel(jobId)}
             onOpenSettings={() => setSettingsOpen(true)}
             onCollapse={collapse}
           />

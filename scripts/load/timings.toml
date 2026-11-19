@@ -1,0 +1,7 @@
+# Recorded latencies the load test replays with the fake model (seconds). Source: the Logfire
+# trace of one full assessment turn on 2026-11-18 (4 min 48 s in all, of which `assess_facilities`
+# took 3 min 52 s) and the ~3 s lookups of the job's preflight. The model figure is a typical
+# gpt-4.1 call in the same traces.
+model_seconds = 2.0
+preflight_seconds = 3.0
+job_seconds = 232.0

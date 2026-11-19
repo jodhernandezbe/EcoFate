@@ -1,0 +1,48 @@
+# Load test only (docs/load-test.md), laid over compose.yaml on a local machine:
+#
+#   LOAD_FAKE_MODEL=1 docker compose -f compose.yaml -f compose.load.yaml --profile dev up -d
+#
+# Mounts scripts/ (read-only) and the load-test settings profile into the API and both workers,
+# and starts each worker through scripts.load.worker. LOAD_FAKE_MODEL=1 swaps in the scripted
+# model and the recorded assessment (no paid call, no external data service); LOAD_FAKE_MODEL=0
+# runs the real model and tools (the budgeted run). Never used in production.
+
+x-load-env: &load-env
+  ECOFATE_SETTINGS_PROFILE: load
+  LOAD_FAKE_MODEL: ${LOAD_FAKE_MODEL:-1}
+  LOAD_JOB_SECONDS: ${LOAD_JOB_SECONDS:-}
+
+x-load-volumes: &load-volumes
+  - ./scripts:/app/scripts:ro
+  - ./scripts/load/settings.load.toml:/app/config/settings.load.toml:ro
+  - ecofate-cache:/app/.cache
+  - hf-cache:/home/ecofate/.cache/huggingface
+
+services:
+  migrate:
+    environment:
+      <<: *load-env
+    volumes: *load-volumes
+
+  api:
+    environment:
+      <<: *load-env
+      # Verification emails of the simulated users go to Mailpit, never to a real mail server.
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_SECURITY: none
+      SMTP_USERNAME: ""
+      SMTP_PASSWORD: ""
+    volumes: *load-volumes
+
+  worker:
+    command: ["python", "-m", "scripts.load.worker", "chat"]
+    environment:
+      <<: *load-env
+    volumes: *load-volumes
+
+  tool-worker:
+    command: ["python", "-m", "scripts.load.worker", "tools"]
+    environment:
+      <<: *load-env
+    volumes: *load-volumes

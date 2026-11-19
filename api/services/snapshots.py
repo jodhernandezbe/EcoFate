@@ -12,12 +12,14 @@ from agent.completion import is_nudge
 from api.schemas.chat import ConfirmationPrompt, RunningTurn, ThreadMessage, ThreadSnapshot
 from api.schemas.workspace import WorkspaceState
 from api.services.confirmation import request_event
+from api.services.jobs import job_infos
 from api.services.projectors.rules import WorkspaceRules
 from api.services.threads import ThreadStore
 from api.services.turn_lifecycle import interruption
 from api.services.usage_meter import summarize
 from api.services.workspace_sync import current_workspace
 from app.turns import FailureReason
+from app.turns.follow_up import AUTOMATIC
 from config.ui import ModelPrice
 from storage.keys import ThreadKey
 from storage.turn_model import OPEN_STATUSES, Turn
@@ -33,24 +35,42 @@ def _text(message: BaseMessage) -> str:
     return "".join(part for part in parts if isinstance(part, str)).strip()
 
 
+def _is_notice(message: BaseMessage) -> bool:
+    """Whether the message is the notice of a background job's end (for the agent, not the chat)."""
+    return isinstance(message, HumanMessage) and AUTOMATIC in message.additional_kwargs
+
+
+def _shown_text(shown: list[ThreadMessage], message: BaseMessage, text: str, fresh: bool) -> bool:
+    """Add an assistant message's text (joined to the turn's earlier text unless ``fresh``);
+    whether the next assistant text still belongs to the same message."""
+    if shown and shown[-1].role == "assistant" and not fresh:
+        shown[-1] = ThreadMessage(role="assistant", text=f"{shown[-1].text}\n\n{text}")
+    else:
+        shown.append(ThreadMessage(role="assistant", text=text))
+    return False
+
+
 def thread_messages(messages: Sequence[BaseMessage]) -> list[ThreadMessage]:
     """The user and assistant text of ``messages``, one assistant message per turn.
 
     Assistant text written between tool calls is joined with a blank line, as the live chat
     shows it; tool calls, tool results, empty messages and the completion guardrail's nudges
-    are dropped (the text written after a nudge joins the same assistant message).
+    are dropped (the text written after a nudge joins the same assistant message). A user
+    message, or the notice of a background job's end, starts a new assistant message.
     """
     shown: list[ThreadMessage] = []
+    fresh = True
     for message in messages:
         text = _text(message)
-        if not text or is_nudge(message):
+        if _is_notice(message):
+            fresh = True
+        elif not text or is_nudge(message):
             continue
-        if isinstance(message, HumanMessage):
+        elif isinstance(message, HumanMessage):
             shown.append(ThreadMessage(role="user", text=text))
-        elif isinstance(message, AIMessage) and shown and shown[-1].role == "assistant":
-            shown[-1] = ThreadMessage(role="assistant", text=f"{shown[-1].text}\n\n{text}")
+            fresh = True
         elif isinstance(message, AIMessage):
-            shown.append(ThreadMessage(role="assistant", text=text))
+            fresh = _shown_text(shown, message, text, fresh)
     return shown
 
 
@@ -112,13 +132,15 @@ async def thread_snapshot(
         confirmation=_prompt(await threads.pending(key)),
         interrupted=interruption(latest, options.max_resumes),
         running_turn=_running(running),
+        jobs=await job_infos(threads.jobs, key),
     )
 
 
 def _running(turn: Turn | None) -> RunningTurn | None:
     if turn is None:
         return None
-    question = turn.planned.question if turn.planned is not None else None
+    # A follow-up's input is the system's notice, not something the user said: never shown.
+    question = turn.planned.question if turn.planned is not None and not turn.automatic else None
     return RunningTurn(turn_id=turn.id, resumed=turn.resume_count > 0, question=question)
 
 

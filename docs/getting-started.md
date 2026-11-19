@@ -16,7 +16,7 @@ Only Docker is needed (Docker Desktop on macOS or Windows).
     # then save your own OpenAI key in Settings
 
 The image is about 2 GB and the stack needs about 4 GB of RAM once the read-across encoder is
-loaded. After changing code, recreate the containers: `docker compose up -d --build --force-recreate api worker`.
+loaded. After changing code, recreate the containers: `docker compose up -d --build --force-recreate api worker tool-worker`.
 What goes in `.env` and why: [api/](../api/docs/keys-and-byok.md) and [Security](security/README.md).
 The services and their health check: [Architecture](architecture.md#runtime-containers).
 
@@ -25,7 +25,7 @@ The `Makefile` is the index of everyday commands (`make help` lists them):
 | Target | What it does |
 |--------|--------------|
 | `make up` / `make down` | start the stack in the background (waiting until healthy) / stop it, keeping volumes |
-| `make build` / `make logs` / `make worker-logs` | build the images / follow the logs / follow the worker's turns |
+| `make build` / `make logs` / `make worker-logs` | build the images / follow the logs / follow both workers (turns and tool jobs) |
 | `make shell` / `make psql` | a shell in the `api` container / a `psql` shell in `db` |
 | `make warm` | download the read-across encoder into its volume ahead of the first assessment |
 | `make test` / `make lint` / `make check` | unit tests / ruff / everything pre-commit enforces |

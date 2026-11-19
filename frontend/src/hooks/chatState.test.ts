@@ -171,6 +171,7 @@ describe("restore", () => {
     confirmation: null,
     interrupted: null,
     running_turn: null,
+    jobs: [],
   };
 
   it("replaces the conversation with the held messages, idle, without tool steps", () => {
@@ -265,6 +266,7 @@ describe("interrupted turns", () => {
     confirmation: null,
     interrupted: stop,
     running_turn: null,
+    jobs: [],
   });
 
   it("restores the stop onto the last assistant message of a held thread", () => {
@@ -404,6 +406,7 @@ describe("reattaching after a reload", () => {
       confirmation: null,
       interrupted: null,
       running_turn: null,
+      jobs: [],
     },
   });
 

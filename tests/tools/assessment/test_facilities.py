@@ -781,3 +781,108 @@ def test_given_benchmarks_that_fill_every_missing_value_let_the_assessment_run(
     _lookup_missing(monkeypatch, "iur")
     view, artifact = _run(toxicity=Toxicity(rfc=2.0, iur=1e-6))
     assert "missing" not in view and view["assessed"] > 0 and artifact["assessed"]
+
+
+def _stops_after(asks: int) -> tuple[list[int], object]:
+    """A stop check that says stop from its ``asks``-th question on, and the questions asked."""
+    asked: list[int] = []
+
+    def check() -> bool:
+        asked.append(len(asked) + 1)
+        return len(asked) >= asks
+
+    return asked, check
+
+
+def test_the_stop_check_is_asked_between_the_tiers_and_by_default_never_stops() -> None:
+    asked, check = _stops_after(10**6)
+    run_assessment(
+        "50-00-0",
+        None,
+        (None, None),
+        None,
+        None,
+        facilities.default_steps(),
+        None,
+        check,  # type: ignore[arg-type]
+    )
+    assert asked == [1, 2]  # after tier 1 and after tier 2, before the full chain
+
+
+@pytest.mark.parametrize("asks", [1, 2])
+def test_a_stop_between_tiers_raises_and_returns_nothing(
+    asks: int,
+    _offline: FakeSteps,
+) -> None:
+    from commons.stop import StoppedError
+
+    _, check = _stops_after(asks)
+    with pytest.raises(StoppedError):
+        run_assessment(
+            "50-00-0",
+            None,
+            (None, None),
+            None,
+            None,
+            facilities.default_steps(),
+            None,
+            check,  # type: ignore[arg-type]
+        )
+    assert not any(name == "weather" for name, _ in _offline.calls)  # the full chain never ran
+
+
+def test_a_stop_before_the_full_chain_also_applies_to_facilities_asked_by_id() -> None:
+    from commons.stop import StoppedError
+
+    with pytest.raises(StoppedError):
+        run_assessment(
+            "50-00-0",
+            ["MID"],
+            (None, None),
+            None,
+            None,
+            facilities.default_steps(),
+            None,
+            lambda: True,
+        )
+
+
+def test_the_job_runner_validates_its_input_and_runs_the_same_assessment() -> None:
+    from tools.schemas import InvalidJobInputError
+
+    content, artifact = facilities.run_assessment_job(
+        {"arguments": {"cas_number": "50-00-0"}},
+        lambda: False,
+    )
+    assert content["assessed"] == 3 and len(artifact["assessed"]) == 3  # type: ignore[arg-type]
+    with pytest.raises(InvalidJobInputError):
+        facilities.run_assessment_job({"arguments": {"cas_number": 5}}, lambda: False)
+
+
+def test_the_job_preflight_gives_the_same_missing_result_as_the_tool(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _lookup_missing(monkeypatch, "iur", "oel_twa")
+    early = facilities.check_before_job({"cas_number": "50-00-0"}, {})
+    assert early is not None
+    view, artifact = early
+    assert [e["quantity"] for e in view.get("missing", [])] == ["iur", "oel_twa"]
+    assert view["assessed"] == 0 and artifact["assessed"] == []
+    assert early[0] == _run()[0]  # exactly what the synchronous tool answers
+
+
+def test_the_job_preflight_lets_a_job_start_when_nothing_is_missing() -> None:
+    assert facilities.check_before_job({"cas_number": "50-00-0"}, {}) is None
+
+
+def test_the_job_preflight_accepts_a_given_benchmark_that_fills_the_gap(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _lookup_missing(monkeypatch, "iur")
+    arguments = {"cas_number": "50-00-0", "toxicity": Toxicity(rfc=2.0, iur=1e-6)}
+    assert facilities.check_before_job(arguments, {}) is None
+
+
+def test_the_job_preflight_answers_an_invalid_cas_number_without_a_job() -> None:
+    early = facilities.check_before_job({"cas_number": "not a cas"}, {})
+    assert early is not None and "not a valid CAS" in early[0]["warnings"][0]

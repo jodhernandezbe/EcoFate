@@ -205,3 +205,18 @@ def _entry(item: object) -> Entry | None:
     except (TypeError, ValueError, KeyError):
         return None
     return (seq, cast(Record, record)) if isinstance(record, dict) else None
+
+
+def entries_text(items: list[object]) -> list[tuple[str, Record]]:
+    """The ``(entry id, record)`` pairs of one ``XREAD`` reply, with the id as Redis wrote it; an
+    entry that does not decode is skipped (stream data is untrusted)."""
+    found: list[tuple[str, Record]] = []
+    for item in items:
+        try:
+            entry_id, fields = cast(tuple[str, dict[str, str]], item)
+            record = json.loads(fields[_FIELD])
+        except (TypeError, ValueError, KeyError):
+            continue
+        if isinstance(record, dict):
+            found.append((str(entry_id), cast(Record, record)))
+    return found

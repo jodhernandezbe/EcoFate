@@ -287,3 +287,42 @@ async def test_processes_starting_together_on_a_fresh_schema_all_set_up_the_chec
 
     async with migrated_schema(url, name):
         await asyncio.gather(*(start() for _ in range(6)))
+
+
+async def test_a_follow_up_turn_is_recorded_waiting_once_per_job_and_activated_once() -> None:
+    from storage.turn_model import PlannedInput, TurnStatus
+
+    async with database([OWNER]) as db:
+        await db.store.touch(KEY)
+        turns = db.store.turns
+        planned = PlannedInput("n", "n", "", False)
+        first = await turns.begin_follow_up(KEY, "j" * 32, planned)
+        assert first is not None and first.status is TurnStatus.WAITING and first.automatic
+        assert await turns.begin_follow_up(KEY, "j" * 32, planned) is None  # once per job
+        assert await turns.latest(KEY) is None  # a waiting turn is not the thread's latest
+        assert (await turns.next_waiting(KEY)) == first
+        user = await turns.begin(KEY, planned)
+        assert user is not None
+        assert await turns.activate(OWNER, first.id) is None  # the thread has an open turn
+        await turns.move(OWNER, user.id, TurnStatus.RUNNING)
+        await turns.move(OWNER, user.id, TurnStatus.COMPLETED)
+        started = await turns.activate(OWNER, first.id)
+        assert started is not None and started.status is TurnStatus.QUEUED
+        assert await turns.activate(OWNER, first.id) is None  # activated at most once
+        assert await turns.next_waiting(KEY) is None
+
+
+async def test_a_follow_up_of_a_reset_thread_is_not_recorded_and_orphans_are_found() -> None:
+    from storage.turn_model import PlannedInput
+
+    async with database([OWNER]) as db:
+        await db.store.touch(KEY)
+        planned = PlannedInput("n", "n", "", False)
+        assert await db.store.turns.begin_follow_up(KEY, "k" * 32, planned) is not None
+        assert await db.store.idle_with_waiting_follow_up() == [KEY]  # no live lease
+        assert await db.store.claim(KEY)
+        assert await db.store.idle_with_waiting_follow_up() == []  # a live lease
+        await db.store.release(KEY)
+        assert await db.store.reset(KEY)
+        assert await db.store.idle_with_waiting_follow_up() == []
+        assert await db.store.turns.begin_follow_up(KEY, "m" * 32, planned) is None  # no thread

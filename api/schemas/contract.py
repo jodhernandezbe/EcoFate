@@ -20,7 +20,13 @@ from api.schemas.auth import (
     TokenRequest,
     UserInfo,
 )
-from api.schemas.chat import ChatRequest, StreamEventSchema, ThreadSnapshot, UsageTotals
+from api.schemas.chat import (
+    ChatRequest,
+    StreamEventSchema,
+    ThreadEvent,
+    ThreadSnapshot,
+    UsageTotals,
+)
 from api.schemas.monitoring import SessionDetailResponse, SessionsResponse
 from api.schemas.quota import QuotaExhausted, QuotaStatus
 from api.schemas.settings import (
@@ -37,6 +43,7 @@ _MODELS: tuple[tuple[type[BaseModel], JsonSchemaMode], ...] = (
     (StreamEventSchema, "serialization"),
     (UsageTotals, "serialization"),
     (ThreadSnapshot, "serialization"),
+    (ThreadEvent, "serialization"),
     (KeyStatusResponse, "serialization"),
     (KeysStatusResponse, "serialization"),
     (ClientConfig, "serialization"),

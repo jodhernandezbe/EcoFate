@@ -34,6 +34,10 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   turn by design) sets `follow_up`: the runner sends it as the user's next message on the same
   conversation, with the open entries declined and the program's proceed-without note, as the
   web program does; the record covers both turns. A question's wording cannot skip the ask.
+- A `background` scenario runs the heavy tool as a job (`jobs.MemoryJobPort`): turn 1 must queue
+  it and state no result; the job's result is the recording of the same call in the scenario's
+  cassette (`cassette_id` reuses another scenario's file), given to an automatic follow-up turn
+  as the program does (`app.turns.follow_up`). The job's preflight runs live (read-only lookups).
 - Checks take expected values from the record's tool outputs, never from numbers written
   into the check. Judges answer one narrow PASS/FAIL criterion each.
 - Judge model, key variable, live tools and paths come from `[evaluation]`; the agent model

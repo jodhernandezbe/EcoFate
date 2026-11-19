@@ -1,0 +1,61 @@
+{
+ "_source": "evals/cassettes/full-assessment-with-nei-stacks.json (assess_facilities, 1,2-dibromo-3-chloropropane)",
+ "args": {
+  "cas_number": "96-12-8",
+  "city": null,
+  "frs_ids": null,
+  "radius_km": null,
+  "state": null,
+  "toxicity": null
+ },
+ "view": {
+  "cas_number": "96-12-8",
+  "toxicity": {
+   "rfc": 0.0002,
+   "iur": 0.0019
+  },
+  "toxicity_source": "CompTox",
+  "facilities_found": 2,
+  "screening": {
+   "possible": true,
+   "hq_threshold": 0.1,
+   "cancer_risk_threshold": 1e-06,
+   "screened_out_at_bound": 2,
+   "screened_out_with_own_stacks": 0,
+   "closest_screened_out": [
+    {
+     "frs_id": "110000521221",
+     "facility_name": "CLEAN HARBORS EL DORADO LLC",
+     "city": "EL DORADO",
+     "state": "AR",
+     "emission_rate": 4.1711627124556067e-07,
+     "stage": "bound",
+     "hq": 0.0017230438444708928,
+     "cancer_risk": 2.431953311910346e-07
+    },
+    {
+     "frs_id": "110027242320",
+     "facility_name": "HERITAGE THERMAL SERVICES",
+     "city": "EAST LIVERPOOL",
+     "state": "OH",
+     "emission_rate": 2.8766639396245566e-07,
+     "stage": "bound",
+     "hq": 0.0011883060996350987,
+     "cancer_risk": 1.677209180627825e-07
+    }
+   ]
+  },
+  "assessed": 0,
+  "stack_tiers": {},
+  "facilities": [],
+  "worst_case_only_count": 0,
+  "worst_case_only": [],
+  "not_assessed": [],
+  "worker_only_count": 0,
+  "worker_only_left_out": 0,
+  "worker_only_highest": null,
+  "note": "All 2 facilities were screened: 2 cannot reach HQ 0.1 or cancer risk 1e-06 even in the worst case (emission rate from TRI; EPA AirToxScreen global default stack; EPA SCREEN3 worst-case weather over its 54 stability and wind combinations; a person at the maximum) and were left out; 0 were fully assessed and 0 kept at the worst case with their own stacks.",
+  "warnings": [],
+  "drivers": []
+ }
+}

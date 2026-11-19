@@ -7,6 +7,7 @@ the check, so a check stays valid when the recordings change.
 
 from __future__ import annotations
 
+import json
 import math
 import re
 from collections.abc import Callable, Mapping, Sequence
@@ -459,3 +460,64 @@ def report_names_each_source() -> Check:
         return _verdict(problems, f"all {len(sources)} input sources named")
 
     return Check("report names each input source", evaluate)
+
+
+def _is_job_notice(output: object) -> bool:
+    """A queued-job answer: it names the job and says it is queued (and carries no result)."""
+    answer = _mapping(output)
+    return bool(answer.get("job_id")) and answer.get("status") == "queued"
+
+
+def submitted_as_job() -> Check:
+    """Some call to the batch assessment answered with a queued job notice: the work was started
+    in the background, not run inside the turn."""
+
+    def evaluate(record: RunRecord) -> CheckResult:
+        calls = record.calls_to(ASSESSMENT)
+        if any(_is_job_notice(c.output) for c in calls):
+            return CheckResult(True, f"{ASSESSMENT} was queued as a background job")
+        seen = ", ".join(_label(c) for c in calls) or "no call"
+        return CheckResult(False, f"no {ASSESSMENT} call answered with a queued job (seen: {seen})")
+
+    return Check("assessment submitted as a job", evaluate)
+
+
+def _result_facility_names(record: RunRecord) -> set[str]:
+    """Names of the facilities in the job's result: assessed, worst case only, screened out."""
+    names: set[str] = set()
+    for call in record.calls_to(ASSESSMENT):
+        output = _mapping(call.output)
+        listed = [
+            f
+            for key in ("facilities", "worst_case_only", "closest_screened_out")
+            for f in _dicts(output.get(key))
+        ]
+        names |= {str(f.get("facility_name") or "").strip().lower() for f in listed}
+    return {name for name in names if name}
+
+
+def _known_before_job(record: RunRecord) -> str:
+    """Every tool output the agent had before the job was queued, as lower-case text (a facility
+    named there, by the inventory for one, is not a result of the job)."""
+    known: list[str] = []
+    for call in record.calls:
+        if call.name == ASSESSMENT and _is_job_notice(call.output):
+            break
+        known.append(json.dumps(call.output, default=str).lower())
+    return "\n".join(known)
+
+
+def interim_states_no_results() -> Check:
+    """The reply before the job ended is not empty and names no facility that only the job's
+    result could have told it (the names come from the record's tool outputs)."""
+
+    def evaluate(record: RunRecord) -> CheckResult:
+        if not record.interim.strip():
+            return CheckResult(False, "no reply before the job ended")
+        text, known = record.interim.lower(), _known_before_job(record)
+        new = {name for name in _result_facility_names(record) if name not in known}
+        leaked = sorted(name for name in new if name in text)
+        problems = [f"the reply before the result names: {', '.join(leaked)}"] if leaked else []
+        return _verdict(problems, "the reply before the result states none of it")
+
+    return Check("interim reply states no results", evaluate)

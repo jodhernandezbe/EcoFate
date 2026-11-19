@@ -1,13 +1,28 @@
-"""Central tool registry: every tool the agent can bind, exported as one list."""
+"""Central tool registry: every tool the agent can bind, exported as one list.
+
+Building it also checks that ``[worker].heavy_tools`` names only registered tools (``config``
+cannot import the registry), so a misspelt name fails at start-up. A heavy tool is registered as
+its background *submitter* (same name, schema and docstring; the call queues a job), and the quick
+tool ``check_job_status`` joins the list; with no heavy tool the registry is as it always was.
+"""
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 from langchain_core.tools import BaseTool
 
+from config.worker import check_heavy_tools, get_worker_settings
 from tools.assessment import TOOLS as ASSESSMENT_TOOLS
+from tools.assessment import check_before_job, run_assessment_job
 from tools.emissions import TOOLS as EMISSIONS_TOOLS
 from tools.exposure import TOOLS as EXPOSURE_TOOLS
 from tools.informatics import TOOLS as INFORMATICS_TOOLS
+from tools.jobs import TOOLS as JOB_TOOLS
+from tools.jobs import heavy_submitter
+from tools.jobs.port import is_queued_answer
+from tools.jobs.submit import Preflight
+from tools.schemas import JobRunner
 
 
 class ToolRegistry:
@@ -32,14 +47,31 @@ class ToolRegistry:
         return list(self._tools.values())
 
 
+# What each heavy tool settles before a job may be queued (invalid input, missing values).
+PREFLIGHTS: Mapping[str, Preflight] = {"assess_facilities": check_before_job}
+
+
+def _as_submitters(tools: list[BaseTool], heavy: tuple[str, ...]) -> list[BaseTool]:
+    """The tools, each heavy one replaced by its submitter; ``check_job_status`` is added when
+    there is a heavy tool.
+
+    Raises:
+        ValueError: A heavy tool has no preflight.
+    """
+    if not heavy:
+        return tools
+    lacking = sorted(name for name in heavy if name not in PREFLIGHTS)
+    if lacking:
+        raise ValueError(f"heavy tools without a job preflight: {', '.join(lacking)}")
+    wrapped = [heavy_submitter(t, PREFLIGHTS[t.name]) if t.name in heavy else t for t in tools]
+    return [*wrapped, *JOB_TOOLS]
+
+
 def _build_default_registry() -> ToolRegistry:
-    registry = ToolRegistry()
-    registry.register(
-        *INFORMATICS_TOOLS,
-        *EMISSIONS_TOOLS,
-        *EXPOSURE_TOOLS,
-        *ASSESSMENT_TOOLS,
-    )
+    registry, settings = ToolRegistry(), get_worker_settings()
+    tools = [*INFORMATICS_TOOLS, *EMISSIONS_TOOLS, *EXPOSURE_TOOLS, *ASSESSMENT_TOOLS]
+    check_heavy_tools(settings, (tool.name for tool in tools))
+    registry.register(*_as_submitters(tools, settings.heavy_tools))
     return registry
 
 
@@ -51,3 +83,23 @@ ALL_TOOLS: list[BaseTool] = registry.all()
 def get_all_tools() -> list[BaseTool]:
     """Return every registered tool, ready to pass to ``model.bind_tools``."""
     return registry.all()
+
+
+# The tools that only matter once a conversation has a background job (``agent.graph.turn_tools``).
+JOB_TOOL_NAMES: frozenset[str] = frozenset(tool.name for tool in JOB_TOOLS)
+
+
+def is_queued_job(tool_name: str | None, content: object) -> bool:
+    """Whether a tool result is a heavy tool's queued-job answer: only a ``[worker].heavy_tools``
+    tool can queue one, so no other tool's output (external data) can pass for it."""
+    heavy = get_worker_settings().heavy_tools
+    return tool_name is not None and tool_name in heavy and is_queued_answer(content)
+
+
+# The heavy tools as a background job runs them (tool name -> runner of its stored input).
+JOB_RUNNERS: Mapping[str, JobRunner] = {"assess_facilities": run_assessment_job}
+
+
+def get_job_runners() -> Mapping[str, JobRunner]:
+    """The runner of each tool that can run as a background job, by tool name."""
+    return JOB_RUNNERS

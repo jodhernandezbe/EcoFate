@@ -250,3 +250,56 @@ def test_batch_route_sources_are_the_site_weather_and_the_screen() -> None:
     assert _passes(check, _record(batch, report="ERA5 weather; bound: AirToxScreen stack"))
     result = check.evaluate(_record(batch, report="ERA5 weather only"))
     assert not result.passed and "screening bound" in result.reason
+
+
+# --- background assessment: queued as a job, explained by the follow-up -------------------------
+
+NOTICE = {"job_id": "0" * 32, "status": "queued", "position": 0}
+JOB_RESULT = {"facilities": [{"frs_id": "F1", "facility_name": "Placeholder Plant"}]}
+
+
+def _background(interim: str, *outputs: object) -> RunRecord:
+    calls = tuple(_call(c.ASSESSMENT, {"cas_number": "1-2-3"}, out) for out in outputs)
+    return RunRecord("s", "q", calls, "Placeholder Plant (F1) assessed", None, interim)
+
+
+def test_submitted_as_job_passes_on_a_queued_notice_and_fails_on_a_direct_result() -> None:
+    assert c.submitted_as_job().evaluate(_background("started", NOTICE, JOB_RESULT)).passed
+    assert not c.submitted_as_job().evaluate(_background("started", JOB_RESULT)).passed
+    assert not c.submitted_as_job().evaluate(_record()).passed
+
+
+def test_interim_check_needs_a_reply_naming_no_facility_of_the_result() -> None:
+    check = c.interim_states_no_results()
+    assert check.evaluate(_background("The assessment has started.", NOTICE, JOB_RESULT)).passed
+    assert not check.evaluate(_background("", NOTICE, JOB_RESULT)).passed
+    leaking = _background("Placeholder Plant looks fine", NOTICE, JOB_RESULT)
+    assert not check.evaluate(leaking).passed
+
+
+def test_coverage_checks_use_the_call_with_the_result_not_the_notice() -> None:
+    record = _background("started", NOTICE, JOB_RESULT)
+    assert [f["frs_id"] for f in c.batch_facilities(record)] == ["F1"]
+    assert c.every_facility_covered().evaluate(record).passed
+    assert c.every_covered_facility_reported().evaluate(record).passed
+    only_notice = _background("started", NOTICE)
+    assert not c.every_covered_facility_reported().evaluate(only_notice).passed
+
+
+def test_interim_check_allows_a_name_the_agent_had_before_the_job() -> None:
+    check = c.interim_states_no_results()
+    inventory = _call(
+        "query_emissions_inventory",
+        {"cas_number": "1-2-3"},
+        {"facilities": [{"frs_id": "F1", "facility_name": "Placeholder Plant"}]},
+    )
+    queued = _background("started", NOTICE, JOB_RESULT)
+    record = RunRecord(
+        "s",
+        "q",
+        (inventory, *queued.calls),
+        queued.report,
+        None,
+        "Placeholder Plant is among the facilities being assessed.",
+    )
+    assert check.evaluate(record).passed  # named by the inventory, not by the job's result

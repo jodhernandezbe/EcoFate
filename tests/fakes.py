@@ -40,6 +40,7 @@ from storage.turn_model import (
     check_transition,
 )
 from storage.user_credentials import StoredCredential
+from tests.fakes_jobs import InMemoryJobStore
 from tools.schemas import ConfirmationRequest
 
 
@@ -288,6 +289,45 @@ class InMemoryTurnStore:
         self._turns[turn.id] = turn
         return turn
 
+    async def begin_follow_up(
+        self,
+        key: ThreadKey,
+        job_id: str,
+        planned: PlannedInput,
+    ) -> Turn | None:
+        if any(t.job_id == job_id for t in self._turns.values()):
+            return None
+        self._count += 1
+        now = self._clock()
+        turn = Turn(
+            f"{self._count:032x}",
+            key.owner_id,
+            key.thread_id,
+            TurnStatus.WAITING,
+            None,
+            0,
+            now,
+            None,
+            now,
+            None,
+            planned=planned,
+            job_id=job_id,
+        )
+        self._turns[turn.id] = turn
+        return turn
+
+    async def next_waiting(self, key: ThreadKey) -> Turn | None:
+        return next(
+            (t for t in self._turns.values() if t.key == key and t.status is TurnStatus.WAITING),
+            None,
+        )
+
+    async def activate(self, owner_id: UUID, turn_id: str) -> Turn | None:
+        turn = self._mine(owner_id, turn_id)
+        if turn is None or turn.status is not TurnStatus.WAITING or self._open(turn.key):
+            return None
+        return self._set(turn, TurnStatus.QUEUED, None)
+
     async def resume(self, owner_id: UUID, turn_id: str, max_resumes: int) -> Turn | None:
         turn = self._mine(owner_id, turn_id)
         if turn is None or turn.status is not TurnStatus.INTERRUPTED:
@@ -330,7 +370,8 @@ class InMemoryTurnStore:
         return [turn.key for turn in stale]
 
     async def latest(self, key: ThreadKey) -> Turn | None:
-        return next((t for t in reversed(self._turns.values()) if t.key == key), None)
+        shown = (t for t in reversed(self._turns.values()) if t.status is not TurnStatus.WAITING)
+        return next((t for t in shown if t.key == key), None)
 
     async def get(self, owner_id: UUID, turn_id: str) -> Turn | None:
         return self._mine(owner_id, turn_id)
@@ -410,6 +451,7 @@ class InMemoryThreadStore:
     ) -> None:
         self.checkpointer = InMemorySaver()
         self.turns = InMemoryTurnStore(clock)
+        self.jobs = InMemoryJobStore(clock)
         self._lease = lease
         self._clock = clock
         self._rows: dict[ThreadKey, _ThreadRow] = {}
@@ -442,6 +484,10 @@ class InMemoryThreadStore:
     async def release(self, key: ThreadKey) -> None:
         if key in self._rows:
             self._rows[key].busy_until = None
+
+    async def idle_with_waiting_follow_up(self) -> list[ThreadKey]:
+        waiting = {t.key for t in self.turns._turns.values() if t.status is TurnStatus.WAITING}  # pyright: ignore[reportPrivateUsage]
+        return sorted((k for k in waiting if not self._busy(k)), key=lambda k: k.thread_id)
 
     async def touch(self, key: ThreadKey) -> None:
         self._row(key).last_used_at = self._clock()
@@ -528,6 +574,7 @@ class InMemoryThreadStore:
     def _forget(self, key: ThreadKey) -> None:
         self.checkpointer.delete_thread(key.checkpoint_id)
         self.turns.forget(key)
+        self.jobs.forget(key)
         for table in (self._rows, self._usage, self._tool_messages, self._workspaces):
             table.pop(key, None)
         self._pending.pop(key, None)

@@ -16,12 +16,19 @@ from dataclasses import dataclass
 from typing import Protocol, cast
 
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
+from langchain_core.messages import (
+    AIMessage,
+    BaseMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
+)
 from langchain_core.runnables import RunnableConfig
 from langgraph.graph import END
 from pydantic import BaseModel
 
 from agent.state import AgentState
+from tools.registry import is_queued_job
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +74,16 @@ def _turn(messages: Sequence[BaseMessage]) -> list[BaseMessage]:
 def nudges_in_turn(messages: Sequence[BaseMessage]) -> int:
     """How many times this turn has been nudged already."""
     return sum(1 for message in _turn(messages) if is_nudge(message))
+
+
+def queued_a_job(messages: Sequence[BaseMessage]) -> bool:
+    """Whether this turn queued a background job: its work is running, so a reply that says so
+    has done what the turn can do (reviewing it would send the agent back to work it does not
+    have, and it would write the results it has not seen)."""
+    return any(
+        isinstance(message, ToolMessage) and is_queued_job(message.name, message.content)
+        for message in _turn(messages)
+    )
 
 
 def _material(turn: Sequence[BaseMessage]) -> str | None:
@@ -128,7 +145,7 @@ def build_completion_node(model: BaseChatModel, guard: CompletionGuard) -> Compl
 
     def finish(state: AgentState, config: RunnableConfig) -> AgentState:
         messages = state["messages"]
-        if nudges_in_turn(messages) >= guard.max_nudges:
+        if nudges_in_turn(messages) >= guard.max_nudges or queued_a_job(messages):
             return {"messages": []}
         verdict = judge(model, guard, messages, config)
         if verdict is None or verdict.complete:

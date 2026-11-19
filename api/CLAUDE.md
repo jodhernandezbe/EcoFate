@@ -67,10 +67,18 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   worker holds the thread's lease while it runs the turn and releases it; a client that leaves
   the stream never stops the turn. A running turn with a stale heartbeat becomes
   `interrupted/worker_lost` at start-up, on a snapshot and when a reader waits on it.
+- Background jobs (`services/jobs.py`, `services/thread_events.py`): `POST /chat/jobs/{id}/cancel`
+  (owner is the session's user; 202; an unclaimed job ends at once, a running one stops after its
+  current step; 409 ended; 404 unknown or another user's; 422 malformed), `GET /chat/threads/{id}/events`
+  (the thread stream as SSE; event id = the stream entry id, `Last-Event-ID` reattaches; 404 for a
+  foreign or unknown thread; records are untrusted and ids-only), `jobs` in the thread snapshot
+  (status and times, never input or result), and `DELETE /chat/threads/{id}` (Clear workspace) cancels
+  the thread's open jobs first. A job holds no thread lease, so a message while only a job runs is not
+  409. The API never decrypts a key for a job and runs none (eager mode aside).
 - Daily quota (`services/quota.py`, `routers/v1_usage.py`, `[limits]` via `config.limits`): the chat
   router counts a new message (`QuotaService.require`, 429 with `Retry-After`) after the thread claim
-  and before `plan_turn`, so nothing runs and no model is built over the limit. Resume and an answer
-  to the open confirmation request never count. The worker gives a counted turn back (the turn's
+  and before `plan_turn`, so nothing runs and no model is built over the limit. Resume, an answer
+  to the open confirmation request and a job's automatic follow-up turn never count. The worker gives a counted turn back (the turn's
   `planned_input.counted`) only when it stops for a reason that cannot be resumed and made no
   model call; counting itself is one
   atomic statement in `storage/quota.py`, never a read then a write.

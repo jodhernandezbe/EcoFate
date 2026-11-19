@@ -43,6 +43,11 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   token is read into memory, removed from the address bar and sent only in a request body. The rail
   shows Monitoring to `role === "admin"` only; its Account entry opens `features/auth/AccountDrawer`
   (sign out, change password, sign out everywhere, delete account behind a password dialog).
+- Background jobs: `hooks/useThreadEvents` follows the thread stream (`/chat/threads/{id}/events`,
+  reconnecting with `Last-Event-ID`; only once the server holds the thread), reads the jobs (with
+  times) again on each job event and exposes them with `cancel`; `features/chat/JobControls` is the
+  status line under the chat header. An automatic follow-up turn is attached through
+  `useAgentStream.attach`, only when the server reports it running.
 - Browser storage holds panel sizes and the welcome sheet's per-user seen flag only (through `lib/safeStorage`, which never throws); never
   keys, runs, messages, passwords, tokens or the account. The page holds one workspace (one thread) at a time; the conversation
   lives on the server, and "Clear workspace" (always behind `components/ui/ConfirmDialog`)

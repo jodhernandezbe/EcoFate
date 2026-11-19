@@ -4,6 +4,7 @@ import type {
   ChatRequest,
   ConfirmationAnswers,
   ConfirmationPrompt,
+  JobInfo,
   StreamEvent,
   ThreadSnapshot,
   WorkspaceState,
@@ -38,6 +39,8 @@ function describe(error: unknown): string {
   if (error instanceof ApiError || error instanceof Error) return error.message;
   return "Something went wrong. Try again.";
 }
+
+const NO_JOBS: JobInfo[] = [];
 
 const pause = (ms: number): Promise<void> => new Promise((done) => setTimeout(done, ms));
 
@@ -74,6 +77,8 @@ export function useAgentStream(listeners: StreamListeners = {}) {
   const [notice, setNotice] = useState<string | null>(null);
   const [refusal, setRefusal] = useState<QuotaRefusal | null>(null);
   const [stopping, setStopping] = useState(false);
+  const [jobs, setJobs] = useState<JobInfo[]>(NO_JOBS);
+  const [held, setHeld] = useState(false);
   const current = useRef(threadId);
   const busy = useRef(false);
   const started = useRef(false);
@@ -89,7 +94,10 @@ export function useAgentStream(listeners: StreamListeners = {}) {
     for await (const event of stream) {
       dispatch({ type: "event", event });
       position.current.seq = event.seq;
-      if (event.type === "turn_started") position.current.turnId = event.turn_id;
+      if (event.type === "turn_started") {
+        position.current.turnId = event.turn_id;
+        setHeld(true);
+      }
       if (event.type === "workspace_update") heard.current.onWorkspace?.(event.state);
       if (event.type === "turn_finished") return true;
     }
@@ -100,6 +108,8 @@ export function useAgentStream(listeners: StreamListeners = {}) {
   const adopt = useCallback((snapshot: ThreadSnapshot) => {
     current.current = snapshot.thread_id;
     setThreadId(snapshot.thread_id);
+    setJobs(snapshot.jobs ?? NO_JOBS); // a snapshot without jobs shows none
+    setHeld(true);
     dispatch({ type: "restore", snapshot, ids: snapshot.messages.map(() => newId()) });
     heard.current.onReplace?.(snapshot.workspace);
   }, []);
@@ -154,6 +164,29 @@ export function useAgentStream(listeners: StreamListeners = {}) {
       }
     },
     [follow],
+  );
+
+  /**
+   * Follow a turn the system started (a background job's follow-up) exactly like a normal one,
+   * so its answer and workspace updates appear. Only a turn the server confirms is running now
+   * is followed (an old event replayed from the thread's stream is not), and never while a
+   * turn of the user is being followed.
+   */
+  const attach = useCallback(
+    async (turnId: string) => {
+      if (busy.current) return;
+      let snapshot: ThreadSnapshot;
+      try {
+        snapshot = await getThread(current.current);
+      } catch {
+        return; // the thread is gone, or unreachable: nothing to follow
+      }
+      if (busy.current || snapshot.running_turn?.turn_id !== turnId) return;
+      busy.current = true;
+      started.current = true;
+      await reattach(snapshot);
+    },
+    [reattach],
   );
 
   // Continue the user's current thread, unless they already started a turn on a fresh one.
@@ -273,6 +306,8 @@ export function useAgentStream(listeners: StreamListeners = {}) {
     current.current = id;
     started.current = true;
     setThreadId(id);
+    setJobs(NO_JOBS);
+    setHeld(false);
     setNotice(null);
     dispatch({ type: "reset" });
     heard.current.onReplace?.(null);
@@ -282,6 +317,10 @@ export function useAgentStream(listeners: StreamListeners = {}) {
   return {
     ...state,
     threadId,
+    /** The jobs of the thread as last loaded from the server (see `useThreadEvents`). */
+    jobs,
+    /** Whether the server holds the thread (a turn started on it, or it was loaded). */
+    held,
     notice,
     refusal,
     stopping,
@@ -290,5 +329,6 @@ export function useAgentStream(listeners: StreamListeners = {}) {
     resume,
     stop,
     clearWorkspace,
+    attach,
   };
 }

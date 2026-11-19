@@ -40,6 +40,8 @@ export type {
   SessionTurn,
   SignInResponse,
   StreamEventSchema as StreamEvent,
+  JobInfo,
+  ThreadEvent,
   ThreadMessage,
   ThreadSnapshot,
   Token,

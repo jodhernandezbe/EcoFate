@@ -25,8 +25,8 @@ build: ## Build the images
 logs: ## Follow the stack's logs
 	docker compose logs --follow
 
-worker-logs: ## Follow the background worker's logs (the turns it runs)
-	docker compose logs --follow worker
+worker-logs: ## Follow both background workers' logs (chat turns and tool jobs)
+	docker compose logs --follow worker tool-worker
 
 shell: ## Open a shell in the running api container
 	docker compose exec api bash

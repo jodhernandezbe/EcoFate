@@ -38,3 +38,13 @@ def test_checkpointer_keeps_the_thread_history() -> None:
     result = agent.invoke({"messages": [HumanMessage(content="second")]}, config)
     texts = [message.content for message in result["messages"]]
     assert texts == ["first", "one", "second", "two"]
+
+
+def test_the_job_status_tool_is_offered_only_with_a_job() -> None:
+    from agent.graph import turn_tools
+    from tools.registry import JOB_TOOL_NAMES, get_all_tools
+
+    every = {tool.name for tool in get_all_tools()}
+    assert {tool.name for tool in turn_tools(has_jobs=True)} == every
+    assert {tool.name for tool in turn_tools(has_jobs=False)} == every - JOB_TOOL_NAMES
+    assert "check_job_status" in JOB_TOOL_NAMES

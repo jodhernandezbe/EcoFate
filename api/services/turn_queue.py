@@ -25,6 +25,7 @@ from app.turns import FailureReason
 from app.turns.bus import TurnEventBus, turn_stream
 from app.turns.codec import TurnQueued, encode
 from app.turns.recording import QUEUED_SEQ, BackgroundSettings
+from app.turns.thread_bus import MemoryThreadBus, ThreadEventBus
 from config.telemetry import TelemetrySettings
 from storage.errors import DATABASE_ERRORS
 from storage.turn_model import Turn, TurnStatus, TurnTransitionError
@@ -50,6 +51,7 @@ class QueueSetup:
             (``[worker].eager``, tests) through the same job.
         timing: How a reader waits.
         background: Timing of a turn run in this process (and the stream lifetimes).
+        thread_bus: The thread-level event streams (job and turn lifecycle).
         running: Turns running in this process, kept until they end.
         health_check: Whether the queue's Redis answers (always True without Redis).
     """
@@ -60,6 +62,7 @@ class QueueSetup:
     background: BackgroundSettings
     running: set[asyncio.Task[None]] = field(default_factory=set[asyncio.Task[None]])
     health_check: HealthCheck = always_healthy
+    thread_bus: ThreadEventBus = field(default_factory=MemoryThreadBus)
 
 
 @dataclass(frozen=True)
@@ -70,6 +73,7 @@ class TurnQueue:
     enqueuer: TurnEnqueuer
     timing: RelayTiming
     background: BackgroundSettings
+    thread_bus: ThreadEventBus = field(default_factory=MemoryThreadBus)
 
 
 async def submit(

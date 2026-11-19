@@ -36,11 +36,14 @@ from app.turns.events import (
 from app.turns.failures import FailureReason, new_correlation_id, resumable
 from app.turns.keys import TurnKeys
 from app.turns.runner import TurnSettings
+from app.turns.thread_bus import ThreadEventBus
 from app.usage_meter import CallUsage
 from config.worker import WorkerSettings
 from storage.errors import DATABASE_ERRORS
+from storage.job_model import JobStore
 from storage.keys import ThreadKey
 from storage.turn_model import Turn, TurnStatus
+from tools.jobs.port import JobPort
 from tools.schemas import ConfirmationRequest
 
 logger = logging.getLogger("app.turns.background")
@@ -65,6 +68,12 @@ class BackgroundTurns(Protocol):
         target: TurnStatus,
         reason: str | None = None,
     ) -> Turn: ...
+
+
+class NextFollowUp(Protocol):
+    """Starts the thread's waiting follow-up turn, if any (``app.turns.follow_up.FollowUps``)."""
+
+    async def release_next(self, key: ThreadKey) -> None: ...
 
 
 class BackgroundThreads(Protocol):
@@ -124,8 +133,8 @@ class BackgroundSettings:
         """The timing ``[worker]`` configures, with ``[agent].max_resumes_per_turn``."""
         return cls(
             heartbeat_seconds=worker.heartbeat_seconds,
-            soft_limit_seconds=worker.soft_time_limit_seconds,
-            hard_limit_seconds=worker.time_limit_seconds,
+            soft_limit_seconds=worker.chat.soft_time_limit_seconds,
+            hard_limit_seconds=worker.chat.time_limit_seconds,
             event_ttl_seconds=worker.event_ttl_seconds,
             max_resumes=max_resumes,
         )
@@ -149,6 +158,11 @@ class BackgroundServices:
         refund: Gives a counted turn back (user id, turn id); None when nothing is counted.
         turn_settings: What does not change between turns.
         settings: Timing.
+        jobs: The background job system the turn's heavy tools queue jobs in; None runs them in
+            the turn.
+        job_store: The jobs table, read by an automatic follow-up turn for its job's result.
+        thread_bus: Where the turn's start and end are published for the thread's readers.
+        follow_ups: Starts the thread's waiting follow-up once the turn has released the thread.
     """
 
     threads: BackgroundThreads
@@ -158,6 +172,10 @@ class BackgroundServices:
     refund: Callable[[UUID, str], Awaitable[bool]] | None
     turn_settings: TurnSettings
     settings: BackgroundSettings
+    jobs: JobPort | None = None
+    job_store: JobStore | None = None
+    thread_bus: ThreadEventBus | None = None
+    follow_ups: NextFollowUp | None = None
 
 
 @dataclass

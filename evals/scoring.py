@@ -93,13 +93,15 @@ def _check_columns(record: RunRecord, checks: Sequence[Check]) -> dict[str, list
 
 def _dataset(record: RunRecord, checks: Sequence[Check], judges: Sequence[Descriptor]) -> Dataset:
     columns = _check_columns(record, checks)
-    frame = pd.DataFrame({"query": [record.query], _REPORT: [record.report], **columns})
+    frame = pd.DataFrame(
+        {"query": [record.query], _REPORT: [record.report], "interim": [record.interim], **columns},
+    )
     verdicts = [name for name in columns if not name.endswith(_REASON)]
     reasons = [name for name in columns if name.endswith(_REASON)]
     tests = [ColumnTest(c, eq(PASS_LABEL), alias=f"{c} test") for c in verdicts]
     summary = TestSummary(success_all=True, alias="all tests passed")
     definition = DataDefinition(
-        text_columns=["query", _REPORT, *reasons],
+        text_columns=["query", _REPORT, "interim", *reasons],
         categorical_columns=verdicts,
     )
     descriptors: list[Descriptor] = [*tests, *judges, summary]

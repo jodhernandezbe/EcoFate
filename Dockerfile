@@ -63,8 +63,10 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
 CMD ["python", "-m", "api", "--container"]
 
 # --- worker: the background agent worker (runs the chat turns the API queues) -----------------
-# Queue, concurrency, prefetch and time limits come from [worker] in config/settings.toml.
+# Queue, concurrency and prefetch come from [worker.chat] and [worker.tools] in
+# config/settings.toml; `python -m worker <pool>` starts that pool (the default is chat, the
+# `tool-worker` service in compose overrides it with `tools`).
 FROM runtime AS worker
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
     CMD ["sh", "-c", "celery -A worker.celery_app inspect ping --timeout 5 -d celery@$(hostname) > /dev/null"]
-CMD ["celery", "-A", "worker.celery_app", "worker", "--loglevel=INFO", "--without-gossip", "--without-mingle"]
+CMD ["python", "-m", "worker", "chat"]

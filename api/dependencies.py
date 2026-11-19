@@ -9,6 +9,7 @@ from typing import Annotated, cast
 
 from fastapi import Depends, Request
 
+from agent.jobs import job_runners
 from api.core.config import ui_settings
 from api.core.session_guard import auth_runtime
 from api.services.agent_runner import AgentRuntime
@@ -20,7 +21,12 @@ from api.services.quota import QuotaService
 from api.services.threads import ThreadStore
 from api.services.turn_queue import QueueSetup, TurnQueue
 from app.chat_model import build_chat_model
-from app.task_queue import InProcessEnqueuer
+from app.jobs.gateway import JobGateway
+from app.jobs.lifecycle import JobLifecycle
+from app.jobs.runner import run_background_job
+from app.jobs.services import JobServices, JobSettings
+from app.task_queue import InProcessEnqueuer, ToolJob, TurnJob
+from app.turns.follow_up import FollowUps
 from app.turns.job import run_background_turn
 from app.turns.keys import load_turn_keys
 from app.turns.recording import BackgroundServices
@@ -30,6 +36,7 @@ from config.population import get_population_settings
 from config.risk_bands import get_risk_bands
 from config.telemetry import get_telemetry_settings
 from config.ui import UiSettings
+from config.worker import get_worker_settings
 
 
 def get_settings() -> UiSettings:
@@ -105,8 +112,32 @@ def _in_process(
     keys: KeyServices,
     quota: QuotaService,
 ) -> InProcessEnqueuer:
-    """Runs each turn in this process through the worker's own job (``[worker].eager``, tests)."""
-    services = BackgroundServices(
+    """Runs each turn in this process through the worker's own job (``[worker].eager``, tests),
+    with the heavy tools' jobs and the follow-up turns run the same way."""
+    box: dict[str, BackgroundServices] = {}
+
+    async def run(job: TurnJob) -> None:
+        await run_background_turn(job, box["services"])
+
+    enqueuer = InProcessEnqueuer(run, setup.running)
+    worker = get_worker_settings()
+    follow_ups = FollowUps(threads, setup.bus, enqueuer, setup.background.running_ttl_seconds)
+    lifecycle = JobLifecycle(setup.thread_bus, worker.event_ttl_seconds, follow_ups)
+    jobs = _job_enqueuer(setup, threads, keys, lifecycle)
+    gateway = JobGateway(threads.jobs, jobs, worker.max_open_jobs_per_user, setup.thread_bus)
+    box["services"] = _background(setup, runtime, (threads, keys, quota), (gateway, follow_ups))
+    return enqueuer
+
+
+def _background(
+    setup: QueueSetup,
+    runtime: AgentRuntime,
+    stores: tuple[ThreadStore, KeyServices, QuotaService],
+    jobs: tuple[JobGateway, FollowUps],
+) -> BackgroundServices:
+    """The turn runner's collaborators for a turn run in this process."""
+    threads, keys, quota = stores
+    return BackgroundServices(
         threads=threads,
         bus=setup.bus,
         load_keys=lambda user_id: load_turn_keys(keys.vault, keys.operator, user_id),
@@ -114,8 +145,29 @@ def _in_process(
         refund=quota.refund,
         turn_settings=runtime.turn_settings(),
         settings=replace(setup.background, max_resumes=runtime.max_resumes_per_turn),
+        jobs=jobs[0],
+        job_store=threads.jobs,
+        thread_bus=setup.thread_bus,
+        follow_ups=jobs[1],
     )
-    return InProcessEnqueuer(partial(run_background_turn, services=services), setup.running)
+
+
+def _job_enqueuer(
+    setup: QueueSetup,
+    threads: ThreadStore,
+    keys: KeyServices,
+    lifecycle: JobLifecycle,
+) -> InProcessEnqueuer[ToolJob]:
+    """Runs each background tool job in this process through the tools worker's own runner."""
+    services = JobServices(
+        store=threads.jobs,
+        runners=job_runners(),
+        operator=keys.operator,
+        settings=JobSettings.from_config(get_worker_settings()),
+        on_job_ended=lifecycle.ended,
+        on_job_started=lifecycle.started,
+    )
+    return InProcessEnqueuer(partial(run_background_job, services=services), setup.running)
 
 
 def get_turn_queue(
@@ -128,7 +180,7 @@ def get_turn_queue(
     """The turn streams and the queue: the worker's, or this process when none is configured."""
     setup = cast(QueueSetup, request.app.state.turn_queue)
     enqueuer = setup.enqueuer or _in_process(setup, runtime, threads, keys, quota)
-    return TurnQueue(setup.bus, enqueuer, setup.timing, setup.background)
+    return TurnQueue(setup.bus, enqueuer, setup.timing, setup.background, setup.thread_bus)
 
 
 def get_client_address(request: Request) -> str:

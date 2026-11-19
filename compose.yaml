@@ -1,8 +1,9 @@
 # EcoFate local stack: `docker compose up --build`, then open http://127.0.0.1:8000.
 # Keys come from `.env` (copy `.env.example`); the OS keychain does not exist in the container.
 # PostgreSQL (`db`) keeps the conversations; `migrate` applies the schema before `api` starts.
-# `redis` carries the turn queue and each turn's live events; `worker` runs the turns `api` queues
-# (same image code, `worker` target). Neither Redis nor the worker is published on the host.
+# `redis` carries the two queues and each turn's live events; `worker` (the `chat` queue) runs the
+# turns `api` queues and `tool-worker` (the `tools` queue) the background tool jobs (same image,
+# `worker` target). Neither Redis nor the workers are published on the host.
 name: ecofate
 
 x-database-url: &database-url
@@ -134,8 +135,9 @@ services:
       retries: 3
 
   worker:
-    # Runs every chat turn (Celery, prefork). Gets the same .env as `api`: it decrypts each turn
-    # owner's OpenAI key itself and reads the operator's service keys from its environment.
+    # Runs every chat turn from the `chat` queue (Celery, prefork; `python -m worker chat`). Gets
+    # the same .env as `api`: it decrypts each turn owner's OpenAI key itself and reads the
+    # operator's service keys from its environment.
     # Shares the run-time caches (SCC index, PubChem answers, the Hugging Face model) with `api`.
     build: *worker-build
     image: ecofate-worker:local
@@ -155,6 +157,29 @@ services:
     restart: unless-stopped
     # A warm shutdown lets running turns finish; one still running after this is killed and
     # becomes interrupted/worker_lost (resumable).
+    stop_grace_period: 60s
+
+  tool-worker:
+    # Runs the background tool jobs from the `tools` queue (`python -m worker tools`): the same
+    # image, environment and caches as `worker`, its own queue, so a long job never delays a turn.
+    build: *worker-build
+    image: ecofate-worker:local
+    command: ["python", "-m", "worker", "tools"]
+    env_file: .env
+    environment:
+      <<: [*database-url, *redis-url]
+    volumes:
+      - ecofate-cache:/app/.cache
+      - hf-cache:/home/ecofate/.cache/huggingface
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    # A warm shutdown lets a running job finish; one still running after this is killed.
     stop_grace_period: 60s
 
 volumes:

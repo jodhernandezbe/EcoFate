@@ -38,6 +38,7 @@ function snapshot(running: ThreadSnapshot["running_turn"]): ThreadSnapshot {
     confirmation: null,
     interrupted: null,
     running_turn: running,
+    jobs: [],
   };
 }
 
@@ -154,5 +155,49 @@ describe("useAgentStream", () => {
       await sending;
     });
     expect(result.current.stopping).toBe(false);
+  });
+  describe("a turn the system started for a background job", () => {
+    const FOLLOW = "f".repeat(32);
+    const job = { job_id: "j".repeat(32), tool: "assess_facilities", status: "running" as const, queued_at: "2026-01-01T00:00:00Z", started_at: "2026-01-01T00:00:10Z", ended_at: null, position: null };
+
+    function loaded(running: ThreadSnapshot["running_turn"]) {
+      return stub((url) => {
+        if (url.endsWith("/chat/current-thread")) return json({ ...snapshot(null), jobs: [job] });
+        if (url.endsWith("/chat/threads/t1")) return json(snapshot(running));
+        if (url.endsWith(`/chat/turns/${FOLLOW}/events`)) {
+          return sse([{ type: "turn_started", seq: 0, thread_id: "t1", turn_id: FOLLOW, resumed: false }, token(1, "The assessment found 3 facilities."), finished(2)]);
+        }
+        return undefined;
+      });
+    }
+
+    it("starts from the snapshot's jobs and says the server holds the thread", async () => {
+      loaded(null);
+      const { result } = renderHook(() => useAgentStream());
+      await waitFor(() => expect(result.current.jobs).toHaveLength(1));
+      expect(result.current.held).toBe(true);
+    });
+
+    it("follows the confirmed turn like any other, without showing its notice as a question", async () => {
+      const calls = loaded({ turn_id: FOLLOW, resumed: false, question: null });
+      const { result } = renderHook(() => useAgentStream());
+      await waitFor(() => expect(result.current.held).toBe(true));
+      await act(() => result.current.attach(FOLLOW));
+      await waitFor(() => expect(result.current.busy).toBe(false));
+      expect(result.current.messages.slice(-1).map((m) => [m.role, m.text])).toEqual([
+        ["assistant", "The assessment found 3 facilities."],
+      ]);
+      expect(calls.some((c) => c.url.endsWith(`/chat/turns/${FOLLOW}/events`))).toBe(true);
+    });
+
+    it("ignores an event for a turn the server does not report as running (a replayed one)", async () => {
+      const calls = loaded(null);
+      const { result } = renderHook(() => useAgentStream());
+      await waitFor(() => expect(result.current.held).toBe(true));
+      const before = result.current.messages.length;
+      await act(() => result.current.attach(FOLLOW));
+      expect(result.current.messages).toHaveLength(before);
+      expect(calls.some((c) => c.url.endsWith("/events"))).toBe(false);
+    });
   });
 });

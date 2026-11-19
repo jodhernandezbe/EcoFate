@@ -237,3 +237,38 @@ def test_the_shipped_prompts_load_and_name_no_tool() -> None:
     assert "complete" in check and "waiting" in check.lower()
     assert "lookup" not in check
     assert "Continue now" in load_prompt("completion_nudge")
+
+
+@tool("assess_facilities")
+def queue_work() -> str:
+    """A heavy tool whose call queued a background job (its answer, as the submitter gives it)."""
+    return '{"job_id": "' + "0" * 32 + '", "status": "queued", "position": 0}'
+
+
+def test_a_turn_that_queued_a_job_is_not_sent_back_to_work(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Reviewing "it has started" as an announcement sent the agent back to work it did not have,
+    # and it wrote results it had not seen (measured in the evaluations).
+    monkeypatch.setattr("agent.graph.get_all_tools", lambda: [queue_work])
+    model = ScriptedChatModel(
+        [_call("assess_facilities"), AIMessage(content="The assessment has started.")],
+        classifier=[completion_verdict(False, "announces work")],
+    )
+    state = _run(model)
+    assert _texts(state)[-1] == "The assessment has started."
+    assert model.classifier.calls == 0 and nudges_in_turn(state["messages"]) == 0
+
+
+def test_only_a_queued_answer_counts_as_a_job() -> None:
+    from agent.completion import queued_a_job
+
+    request = HumanMessage(content="assess")
+    answer = '{"job_id": "j", "status": "queued"}'
+    queued = ToolMessage(content=answer, tool_call_id="c1", name="assess_facilities")
+    lookalike = ToolMessage(content=answer, tool_call_id="c3", name="query_emissions_inventory")
+    finished = ToolMessage(content='{"status": "succeeded"}', tool_call_id="c2")
+    assert queued_a_job([request, queued])
+    assert not queued_a_job([request, lookalike])  # only a heavy tool can queue a job
+    assert not queued_a_job([request, finished])
+    assert not queued_a_job([queued, HumanMessage(content="a later message")])
