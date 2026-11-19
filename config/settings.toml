@@ -942,8 +942,11 @@ setup_lock_poll_seconds = 0.25
 [worker]
 redis_url_env_var = "REDIS_URL"
 # Names of the tools that run as background jobs on the `tools` pool instead of inside the turn.
-# Each must be a registered tool (checked when the tool registry is built). Empty: all synchronous.
-heavy_tools = []
+# Each must be a registered tool (checked when the tool registry is built). Empty: all synchronous
+# (the rollback switch; config/settings.production.toml can set it per deployment). With no job
+# system provided (the command line, the evaluations' plain scenarios) a heavy tool still runs
+# inside the turn.
+heavy_tools = ["assess_facilities"]
 # Jobs (queued plus running) one user may have at once.
 max_open_jobs_per_user = 2
 # Redis redelivers an unacknowledged task after this; it must exceed both pools' hard limits.
@@ -1125,7 +1128,8 @@ usage_metadata = "langsmith.metadata.usage_metadata"
 judge_provider = "openai"
 judge_model = "gpt-5.5-2026-04-23"
 judge_api_key_env_var = "OPENAI_API_KEY"  # pragma: allowlist secret
-live_tools = ["calculate_exposure_metrics"]
+# `check_job_status` reads the job system the evaluation provides (in memory), never the network.
+live_tools = ["calculate_exposure_metrics", "check_job_status"]
 cassette_dir = "evals/cassettes"
 report_dir = "evals/reports"
 # The reviewed question catalogue (`question,category,type`) that `python -m evals catalogue`
@@ -1206,6 +1210,7 @@ get_meteorological_boundary = "Retrieved meteorology"
 get_population_receptors = "Counted Census receptors"
 calculate_exposure_metrics = "Computed screening dispersion and risk"
 assess_facilities = "Screened every facility and assessed those that may matter"
+check_job_status = "Checked the background assessment"
 
 # Basemap vector styles (CARTO Positron / Dark Matter), the half-angle of the schematic
 # downwind sector drawn on the map (degrees; a drawing choice, not a modelled plume width),

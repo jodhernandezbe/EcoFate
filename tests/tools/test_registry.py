@@ -22,6 +22,7 @@ def test_all_tools_registered_with_docstrings() -> None:
         "get_population_receptors",
         "calculate_exposure_metrics",
         "assess_facilities",
+        "check_job_status",
     }
     assert all(t.description for t in tools)
 
@@ -61,13 +62,16 @@ def test_every_job_runner_is_a_registered_tool() -> None:
     assert set(get_job_runners()) <= names and "assess_facilities" in get_job_runners()
 
 
-def _heavy_registry(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+def _heavy_registry(
+    monkeypatch: pytest.MonkeyPatch,
+    heavy_tools: tuple[str, ...] = ("assess_facilities",),
+) -> list[str]:
     from dataclasses import replace
 
     import tools.registry as module
     from config.worker import get_worker_settings
 
-    heavy = replace(get_worker_settings(), heavy_tools=("assess_facilities",))
+    heavy = replace(get_worker_settings(), heavy_tools=heavy_tools)
     monkeypatch.setattr(module, "get_worker_settings", lambda: heavy)
     return [tool.name for tool in module._build_default_registry().all()]  # pyright: ignore[reportPrivateUsage]
 
@@ -88,16 +92,15 @@ def test_a_heavy_tool_keeps_its_name_schema_and_docstring_as_a_submitter(
     submitter = built.get("assess_facilities")
     assert submitter is not plain
     assert submitter.args_schema is plain.args_schema
-    assert submitter.description.startswith(plain.description)
-    assert "Runs in the background" in submitter.description
-    assert "never state" in submitter.description
+    assert submitter.description == plain.description
 
 
 def test_check_job_status_exists_only_with_a_heavy_tool(monkeypatch: pytest.MonkeyPatch) -> None:
-    assert "check_job_status" not in {t.name for t in get_all_tools()}
+    plain = _heavy_registry(monkeypatch, heavy_tools=())
+    assert "check_job_status" not in plain
     names = _heavy_registry(monkeypatch)
     assert names.count("check_job_status") == 1
-    assert names.count("assess_facilities") == 1 and len(names) == len(get_all_tools()) + 1
+    assert names.count("assess_facilities") == 1 and len(names) == len(plain) + 1
 
 
 def test_a_heavy_tool_without_a_preflight_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:

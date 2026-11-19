@@ -10,7 +10,7 @@
 Network tools are replayed from `evals/cassettes/` (a missing recording fails closed). Evaluations need
 `OPENAI_API_KEY`, cost tokens, and are excluded from the default `pytest` run.
 
-`evals/scenarios.py` lists 14 scenarios; four are written and runnable, ten are placeholders
+`evals/scenarios.py` lists 15 scenarios; five are written and runnable, ten are placeholders
 blocked with a reason ("checks and cassette not written yet" or a fix they wait for).
 
 | Scenario | Checks (code) | Judge | Cassette |
@@ -18,6 +18,7 @@ blocked with a reason ("checks and cassette not written yet" or a fix they wait 
 | `chemical-name-only` | completed, no tool called | asks for a CAS number without inventing one | none (no tool runs) |
 | `missing-benchmark-asks` (acrolein) | completed, properties fetched, exposure not called, asks for the missing `iur` | none | `missing-benchmark-asks.json` |
 | `full-assessment-with-nei-stacks` | every facility covered and reported, sources named, site inputs per facility, exposure covers every stack, no fallback where candidates exist | complete assessment report | `full-assessment-with-nei-stacks.json` |
+| `assessment-queued-then-explained` | queued as a job, first reply states no result, every facility covered and reported after the follow-up | complete assessment report | replays `full-assessment-with-nei-stacks.json` (the job's result is its recorded `assess_facilities` output) |
 | `category-member-chlorophenol` | completed, category looked up, inventory queried for category N084 | category match disclosed | `category-member-chlorophenol.json` |
 
 Checks take their expected values from the record's tool outputs, never from numbers written into

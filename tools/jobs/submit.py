@@ -1,12 +1,13 @@
 """The submitter of a heavy tool: the same tool for the model, but its call starts a job.
 
 ``heavy_submitter(tool, preflight)`` wraps a registered tool: same name, argument schema and
-docstring (plus a paragraph saying it runs in the background). Its call settles what must be
-settled before any work (the tool's ``preflight``: invalid input, values the user must be asked
-for) and returns that result exactly as the tool would; otherwise it records a job, queues it
-and answers at once with its id, ``queued`` and its position. The user and thread of the job come
-from the run's configuration (the authenticated turn), never from the arguments. With no job
-system provided (command line, evaluations) the call runs the tool itself, as without a wrapper.
+docstring, unchanged (the guidance on a running job comes in its answer). Its call settles what
+must be settled before any work (the tool's ``preflight``: invalid input, values the user must
+be asked for) and returns that result exactly as the tool would; otherwise it records a job,
+queues it and answers at once with its id, ``queued``, its position and a ``note``. The user and
+thread of the job come from the run's configuration (the authenticated turn), never from the
+arguments. With no job system provided (command line, evaluations) the call runs the tool
+itself, as without a wrapper.
 """
 
 from __future__ import annotations
@@ -19,7 +20,7 @@ from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool, StructuredTool
 
 from tools.jobs.port import JobUnavailableError, current_port, is_automatic, job_scope
-from tools.schemas import JobNotice
+from tools.schemas import JobNotice, SubmittedJob
 
 LIMIT_REACHED = (
     "The limit of background jobs at once is reached: wait for a running job to end (or cancel "
@@ -30,12 +31,15 @@ NOT_NOW = (
     "tell the user they can ask for it again."
 )
 UNAVAILABLE = "Background jobs cannot be started right now. Nothing was started; try again later."
-BACKGROUND_NOTE = (
-    "\n\nRuns in the background: this call does not run the work. It returns a `job_id` and the "
-    "status `queued` at once (unless values are missing, which are asked for first, or the "
-    "limit of jobs at once is reached). Describe the work as started, not done, and never state "
-    "or guess its results: they arrive in a follow-up message when the job ends. Meanwhile the "
-    "user can keep asking other questions."
+# Said in the call's answer, not in the tool's description: a description saying the call "does
+# not run the work" made the model assess the facilities one by one instead (measured, see
+# docs/load-test.md), so the description stays the tool's own and the guidance comes with the job.
+QUEUED_NOTE = (
+    "The assessment has started in the background; it is the assessment of these facilities, so "
+    "do not assess them another way meanwhile. Its complete result will be given to you in a "
+    "follow-up message when it ends, and you will explain it then. Now tell the user it has "
+    "started and state no result, figure, count or facility name (no tool has given you the "
+    "facilities yet); they can keep asking other questions."
 )
 Preflight = Callable[[Mapping[str, object], RunnableConfig], tuple[object, object] | None]
 Result = tuple[object, object]
@@ -67,7 +71,13 @@ async def _start(tool: BaseTool, arguments: Mapping[str, object], config: Runnab
         return _notice("unavailable", UNAVAILABLE)
     if submitted is None:
         return _notice("limit_reached", LIMIT_REACHED)
-    return submitted, None
+    answer = SubmittedJob(
+        job_id=submitted["job_id"],
+        status=submitted["status"],
+        position=submitted["position"],
+        note=QUEUED_NOTE,
+    )
+    return answer, None
 
 
 class _Submitter:
@@ -112,7 +122,7 @@ def heavy_submitter(tool: BaseTool, preflight: Preflight) -> BaseTool:
     calls = _Submitter(original, preflight)
     return StructuredTool(
         name=tool.name,
-        description=f"{tool.description}{BACKGROUND_NOTE}",
+        description=tool.description,
         args_schema=original.args_schema,
         func=calls.submit_sync,
         coroutine=calls.submit,

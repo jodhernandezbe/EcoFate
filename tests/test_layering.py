@@ -86,9 +86,18 @@ def test_the_worker_imports_only_what_it_may() -> None:
     assert {path: names for path, names in offenders.items() if names} == {}
 
 
+# The load-test harness starts the real worker with its stand-ins (scripts/load/celery_app.py), so
+# it is the one outer-edge tool that may import it; nothing it holds is imported by the program.
+LOAD_TEST = ROOT / "scripts" / "load"
+
+
 @pytest.mark.parametrize("package", [*PROJECT, "tools", "scripts"])
 def test_nothing_imports_the_worker(package: str) -> None:
-    offenders = [p.relative_to(ROOT) for p in (ROOT / package).rglob("*.py") if _imports(p, WORKER)]
+    offenders = [
+        p.relative_to(ROOT)
+        for p in (ROOT / package).rglob("*.py")
+        if _imports(p, WORKER) and not p.is_relative_to(LOAD_TEST)
+    ]
     assert offenders == []
 
 

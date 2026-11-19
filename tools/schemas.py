@@ -878,11 +878,13 @@ class InvalidJobInputError(ValueError):
 
 
 class SubmittedJob(TypedDict):
-    """A background job just recorded and queued: what the tool call answers at once."""
+    """A background job just recorded and queued: what the tool call answers at once, with the
+    note on how to talk about it (added by the submitter, ``tools.jobs.submit``)."""
 
     job_id: str
     status: Literal["queued"]
     position: int
+    note: NotRequired[str]
 
 
 class JobNotice(TypedDict):

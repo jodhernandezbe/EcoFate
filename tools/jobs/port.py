@@ -9,6 +9,7 @@ arguments, so a model (or a prompt injection) cannot start or read another user'
 
 from __future__ import annotations
 
+import json
 from collections.abc import Generator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -100,3 +101,17 @@ def job_scope(config: RunnableConfig | None) -> tuple[UUID, str] | None:
         return UUID(owner), thread
     except ValueError:
         return None
+
+
+def is_queued_answer(content: object) -> bool:
+    """Whether a tool result is a heavy tool's queued-job answer (``SubmittedJob``: a ``job_id``
+    and the status ``queued``), given as the tool message's content (JSON text or a dict)."""
+    if isinstance(content, str):
+        try:
+            content = json.loads(content)
+        except ValueError:
+            return False
+    if not isinstance(content, dict):
+        return False
+    answer = cast(Mapping[str, object], content)
+    return answer.get("status") == "queued" and isinstance(answer.get("job_id"), str)

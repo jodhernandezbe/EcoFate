@@ -57,6 +57,7 @@ Quick start: `cp .env.example .env`, fill it in, then `docker compose --profile 
 | Page | What it covers |
 |---|---|
 | [evals/](evals/README.md) | Scenarios, the hand-written catalogue, labels, the LLM judge and its tuning |
+| [Load test](docs/load-test.md) | 10 to 50 users at once: queue waits, background jobs, where the limit is |
 | [Monitoring](docs/monitoring.md) | Logfire traces, redaction, the admin Monitoring view |
 | [Security](docs/security/README.md) | BYOK, key encryption, tenancy, sessions, rate limit, secrets |
 | [Deployment](docs/deployment/README.md) · [deploy/](deploy/README.md) | Oracle Cloud + Cloudflare, release, rollback, backups |

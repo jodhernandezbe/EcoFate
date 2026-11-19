@@ -1,0 +1,22 @@
+# Load-test profile: laid over settings.toml when ECOFATE_SETTINGS_PROFILE=load. Only
+# compose.load.yaml mounts it (as config/settings.load.toml), so it never ships in an image and
+# never reaches production. See docs/load-test.md.
+
+[worker]
+# The assessment runs as a background job, as it will once switched on in production.
+heavy_tools = ["assess_facilities"]
+
+# Pool sizes of the run (docs/load-test.md lists each run's values): the local defaults are 2 and 1.
+[worker.chat]
+concurrency = 3
+
+[worker.tools]
+concurrency = 1
+
+[limits]
+# Each simulated user sends a few turns per run and runs repeat; the quota code still runs.
+daily_turns_per_user = 1000
+
+[telemetry]
+# Load-test traffic is not sent to Logfire.
+enabled = false

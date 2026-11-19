@@ -64,7 +64,7 @@ def test_shipped_settings() -> None:
     for pool in (settings.chat, settings.tools):
         assert pool.soft_time_limit_seconds < pool.time_limit_seconds
         assert pool.time_limit_seconds < settings.visibility_timeout_seconds
-    assert settings.heavy_tools == ()
+    assert settings.heavy_tools == ("assess_facilities",)
 
 
 @pytest.mark.parametrize(

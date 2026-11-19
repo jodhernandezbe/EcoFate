@@ -22,6 +22,7 @@ The cross-cutting documents. The folder READMEs are indexed in the
 | [citation.md](citation.md) | licence, the Zenodo DOI, releasing a version |
 | [architecture.md](architecture.md) | package layers, dependency rules, runtime containers, a turn's path, where state lives, configuration versus secrets |
 | [security/](security/README.md) | bring your own key, key sealing and rotation, accounts and sessions, tenancy isolation, daily limit, redaction, threat model, secrets in CI and production |
+| [load-test.md](load-test.md) | many users at once: scripted and real-model runs, queue waits, job throughput, what the evaluations changed |
 | [monitoring.md](monitoring.md) | Logfire set-up (write and read tokens), what a session records, how the admin Monitoring view reads it, redaction |
 | [deployment/](deployment/README.md) | provisioning the Oracle Cloud VM and Cloudflare tunnel, releasing, rolling back, logs, backups and restore, teardown |
 | [design-principles.md](design-principles.md) | SOLID, DRY and defensive programming rules the code follows |

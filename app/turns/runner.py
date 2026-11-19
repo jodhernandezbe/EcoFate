@@ -29,12 +29,13 @@ from langchain_core.messages import (
     ToolMessage,
 )
 from langchain_core.runnables import RunnableConfig
+from langchain_core.tools import BaseTool
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph.state import CompiledStateGraph
 from pydantic import SecretStr
 
 from agent.completion import CompletionGuard
-from agent.graph import build_agent
+from agent.graph import build_agent, turn_tools
 from agent.guardrails import REDIRECT_NAME, ScopeGuard
 from agent.state import AgentState
 from app.telemetry import SessionSpan, TurnSegment, run_tracer, session_span
@@ -67,7 +68,7 @@ from app.turns.keys import TurnKeys, provided
 from app.usage_meter import CallUsage, UsageRecorder
 from config.telemetry import TelemetrySettings
 from config.ui import ModelPrice
-from tools.jobs.port import JobPort, provided_port, scope_config
+from tools.jobs.port import OWNER_KEY, JobPort, JobUnavailableError, provided_port, scope_config
 from tools.schemas import ConfirmationRequest
 
 logger = logging.getLogger("app.turns")
@@ -271,7 +272,8 @@ async def _agent_events(
     settings: TurnSettings,
     recorder: UsageRecorder,
 ) -> AsyncGenerator[TurnEvent]:
-    agent = _build(model, services, settings, automatic=request.automatic)
+    tools = turn_tools(await _has_jobs(request, services))
+    agent = _build(model, services, settings, automatic=request.automatic, tools=tools)
     config = await _run_config(request, services, settings, recorder)
     yield AgentStarted()
     # A resume sends no input: the run continues from the last checkpoint with a fresh step
@@ -317,17 +319,34 @@ async def pending_steps(
     return tuple(task.name for task in snapshot.tasks if task.result is not None)
 
 
+async def _has_jobs(request: TurnRequest, services: TurnServices) -> bool:
+    """Whether the turn's conversation has a background job (always False without a job system),
+    which decides whether the job-status tool is offered this turn."""
+    scope = _job_scope(request)
+    if services.jobs is None or not scope:
+        return False
+    owner = UUID(str(scope[OWNER_KEY]))
+    try:
+        return bool(await services.jobs.status(owner, request.thread_id, None))
+    except JobUnavailableError:  # the turn goes on with the tools it had before jobs existed
+        logger.warning("Job status unavailable; the job-status tool is not offered this turn")
+        return False
+
+
 def _build(
     model: BaseChatModel,
     services: TurnServices,
     settings: TurnSettings,
     *,
     automatic: bool = False,
+    tools: Sequence[BaseTool] | None = None,
 ) -> Agent:
-    """The agent of one turn: the model, the thread history and the configured checks (an
-    automatic turn is not a user's message, so it skips the scope check)."""
+    """The agent of one turn: the model, its tools (every registered tool when None), the thread
+    history and the configured checks (an automatic turn is not a user's message, so it skips
+    the scope check)."""
     return build_agent(
         model,
+        tools,
         checkpointer=services.checkpointer,
         scope_guard=None if automatic else settings.scope_guard,
         completion_guard=settings.completion_guard,

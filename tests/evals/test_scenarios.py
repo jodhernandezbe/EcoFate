@@ -5,6 +5,7 @@ from __future__ import annotations
 from evals.checks import ASSESSMENT
 from evals.scenarios import (
     ACROLEIN_CAS,
+    BACKGROUND_ASSESSMENT,
     CATALOGUE,
     FULL_ASSESSMENT,
     FULL_ASSESSMENT_CAS,
@@ -32,9 +33,22 @@ def test_missing_benchmark_also_records_the_surrogate_search() -> None:
             "find_tri_read_across_surrogate",
             {"cas_number": ACROLEIN_CAS, "require_toxicity_benchmarks": True},
         ),
+        ("find_tri_read_across_surrogate", {"cas_number": ACROLEIN_CAS}),
     ]
 
 
 def test_scenarios_without_extra_calls_record_none() -> None:
-    others = [s for s in CATALOGUE if s not in (FULL_ASSESSMENT, MISSING_BENCHMARK)]
+    others = [
+        s for s in CATALOGUE if s not in (FULL_ASSESSMENT, MISSING_BENCHMARK, BACKGROUND_ASSESSMENT)
+    ]
     assert all(s.extra_calls == () for s in others)
+
+
+def test_background_assessment_has_its_own_cassette() -> None:
+    from evals.scenarios import BACKGROUND_ASSESSMENT, BACKGROUND_CAS
+    from evals.suite import cassette_path
+
+    assert BACKGROUND_ASSESSMENT.background
+    assert BACKGROUND_CAS in BACKGROUND_ASSESSMENT.query
+    assert BACKGROUND_ASSESSMENT.cassette_id is None
+    assert cassette_path(BACKGROUND_ASSESSMENT).name == f"{BACKGROUND_ASSESSMENT.id}.json"

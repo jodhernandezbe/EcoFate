@@ -86,7 +86,13 @@ async def test_a_call_queues_a_job_with_the_stored_input_shape() -> None:
             {"cas_number": "110-54-3", "radius_km": 2.0},
             _config(user_values=answers),
         )
-    assert result == {"job_id": "a" * 32, "status": "queued", "position": 2}
+    assert {k: result[k] for k in ("job_id", "status", "position")} == {
+        "job_id": "a" * 32,
+        "status": "queued",
+        "position": 2,
+    }
+    assert "do not assess them another way" in result["note"]
+    assert "state no result" in result["note"] and "facility name" in result["note"]
     assert CALLS == []  # the work did not run in the turn
     ((owner, thread, name, stored),) = port.submitted
     assert (owner, thread, name) == (OWNER, "t1", "heavy")
@@ -173,8 +179,9 @@ async def test_without_a_job_system_the_tool_runs_as_it_always_did() -> None:
 def test_the_submitter_is_the_same_tool_to_the_model() -> None:
     submitter = _submitter()
     assert submitter.name == heavy.name and submitter.args_schema is heavy.args_schema
-    assert submitter.description.startswith(heavy.description)
-    assert "job_id" in submitter.description and "queued" in submitter.description
+    # The description is the tool's own: saying the call "does not run the work" made the model
+    # assess facilities one by one instead (the guidance comes in the queued answer's note).
+    assert submitter.description == heavy.description
 
 
 async def test_check_job_status_reads_the_runs_own_thread_only() -> None:

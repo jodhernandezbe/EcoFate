@@ -20,8 +20,18 @@ trusted_proxy_hops = 1
 [telemetry]
 environment = "production"
 
+[worker]
+# Background jobs stay off in production until the evaluations pass with them on (docs/load-test.md);
+# deleting this line switches them on, setting it back to [] switches them off again.
+heavy_tools = []
+
 [worker.chat]
 # Assessment turns the worker runs at once. The Always Free VM has 4 OCPUs and 24 GB; each slot
 # loads PyTorch and the read-across model (about 1.5-2.5 GB), so one per OCPU leaves ample room.
 # Turns beyond this wait in the queue ("Waiting for a worker"); local runs keep the base value.
 concurrency = 4
+
+[worker.tools]
+# Background assessments the tool worker runs at once. Each loads PyTorch and the read-across
+# model too; 2 finish about 30 assessments of 4 minutes an hour (docs/load-test.md).
+concurrency = 2

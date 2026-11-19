@@ -16,19 +16,19 @@
 - [x] 2.7 Thread-level stream: `thread:{id}` Redis Stream, `GET /api/v1/chat/threads/{id}/events` with `Last-Event-ID`; job and turn lifecycle events; tests for reconnect and tenancy (foreign thread 404).
 - [x] 2.8 API: cancel a job (`POST /api/v1/chat/jobs/{id}/cancel`), job status in the workspace response; `Clear workspace` cancels the thread's jobs.
 - [x] 2.9 Frontend: subscribe to the thread stream; a job status line under the chat header ("Assessment queued (2 ahead)", "Assessment running, 1 min 20 s", Cancel), sending allowed while a job runs; the follow-up answer appears as a normal message; DESIGN.md-compliant; `/ui-check`.
-- [x] 2.10 Prompt and docstrings: how to talk about a queued or running job; never state its results before the follow-up.
+- [x] 2.10 Prompt and docstrings: how to talk about a queued or running job; never state its results before the follow-up. (Measured in 3.2: a system-prompt paragraph about it weakened the CAS rule, so the guidance lives only in the submitter's note and `check_job_status`'s docstring.)
 
 ## 3. Evaluations
 
-- [ ] 3.1 New scenario "assessment queued then explained": the agent reports the job as started, states no figures, and the follow-up explains the result; cassette recorded.
-- [ ] 3.2 Re-record and re-run the missing-value and chemical-name-only scenarios 3× each; keep the change only if they pass.
+- [x] 3.1 New scenario "assessment queued then explained": the agent reports the job as started, states no figures, and the follow-up explains the result; cassette recorded.
+- [x] 3.2 Re-record and re-run the missing-value and chemical-name-only scenarios 3× each; keep the change only if they pass.
 
 ## 4. Load test
 
-- [ ] 4.1 `scripts/load/`: Locust users (sign-up/verify once, weighted mix: full assessment, question during a job, status question, resume), a load-test settings overlay with the fake chat model and recorded tool latencies, `docker stats` sampler, report writer (percentiles of time to first answer, queue wait per queue, job and turn duration; 409/429/5xx shares; CPU and memory).
-- [ ] 4.2 Run at 10, 25 and 50 users with the fake model on the local compose stack; then tune `[worker.chat]`/`[worker.tools]` concurrency from the results.
-- [ ] 4.3 Real-model run at about 10 users with a budget cap the owner sets (stated before running).
-- [ ] 4.4 `docs/load-test.md`: stack, settings, date, commands, the measurements of each run and a short reading of where the limit is; indexed from the root README and `docs/README.md`.
+- [x] 4.1 `scripts/load/`: Locust users (sign-up/verify once, weighted mix: full assessment, question during a job, status question, resume), a load-test settings overlay with the fake chat model and recorded tool latencies, `docker stats` sampler, report writer (percentiles of time to first answer, queue wait per queue, job and turn duration; 409/429/5xx shares; CPU and memory).
+- [x] 4.2 Run at 10, 25 and 50 users with the fake model on the local compose stack; then tune `[worker.chat]`/`[worker.tools]` concurrency from the results.
+- [x] 4.3 Real-model run at about 10 users with a budget cap the owner sets (stated before running).
+- [x] 4.4 `docs/load-test.md`: stack, settings, date, commands, the measurements of each run and a short reading of where the limit is; indexed from the root README and `docs/README.md`.
 
 ## 5. Release
 

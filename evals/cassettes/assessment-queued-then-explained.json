@@ -1,0 +1,5852 @@
+{
+ "assess_facilities": [
+  {
+   "args": {
+    "cas_number": "75-01-4",
+    "city": null,
+    "frs_ids": null,
+    "radius_km": null,
+    "state": null,
+    "toxicity": null
+   },
+   "output": {
+    "cas_number": "75-01-4",
+    "toxicity": {
+     "rfc": 0.1,
+     "iur": 8.8e-06
+    },
+    "toxicity_source": "CompTox",
+    "facilities_found": 33,
+    "screening": {
+     "possible": true,
+     "hq_threshold": 0.1,
+     "cancer_risk_threshold": 1e-06,
+     "screened_out_at_bound": 8,
+     "screened_out_with_own_stacks": 4,
+     "closest_screened_out": [
+      {
+       "frs_id": "110070675765",
+       "facility_name": "CORTEVA FREEPORT OPERATIONS",
+       "city": "FREEPORT",
+       "state": "TX",
+       "emission_rate": 0.00775260931728818,
+       "stage": "own stacks",
+       "hq": 0.0013933609267745212,
+       "cancer_risk": 4.5542997149430063e-07,
+       "worker_risk_tier": "high"
+      },
+      {
+       "frs_id": "110045447469",
+       "facility_name": "DAIKIN AMERICA INC",
+       "city": "DECATUR",
+       "state": "AL",
+       "emission_rate": 7.19165984906139e-05,
+       "stage": "bound",
+       "hq": 0.0005941530498175492,
+       "cancer_risk": 1.9420316828322178e-07,
+       "worker_risk_tier": "high"
+      },
+      {
+       "frs_id": "110024441184",
+       "facility_name": "ROWMARK CUSTOM LAMINATIONS",
+       "city": "TRENTON",
+       "state": "NC",
+       "emission_rate": 0.0026848863436495863,
+       "stage": "own stacks",
+       "hq": 0.00031542410916675075,
+       "cancer_risk": 1.0309862311050368e-07,
+       "worker_risk_tier": "high"
+      },
+      {
+       "frs_id": "110000746532",
+       "facility_name": "THE CHEMOURS CO",
+       "city": "GREGORY",
+       "state": "TX",
+       "emission_rate": 3.0299901276065453e-05,
+       "stage": "bound",
+       "hq": 0.0002503285629491299,
+       "cancer_risk": 8.182167886108702e-08,
+       "worker_risk_tier": "high"
+      },
+      {
+       "frs_id": "110056332339",
+       "facility_name": "MEXICHEM SPECIALTY RESINS INC",
+       "city": "AVON LAKE",
+       "state": "OH",
+       "emission_rate": 2.8766639396245567e-05,
+       "stage": "bound",
+       "hq": 0.00023766121992701975,
+       "cancer_risk": 7.768126731328874e-08,
+       "worker_risk_tier": "high"
+      }
+     ],
+     "screened_out_worker_bands": {
+      "high": 12
+     },
+     "screened_out_worker_highest": {
+      "frs_id": "110045447469",
+      "facility_name": "DAIKIN AMERICA INC",
+      "city": "DECATUR",
+      "state": "AL",
+      "worker_risk_tier": "high",
+      "worker_twa_worst_mg_m3": 424838.99837111525
+     }
+    },
+    "assessed": 21,
+    "stack_tiers": {
+     "NEI": 15,
+     "PSTK": 6
+    },
+    "facilities": [
+     {
+      "concentration_worst": {
+       "low": 155.39226009926813,
+       "high": 516.6446514462324,
+       "low_stack": 10,
+       "high_stack": 6
+      },
+      "concentration_representative": {
+       "low": 22.54369711456416,
+       "high": 24.73115343685038,
+       "low_stack": 10,
+       "high_stack": 6
+      },
+      "hq_worst": {
+       "low": 1.4900627680751737,
+       "high": 4.954126794689899,
+       "low_stack": 10,
+       "high_stack": 6
+      },
+      "hq_representative": {
+       "low": 0.2161724380848618,
+       "high": 0.23714804665472966,
+       "low_stack": 10,
+       "high_stack": 6
+      },
+      "cancer_risk_worst": {
+       "low": 0.0004870376590508568,
+       "high": 0.0016192917294643558,
+       "low_stack": 10,
+       "high_stack": 6
+      },
+      "cancer_risk_representative": {
+       "low": 7.065750547688055e-05,
+       "high": 7.751353296371736e-05,
+       "low_stack": 10,
+       "high_stack": 6
+      },
+      "weather_source": "Open-Meteo era5 reanalysis 2024",
+      "residents": 293,
+      "radius_km": null,
+      "worker_risk_tier": "high",
+      "worker_oel_ratio": 2769.9502693796717,
+      "frs_id": "110000572675",
+      "facility_name": "SHINTECH PLAQUEMINE PLANT",
+      "city": "PLAQUEMINE",
+      "state": "LA",
+      "emission_rate": 0.12543937625167748,
+      "stack_tier": "NEI",
+      "stacks_evaluated": 10,
+      "sccs": [],
+      "industry": "Plastics Material and Resin Manufacturing",
+      "notes": [
+       "2 NEI stack row(s) were ignored: a value was missing or implausible",
+       "60 distinct stack combinations found (1 near-identical merged); the 10 lowest stacks are returned, 50 taller omitted",
+       "the worst case is the screening maximum between 100 m and 10 km; it may fall where no one lives"
+      ]
+     },
+     {
+      "concentration_worst": {
+       "low": 1.009861871752207,
+       "high": 226.89682116430913,
+       "low_stack": 8,
+       "high_stack": 2
+      },
+      "concentration_representative": {
+       "low": 0.4801704234547199,
+       "high": 81.04654884888818,
+       "low_stack": 4,
+       "high_stack": 2
+      },
+      "hq_worst": {
+       "low": 0.009683606989404724,
+       "high": 2.1757229426714573,
+       "low_stack": 8,
+       "high_stack": 2
+      },
+      "hq_representative": {
+       "low": 0.00460437392353841,
+       "high": 0.7771586875920784,
+       "low_stack": 4,
+       "high_stack": 2
+      },
+      "cancer_risk_worst": {
+       "low": 3.1651561131082874e-06,
+       "high": 0.0007111505846903277,
+       "low_stack": 8,
+       "high_stack": 2
+      },
+      "cancer_risk_representative": {
+       "low": 1.5049725052936973e-06,
+       "high": 0.00025401986817295363,
+       "low_stack": 4,
+       "high_stack": 2
+      },
+      "weather_source": "Open-Meteo era5 reanalysis 2024",
+      "residents": 433,
+      "radius_km": null,
+      "worker_risk_tier": "high",
+      "worker_oel_ratio": 2769.9502693796717,
+      "frs_id": "110000552599",
+      "facility_name": "WESTLAKE VINYLS INC. - PVC PLANT",
+      "city": "CALVERT CITY",
+      "state": "KY",
+      "emission_rate": 0.564056265281583,
+      "stack_tier": "NEI",
+      "stacks_evaluated": 10,
+      "sccs": [],
+      "industry": "Plastics Material and Resin Manufacturing",
+      "notes": [
+       "12 distinct stack combinations found (0 near-identical merged); the 10 lowest stacks are returned, 2 taller omitted",
+       "the worst case is the screening maximum between 100 m and 10 km; it may fall where no one lives"
+      ]
+     },
+     {
+      "concentration_worst": {
+       "low": 0.09743654581188499,
+       "high": 149.5338266903845,
+       "low_stack": 9,
+       "high_stack": 1
+      },
+      "concentration_representative": {
+       "low": 0.01497932980480704,
+       "high": 56.24915240653911,
+       "low_stack": 9,
+       "high_stack": 1
+      },
+      "hq_worst": {
+       "low": 0.0009343230420317738,
+       "high": 1.4338860093598513,
+       "low_stack": 9,
+       "high_stack": 1
+      },
+      "hq_representative": {
+       "low": 0.00014363740908719078,
+       "high": 0.5393754340353065,
+       "low_stack": 9,
+       "high_stack": 1
+      },
+      "cancer_risk_worst": {
+       "low": 3.0539016002409984e-07,
+       "high": 0.0004686758842021914,
+       "low_stack": 9,
+       "high_stack": 1
+      },
+      "cancer_risk_representative": {
+       "low": 4.69489131416418e-08,
+       "high": 0.00017629871329611163,
+       "low_stack": 9,
+       "high_stack": 1
+      },
+      "weather_source": "Open-Meteo era5 reanalysis 2024",
+      "residents": 732,
+      "radius_km": null,
+      "worker_risk_tier": "high",
+      "worker_oel_ratio": 2769.9502693796717,
+      "frs_id": "110000746328",
+      "facility_name": "WESTLAKE VINYLS CO",
+      "city": "GEISMAR",
+      "state": "LA",
+      "emission_rate": 0.2875225607654744,
+      "stack_tier": "NEI",
+      "stacks_evaluated": 10,
+      "sccs": [],
+      "industry": "Plastics Material and Resin Manufacturing",
+      "notes": [
+       "6 NEI stack row(s) were ignored: a value was missing or implausible",
+       "20 distinct stack combinations found (1 near-identical merged); the 10 lowest stacks are returned, 10 taller omitted",
+       "the worst case is the screening maximum between 100 m and 10 km; it may fall where no one lives"
+      ]
+     },
+     {
+      "concentration_worst": {
+       "low": 0.21226303725783344,
+       "high": 120.48669105441788,
+       "low_stack": 8,
+       "high_stack": 1
+      },
+      "concentration_representative": {
+       "low": 0.08236251411828295,
+       "high": 8.2789270157358,
+       "low_stack": 8,
+       "high_stack": 1
+      },
+      "hq_worst": {
+       "low": 0.002035398987403882,
+       "high": 1.1553518320286644,
+       "low_stack": 8,
+       "high_stack": 1
+      },
+      "hq_representative": {
+       "low": 0.0007897775326410692,
+       "high": 0.07938697138376793,
+       "low_stack": 8,
+       "high_stack": 1
+      },
+      "cancer_risk_worst": {
+       "low": 6.652846975971547e-07,
+       "high": 0.0003776349988116549,
+       "low_stack": 8,
+       "high_stack": 1
+      },
+      "cancer_risk_representative": {
+       "low": 2.581444278118238e-07,
+       "high": 2.594819864658015e-05,
+       "low_stack": 8,
+       "high_stack": 1
+      },
+      "weather_source": "Open-Meteo era5 reanalysis 2024",
+      "residents": 404,
+      "radius_km": null,
+      "worker_risk_tier": "high",
+      "worker_oel_ratio": 2769.9502693796717,
+      "frs_id": "110000462605",
+      "facility_name": "OXY VINYLS LP PASADENA PVC PLANT",
+      "city": "PASADENA",
+      "state": "TX",
+      "emission_rate": 0.04733550512652208,
+      "stack_tier": "NEI",
+      "stacks_evaluated": 10,
+      "sccs": [],
+      "industry": "Plastics Material and Resin Manufacturing",
+      "notes": [
+       "1 NEI stack row(s) were ignored: a value was missing or implausible",
+       "25 distinct stack combinations found (0 near-identical merged); the 10 lowest stacks are returned, 15 taller omitted",
+       "the worst case is the screening maximum between 100 m and 10 km; it may fall where no one lives"
+      ]
+     },
+     {
+      "concentration_worst": {
+       "low": 3.389753142325218,
+       "high": 86.40767708645319,
+       "low_stack": 8,
+       "high_stack": 5
+      },
+      "concentration_representative": {
+       "low": 2.781356482622899,
+       "high": 20.669690393956216,
+       "low_stack": 8,
+       "high_stack": 5
+      },
+      "hq_worst": {
+       "low": 0.03250448218668017,
+       "high": 0.8285667665824278,
+       "low_stack": 8,
+       "high_stack": 5
+      },
+      "hq_representative": {
+       "low": 0.026670541614192182,
+       "high": 0.19820251062697739,
+       "low_stack": 8,
+       "high_stack": 5
+      },
+      "cancer_risk_worst": {
+       "low": 1.0624322177589176e-05,
+       "high": 0.00027082296599151355,
+       "low_stack": 8,
+       "high_stack": 5
+      },
+      "cancer_risk_representative": {
+       "low": 8.717457030467389e-06,
+       "high": 6.478390633064632e-05,
+       "low_stack": 8,
+       "high_stack": 5
+      },
+      "weather_source": "Open-Meteo era5 reanalysis 2024",
+      "residents": 235,
+      "radius_km": null,
+      "worker_risk_tier": "high",
+      "worker_oel_ratio": 2769.9502693796717,
+      "frs_id": "110071162323",
+      "facility_name": "SHINTECH LOUISIANA LLC - ADDIS PLANT A",
+      "city": "ADDIS",
+      "state": "LA",
+      "emission_rate": 0.1298142067710585,
+      "stack_tier": "NEI",
+      "stacks_evaluated": 10,
+      "sccs": [],
+      "industry": "Plastics Material and Resin Manufacturing",
+      "notes": [
+       "17 distinct stack combinations found (1 near-identical merged); the 10 lowest stacks are returned, 7 taller omitted",
+       "the worst case is the screening maximum between 100 m and 10 km; it may fall where no one lives"
+      ]
+     },
+     {
+      "concentration_worst": {
+       "low": 0.2977233535861348,
+       "high": 70.59547035953275,
+       "low_stack": 6,
+       "high_stack": 2
+      },
+      "concentration_representative": {
+       "low": 0.1854736804239045,
+       "high": 3.0817694686771477,
+       "low_stack": 6,
+       "high_stack": 2
+      },
+      "hq_worst": {
+       "low": 0.002854881472743758,
+       "high": 0.676942866461273,
+       "low_stack": 6,
+       "high_stack": 2
+      },
+      "hq_representative": {
+       "low": 0.001778514743790865,
+       "high": 0.029551214083205525,
+       "low_stack": 6,
+       "high_stack": 2
+      },
+      "cancer_risk_worst": {
+       "low": 9.331384013768169e-07,
+       "high": 0.0002212636112090561,
+       "low_stack": 6,
+       "high_stack": 2
+      },
+      "cancer_risk_representative": {
+       "low": 5.813202476847856e-07,
+       "high": 9.659025403196321e-06,
+       "low_stack": 6,
+       "high_stack": 2
+      },
+      "weather_source": "Open-Meteo era5 reanalysis 2024",
+      "residents": 0,
+      "radius_km": null,
+      "worker_risk_tier": "high",
+      "worker_oel_ratio": 2769.9502693796717,
+      "frs_id": "110017769734",
+      "facility_name": "OXY VINYLS LP LA PORTE VCM PLANT",
+      "city": "LA PORTE",
+      "state": "TX",
+      "emission_rate": 0.01714031441785896,
+      "stack_tier": "NEI",
+      "stacks_evaluated": 10,
+      "sccs": [],
+      "industry": "All Other Basic Organic Chemical Manufacturing",
+      "notes": [
+       "20 distinct stack combinations found (0 near-identical merged); the 10 lowest stacks are returned, 10 taller omitted",
+       "the worst case is the screening maximum between 100 m and 10 km; it may fall where no one lives"
+      ]
+     },
+     {
+      "concentration_worst": {
+       "low": 7.004474812737003,
+       "high": 36.96189778112935,
+       "low_stack": 10,
+       "high_stack": 1
+      },
+      "concentration_representative": {
+       "low": 2.52973632908529,
+       "high": 3.3143190567460237,
+       "low_stack": 10,
+       "high_stack": 1
+      },
+      "hq_worst": {
+       "low": 0.06716619683446441,
+       "high": 0.3544291568053499,
+       "low_stack": 10,
+       "high_stack": 1
+      },
+      "hq_representative": {
+       "low": 0.024257745621365793,
+       "high": 0.03178114164003036,
+       "low_stack": 10,
+       "high_stack": 1
+      },
+      "cancer_risk_worst": {
+       "low": 2.195375119389351e-05,
+       "high": 0.00011584770153866297,
+       "low_stack": 10,
+       "high_stack": 1
+      },
+      "cancer_risk_representative": {
+       "low": 7.928817425954991e-06,
+       "high": 1.0387893153198497e-05,
+       "low_stack": 10,
+       "high_stack": 1
+      },
+      "weather_source": "Open-Meteo era5 reanalysis 2024",
+      "residents": 661,
+      "radius_km": null,
+      "worker_risk_tier": "high",
+      "worker_oel_ratio": 2769.9502693796717,
+      "frs_id": "110000449774",
+      "facility_name": "OCCIDENTAL CHEMICAL HOLDING CORP - GEISMAR PLANT",
+      "city": "GEISMAR",
+      "state": "LA",
+      "emission_rate": 0.016181234660388132,
+      "stack_tier": "NEI",
+      "stacks_evaluated": 10,
+      "sccs": [],
+      "industry": "All Other Basic Organic Chemical Manufacturing",
+      "notes": [
+       "38 distinct stack combinations found (2 near-identical merged); the 10 lowest stacks are returned, 28 taller omitted",
+       "the worst case is the screening maximum between 100 m and 10 km; it may fall where no one lives"
+      ]
+     },
+     {
+      "concentration_worst": {
+       "low": 0.4106757183855715,
+       "high": 21.52831548606603,
+       "low_stack": 6,
+       "high_stack": 2
+      },
+      "concentration_representative": {
+       "low": 0.20000980385919176,
+       "high": 5.152059773611853,
+       "low_stack": 5,
+       "high_stack": 2
+      },
+      "hq_worst": {
+       "low": 0.003937986340683562,
+       "high": 0.2064359019211811,
+       "low_stack": 6,
+       "high_stack": 2
+      },
+      "hq_representative": {
+       "low": 0.0019179022287867703,
+       "high": 0.049403312897647905,
+       "low_stack": 5,
+       "high_stack": 2
+      },
+      "cancer_risk_worst": {
+       "low": 1.2871589639262844e-06,
+       "high": 6.747504908509463e-05,
+       "low_stack": 6,
+       "high_stack": 2
+      },
+      "cancer_risk_representative": {
+       "low": 6.268800427805901e-07,
+       "high": 1.614782570140263e-05,
+       "low_stack": 5,
+       "high_stack": 2
+      },
+      "weather_source": "Open-Meteo era5 reanalysis 2024",
+      "residents": 85,
+      "radius_km": null,
+      "worker_risk_tier": "high",
+      "worker_oel_ratio": 2769.9502693796717,
+      "frs_id": "110018402780",
+      "facility_name": "MEXICHEM SPECIALTY RESINS INC",
+      "city": "HENRY",
+      "state": "IL",
+      "emission_rate": 0.2511149266127981,
+      "stack_tier": "NEI",
+      "stacks_evaluated": 10,
+      "sccs": [],
+      "industry": "Plastics Material and Resin Manufacturing",
+      "notes": [
+       "13 distinct stack combinations found (0 near-identical merged); the 10 lowest stacks are returned, 3 taller omitted",
+       "the worst case is the screening maximum between 100 m and 10 km; it may fall where no one lives"
+      ]
+     },
+     {
+      "concentration_worst": {
+       "low": 1.0931363049421483,
+       "high": 14.686764908089119,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "concentration_representative": {
+       "low": 0.720000208111125,
+       "high": 3.836408530879442,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "hq_worst": {
+       "low": 0.010482128951500051,
+       "high": 0.1408319922693477,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "hq_representative": {
+       "low": 0.006904111584627225,
+       "high": 0.036787479063227525,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "cancer_risk_worst": {
+       "low": 3.4261587201474457e-06,
+       "high": 4.603194261603822e-05,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "cancer_risk_representative": {
+       "low": 2.256658186518156e-06,
+       "high": 1.2024250299523511e-05,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "weather_source": "Open-Meteo era5 reanalysis 2024",
+      "residents": 56,
+      "radius_km": null,
+      "worker_risk_tier": "high",
+      "worker_oel_ratio": 2769.9502693796717,
+      "frs_id": "110018925957",
+      "facility_name": "FORMOSA PLASTICS CORP TEXAS",
+      "city": "POINT COMFORT",
+      "state": "TX",
+      "emission_rate": 0.18947147038337142,
+      "stack_tier": "PSTK",
+      "stacks_evaluated": 3,
+      "sccs": [
+       "30101837",
+       "30101839",
+       "30101872"
+      ],
+      "industry": "Plastics Material and Resin Manufacturing",
+      "notes": [
+       "FRS ID 110018925957 has no EIS registration, and no other FRS record of the same site was found",
+       "the stack is a default for this kind of process (PSTK), not the facility's own",
+       "the worst case is the screening maximum between 100 m and 10 km; it may fall where no one lives"
+      ]
+     },
+     {
+      "concentration_worst": {
+       "low": 0.9512872597753408,
+       "high": 12.769218863069534,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "concentration_representative": {
+       "low": 0.6102464899742751,
+       "high": 2.9295077335269997,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "hq_worst": {
+       "low": 0.009121932627982719,
+       "high": 0.1224445644403928,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "hq_representative": {
+       "low": 0.005851678670986199,
+       "high": 0.02809117004751917,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "cancer_risk_worst": {
+       "low": 2.9815688361177804e-06,
+       "high": 4.00218804913741e-05,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "cancer_risk_representative": {
+       "low": 1.912662971316632e-06,
+       "high": 9.181799581246268e-06,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "weather_source": "Open-Meteo era5 reanalysis 2024",
+      "residents": 524,
+      "radius_km": null,
+      "worker_risk_tier": "high",
+      "worker_oel_ratio": 2769.9502693796717,
+      "frs_id": "110000743839",
+      "facility_name": "SHINTECH INC",
+      "city": "FREEPORT",
+      "state": "TX",
+      "emission_rate": 0.1651636600935439,
+      "stack_tier": "PSTK",
+      "stacks_evaluated": 3,
+      "sccs": [
+       "30101837",
+       "30101839",
+       "30101872"
+      ],
+      "industry": "Plastics Material and Resin Manufacturing",
+      "notes": [
+       "FRS ID 110000743839 has no EIS registration, and no other FRS record of the same site was found",
+       "the stack is a default for this kind of process (PSTK), not the facility's own",
+       "the worst case is the screening maximum between 100 m and 10 km; it may fall where no one lives"
+      ]
+     },
+     {
+      "concentration_worst": {
+       "low": 0.006142614193517445,
+       "high": 11.679111047155208,
+       "low_stack": 7,
+       "high_stack": 1
+      },
+      "concentration_representative": {
+       "low": 0.0011887636273391193,
+       "high": 0.5260143398088274,
+       "low_stack": 7,
+       "high_stack": 1
+      },
+      "hq_worst": {
+       "low": 5.890177993783851e-05,
+       "high": 0.11199147579463897,
+       "low_stack": 7,
+       "high_stack": 1
+      },
+      "hq_representative": {
+       "low": 1.1399103275854569e-05,
+       "high": 0.005043973121454509,
+       "low_stack": 7,
+       "high_stack": 1
+      },
+      "cancer_risk_worst": {
+       "low": 1.9252467499682073e-08,
+       "high": 3.660521380259057e-05,
+       "low_stack": 7,
+       "high_stack": 1
+      },
+      "cancer_risk_representative": {
+       "low": 3.7258783278793225e-09,
+       "high": 1.6486586431268453e-06,
+       "low_stack": 7,
+       "high_stack": 1
+      },
+      "weather_source": "Open-Meteo era5 reanalysis 2024",
+      "residents": 1129,
+      "radius_km": null,
+      "worker_risk_tier": "high",
+      "worker_oel_ratio": 2769.9502693796717,
+      "frs_id": "110070228618",
+      "facility_name": "WESTLAKE CHEMICALS & VINYLS LLC",
+      "city": "WESTLAKE",
+      "state": "LA",
+      "emission_rate": 0.0028907595929287167,
+      "stack_tier": "NEI",
+      "stacks_evaluated": 10,
+      "sccs": [],
+      "industry": "Petrochemical Manufacturing",
+      "notes": [
+       "16 distinct stack combinations found (0 near-identical merged); the 10 lowest stacks are returned, 6 taller omitted",
+       "the worst case is the screening maximum between 100 m and 10 km; it may fall where no one lives"
+      ]
+     },
+     {
+      "concentration_worst": {
+       "low": 0.6914276561521575,
+       "high": 9.257767466753622,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "concentration_representative": {
+       "low": 0.44573261174407885,
+       "high": 3.1220292329508075,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "hq_worst": {
+       "low": 0.006630128209678222,
+       "high": 0.08877311269489774,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "hq_representative": {
+       "low": 0.004274148331792536,
+       "high": 0.029937266617336505,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "cancer_risk_worst": {
+       "low": 2.167104763391968e-06,
+       "high": 2.901612597798943e-05,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "cancer_risk_representative": {
+       "low": 1.397035911877332e-06,
+       "high": 9.785209431495133e-06,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "weather_source": "Open-Meteo era5 reanalysis 2024",
+      "residents": 512,
+      "radius_km": null,
+      "worker_risk_tier": "high",
+      "worker_oel_ratio": 2769.9502693796717,
+      "frs_id": "110000613747",
+      "facility_name": "WESTLAKE CHEMICALS & VINYLS LLC",
+      "city": "PLAQUEMINE",
+      "state": "LA",
+      "emission_rate": 0.12061851898845766,
+      "stack_tier": "PSTK",
+      "stacks_evaluated": 3,
+      "sccs": [
+       "30101837",
+       "30101839",
+       "30101872"
+      ],
+      "industry": "Plastics Material and Resin Manufacturing",
+      "notes": [
+       "FRS ID 110000613747 has no EIS registration, and no other FRS record of the same site was found",
+       "the stack is a default for this kind of process (PSTK), not the facility's own",
+       "the worst case is the screening maximum between 100 m and 10 km; it may fall where no one lives"
+      ]
+     },
+     {
+      "concentration_worst": {
+       "low": 0.1513167077227634,
+       "high": 8.412121367358392,
+       "low_stack": 3,
+       "high_stack": 2
+      },
+      "concentration_representative": {
+       "low": 0.1427507494220194,
+       "high": 0.33269696994983183,
+       "low_stack": 3,
+       "high_stack": 2
+      },
+      "hq_worst": {
+       "low": 0.0014509821288484163,
+       "high": 0.08066417749521745,
+       "low_stack": 3,
+       "high_stack": 2
+      },
+      "hq_representative": {
+       "low": 0.0013688428026768984,
+       "high": 0.003190244917327155,
+       "low_stack": 3,
+       "high_stack": 2
+      },
+      "cancer_risk_worst": {
+       "low": 4.7426387297216807e-07,
+       "high": 2.6365662587008222e-05,
+       "low_stack": 3,
+       "high_stack": 2
+      },
+      "cancer_risk_representative": {
+       "low": 4.474160475035348e-07,
+       "high": 1.0427543386920756e-06,
+       "low_stack": 3,
+       "high_stack": 2
+      },
+      "weather_source": "Open-Meteo era5 reanalysis 2024",
+      "residents": 226,
+      "radius_km": null,
+      "worker_risk_tier": "high",
+      "worker_oel_ratio": 2769.9502693796717,
+      "frs_id": "110066943605",
+      "facility_name": "FREEPORT_OLIN BC",
+      "city": "FREEPORT",
+      "state": "TX",
+      "emission_rate": 0.002042431397133435,
+      "stack_tier": "NEI",
+      "stacks_evaluated": 10,
+      "sccs": [],
+      "industry": "All Other Basic Organic Chemical Manufacturing",
+      "notes": [
+       "1 NEI stack row(s) were ignored: a value was missing or implausible",
+       "103 distinct stack combinations found (1 near-identical merged); the 10 lowest stacks are returned, 93 taller omitted",
+       "the worst case is the screening maximum between 100 m and 10 km; it may fall where no one lives"
+      ]
+     },
+     {
+      "concentration_worst": {
+       "low": 0.15663524079883506,
+       "high": 8.05667961944184,
+       "low_stack": 10,
+       "high_stack": 3
+      },
+      "concentration_representative": {
+       "low": 0.0458532653526025,
+       "high": 0.35170569929854667,
+       "low_stack": 10,
+       "high_stack": 3
+      },
+      "hq_worst": {
+       "low": 0.0015019817610847197,
+       "high": 0.07725583196725053,
+       "low_stack": 10,
+       "high_stack": 3
+      },
+      "hq_representative": {
+       "low": 0.00043968884584687327,
+       "high": 0.003372520404232639,
+       "low_stack": 10,
+       "high_stack": 3
+      },
+      "cancer_risk_worst": {
+       "low": 4.909334670516913e-07,
+       "high": 2.5251620505867028e-05,
+       "low_stack": 10,
+       "high_stack": 3
+      },
+      "cancer_risk_representative": {
+       "low": 1.4371543989966375e-07,
+       "high": 1.102332383554897e-06,
+       "low_stack": 10,
+       "high_stack": 3
+      },
+      "weather_source": "Open-Meteo era5 reanalysis 2024",
+      "residents": 491,
+      "radius_km": null,
+      "worker_risk_tier": "high",
+      "worker_oel_ratio": 2769.9502693796717,
+      "frs_id": "110043782788",
+      "facility_name": "OXY VINYLS LP DEER PARK CAUSTIC",
+      "city": "DEER PARK",
+      "state": "TX",
+      "emission_rate": 0.0019561314789446984,
+      "stack_tier": "NEI",
+      "stacks_evaluated": 10,
+      "sccs": [],
+      "industry": "Plastics Material and Resin Manufacturing",
+      "notes": [
+       "29 distinct stack combinations found (3 near-identical merged); the 10 lowest stacks are returned, 19 taller omitted",
+       "the worst case is the screening maximum between 100 m and 10 km; it may fall where no one lives"
+      ]
+     },
+     {
+      "concentration_worst": {
+       "low": 0.0900203506219167,
+       "high": 6.6043777219716935,
+       "low_stack": 10,
+       "high_stack": 1
+      },
+      "concentration_representative": {
+       "low": 0.047440061302032904,
+       "high": 2.1229015748795694,
+       "low_stack": 10,
+       "high_stack": 1
+      },
+      "hq_worst": {
+       "low": 0.0008632088415800231,
+       "high": 0.06332964938876966,
+       "low_stack": 10,
+       "high_stack": 1
+      },
+      "hq_representative": {
+       "low": 0.00045490469741675386,
+       "high": 0.020356590444050665,
+       "low_stack": 10,
+       "high_stack": 1
+      },
+      "cancer_risk_worst": {
+       "low": 2.821459756478704e-07,
+       "high": 2.0699748257357858e-05,
+       "low_stack": 10,
+       "high_stack": 1
+      },
+      "cancer_risk_representative": {
+       "low": 1.4868884966993326e-07,
+       "high": 6.653696990855418e-06,
+       "low_stack": 10,
+       "high_stack": 1
+      },
+      "weather_source": "Open-Meteo era5 reanalysis 2024",
+      "residents": 114,
+      "radius_km": null,
+      "worker_risk_tier": "high",
+      "worker_oel_ratio": 2769.9502693796717,
+      "frs_id": "110012665990",
+      "facility_name": "WESTLAKE CHEMICALS & VINYLS LLC",
+      "city": "ABERDEEN",
+      "state": "MS",
+      "emission_rate": 0.06542972130676053,
+      "stack_tier": "NEI",
+      "stacks_evaluated": 10,
+      "sccs": [],
+      "industry": "Plastics Material and Resin Manufacturing",
+      "notes": [
+       "11 distinct stack combinations found (0 near-identical merged); the 10 lowest stacks are returned, 1 taller omitted",
+       "the worst case is the screening maximum between 100 m and 10 km; it may fall where no one lives"
+      ]
+     },
+     {
+      "concentration_worst": {
+       "low": 0.16224484081558044,
+       "high": 6.499688213591029,
+       "low_stack": 9,
+       "high_stack": 1
+      },
+      "concentration_representative": {
+       "low": 0.07618688206206199,
+       "high": 3.2249179152678638,
+       "low_stack": 4,
+       "high_stack": 1
+      },
+      "hq_worst": {
+       "low": 0.0015557724461767986,
+       "high": 0.062325777390598906,
+       "low_stack": 9,
+       "high_stack": 1
+      },
+      "hq_representative": {
+       "low": 0.0007305591430608684,
+       "high": 0.030923870420376774,
+       "low_stack": 4,
+       "high_stack": 1
+      },
+      "cancer_risk_worst": {
+       "low": 5.085153366932164e-07,
+       "high": 2.0371625524241473e-05,
+       "low_stack": 9,
+       "high_stack": 1
+      },
+      "cancer_risk_representative": {
+       "low": 2.387884741890381e-07,
+       "high": 1.0107687931688867e-05,
+       "low_stack": 4,
+       "high_stack": 1
+      },
+      "weather_source": "Open-Meteo era5 reanalysis 2024",
+      "residents": 123,
+      "radius_km": null,
+      "worker_risk_tier": "high",
+      "worker_oel_ratio": 2769.9502693796717,
+      "frs_id": "110070725501",
+      "facility_name": "OCCIDENTAL CHEMICAL CORP",
+      "city": "GREGORY",
+      "state": "TX",
+      "emission_rate": 0.02847897300228311,
+      "stack_tier": "NEI",
+      "stacks_evaluated": 10,
+      "sccs": [],
+      "industry": "All Other Basic Organic Chemical Manufacturing",
+      "notes": [
+       "1 NEI stack row(s) were ignored: a value was missing or implausible",
+       "36 distinct stack combinations found (0 near-identical merged); the 10 lowest stacks are returned, 26 taller omitted",
+       "the worst case is the screening maximum between 100 m and 10 km; it may fall where no one lives"
+      ]
+     },
+     {
+      "concentration_worst": {
+       "low": 0.4410614103233458,
+       "high": 5.901216482160871,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "concentration_representative": {
+       "low": 0.2846169452090249,
+       "high": 2.0529674843196726,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "hq_worst": {
+       "low": 0.0042293559894019455,
+       "high": 0.05658700736318643,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "hq_representative": {
+       "low": 0.0027292035841961293,
+       "high": 0.019685989575668094,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "cancer_risk_worst": {
+       "low": 1.3823952148216646e-06,
+       "high": 1.849586754956722e-05,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "cancer_risk_representative": {
+       "low": 8.920596858058206e-07,
+       "high": 6.434506307018371e-06,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "weather_source": "Open-Meteo era5 reanalysis 2024",
+      "residents": 1390,
+      "radius_km": null,
+      "worker_risk_tier": "high",
+      "worker_oel_ratio": 2769.9502693796717,
+      "frs_id": "110000597444",
+      "facility_name": "FORMOSA PLASTICS CORP LOUISIANA",
+      "city": "BATON ROUGE",
+      "state": "LA",
+      "emission_rate": 0.07705144362284375,
+      "stack_tier": "PSTK",
+      "stacks_evaluated": 3,
+      "sccs": [
+       "30101837",
+       "30101839",
+       "30101872"
+      ],
+      "industry": "Plastics Material and Resin Manufacturing",
+      "notes": [
+       "FRS ID 110000597444 has no EIS registration, and no other FRS record of the same site was found",
+       "the stack is a default for this kind of process (PSTK), not the facility's own",
+       "the worst case is the screening maximum between 100 m and 10 km; it may fall where no one lives"
+      ]
+     },
+     {
+      "concentration_worst": {
+       "low": 0.25709699462575375,
+       "high": 4.907235276888215,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "concentration_representative": {
+       "low": 0.22451391196791953,
+       "high": 0.30992711614145496,
+       "low_stack": 7,
+       "high_stack": 1
+      },
+      "hq_worst": {
+       "low": 0.0024653136470962687,
+       "high": 0.04705568073728425,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "hq_representative": {
+       "low": 0.002152873128459502,
+       "high": 0.002971903853411212,
+       "low_stack": 7,
+       "high_stack": 1
+      },
+      "cancer_risk_worst": {
+       "low": 8.05805374936609e-07,
+       "high": 1.5380485360986623e-05,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "cancer_risk_representative": {
+       "low": 7.036819597021917e-07,
+       "high": 9.71388002372122e-07,
+       "low_stack": 7,
+       "high_stack": 1
+      },
+      "weather_source": "Open-Meteo era5 reanalysis 2024",
+      "residents": 6713,
+      "radius_km": null,
+      "worker_risk_tier": "high",
+      "worker_oel_ratio": 2769.9502693796717,
+      "frs_id": "110000741500",
+      "facility_name": "LUBRIZOL ADVANCED MATERIALS INC",
+      "city": "LOUISVILLE",
+      "state": "KY",
+      "emission_rate": 0.0015102485683028922,
+      "stack_tier": "NEI",
+      "stacks_evaluated": 10,
+      "sccs": [],
+      "industry": "Plastics Material and Resin Manufacturing",
+      "notes": [
+       "3 NEI stack row(s) were ignored: a value was missing or implausible",
+       "88 distinct stack combinations found (1 near-identical merged); the 10 lowest stacks are returned, 78 taller omitted",
+       "the worst case is the screening maximum between 100 m and 10 km; it may fall where no one lives"
+      ]
+     },
+     {
+      "concentration_worst": {
+       "low": 0.21690491725864214,
+       "high": 2.8667067812332507,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "concentration_representative": {
+       "low": 0.14037172489000882,
+       "high": 0.9807552568320776,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "hq_worst": {
+       "low": 0.0020799101654938286,
+       "high": 0.02748896913511336,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "hq_representative": {
+       "low": 0.0013460302386713175,
+       "high": 0.009404502462773346,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "cancer_risk_worst": {
+       "low": 6.798334940928401e-07,
+       "high": 8.98496591159134e-06,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "cancer_risk_representative": {
+       "low": 4.3995959801142494e-07,
+       "high": 3.0739288049750596e-06,
+       "low_stack": 3,
+       "high_stack": 1
+      },
+      "weather_source": "Open-Meteo era5 reanalysis 2024",
+      "residents": 595,
+      "radius_km": null,
+      "worker_risk_tier": "high",
+      "worker_oel_ratio": 2769.9502693796717,
+      "frs_id": "110070212279",
+      "facility_name": "OXY VINYLS LP",
+      "city": "PEDRICKTOWN",
+      "state": "NJ",
+      "emission_rate": 0.03890687978342213,
+      "stack_tier": "PSTK",
+      "stacks_evaluated": 3,
+      "sccs": [
+       "30101837",
+       "30101839",
+       "30101872"
+      ],
+      "industry": "Plastics Material and Resin Manufacturing",
+      "notes": [
+       "the NEI has no usable stack for EIS ID 12804811",
+       "the stack is a default for this kind of process (PSTK), not the facility's own",
+       "the worst case is the screening maximum between 100 m and 10 km; it may fall where no one lives"
+      ]
+     },
+     {
+      "concentration_worst": {
+       "low": 1.8971887605521784,
+       "high": 1.8971887605521784,
+       "low_stack": 1,
+       "high_stack": 1
+      },
+      "concentration_representative": {
+       "low": 1.158100702653309,
+       "high": 1.158100702653309,
+       "low_stack": 1,
+       "high_stack": 1
+      },
+      "hq_worst": {
+       "low": 0.01819222099159623,
+       "high": 0.01819222099159623,
+       "low_stack": 1,
+       "high_stack": 1
+      },
+      "hq_representative": {
+       "low": 0.011105075230922141,
+       "high": 0.011105075230922141,
+       "low_stack": 1,
+       "high_stack": 1
+      },
+      "cancer_risk_worst": {
+       "low": 5.946257375538883e-06,
+       "high": 5.946257375538883e-06,
+       "low_stack": 1,
+       "high_stack": 1
+      },
+      "cancer_risk_representative": {
+       "low": 3.6297731611928375e-06,
+       "high": 3.6297731611928375e-06,
+       "low_stack": 1,
+       "high_stack": 1
+      },
+      "weather_source": "Open-Meteo era5 reanalysis 2024",
+      "residents": 294,
+      "radius_km": null,
+      "worker_risk_tier": "high",
+      "worker_oel_ratio": 2769.9502693796717,
+      "frs_id": "110041022274",
+      "facility_name": "MEXICHEM SPECIALTY RESINS INC",
+      "city": "PEDRICKTOWN",
+      "state": "NJ",
+      "emission_rate": 0.20289110766172,
+      "stack_tier": "NEI",
+      "stacks_evaluated": 1,
+      "sccs": [],
+      "industry": "Plastics Material and Resin Manufacturing",
+      "notes": [
+       "the worst case is the screening maximum between 100 m and 10 km; it may fall where no one lives"
+      ]
+     },
+     {
+      "concentration_worst": {
+       "low": 0.06602242031016736,
+       "high": 0.3321692629177568,
+       "low_stack": 1,
+       "high_stack": 2
+      },
+      "concentration_representative": {
+       "low": 0.040962784110469545,
+       "high": 0.1895802425762989,
+       "low_stack": 1,
+       "high_stack": 2
+      },
+      "hq_worst": {
+       "low": 0.0006330917016043445,
+       "high": 0.0031851847129099964,
+       "low_stack": 1,
+       "high_stack": 2
+      },
+      "hq_representative": {
+       "low": 0.00039279382023737916,
+       "high": 0.001817892737033003,
+       "low_stack": 1,
+       "high_stack": 2
+      },
+      "cancer_risk_worst": {
+       "low": 2.0693054475296293e-07,
+       "high": 1.0411003747340103e-06,
+       "low_stack": 1,
+       "high_stack": 2
+      },
+      "cancer_risk_representative": {
+       "low": 1.2838746581473194e-07,
+       "high": 5.941912260473588e-07,
+       "low_stack": 1,
+       "high_stack": 2
+      },
+      "weather_source": "Open-Meteo era5 reanalysis 2024",
+      "residents": 211,
+      "radius_km": null,
+      "worker_risk_tier": "high",
+      "worker_oel_ratio": 2769.9502693796717,
+      "frs_id": "110027373072",
+      "facility_name": "WESTLAKE VINYLS INC",
+      "city": "CALVERT CITY",
+      "state": "KY",
+      "emission_rate": 0.021273505166311518,
+      "stack_tier": "PSTK",
+      "stacks_evaluated": 3,
+      "sccs": [
+       "30113299",
+       "30102499",
+       "30199998"
+      ],
+      "industry": "All Other Basic Organic Chemical Manufacturing",
+      "notes": [
+       "FRS ID 110027373072 has no EIS registration, and no other FRS record of the same site was found",
+       "the stack is a default for this kind of process (PSTK), not the facility's own",
+       "the worst case is the screening maximum between 100 m and 10 km; it may fall where no one lives"
+      ]
+     }
+    ],
+    "worst_case_only_count": 0,
+    "worst_case_only": [],
+    "not_assessed": [],
+    "worker_only_count": 2,
+    "worker_only_left_out": 0,
+    "worker_only_highest": {
+     "frs_id": "110056953765",
+     "facility_name": "BASF CORP - HANNIBAL SITE",
+     "city": "PALMYRA",
+     "state": "MO",
+     "fugitive_release_kg_per_year": 127.91304834000002,
+     "worker_risk_tier": "high",
+     "worker_twa_worst_mg_m3": 424838.99837111525
+    },
+    "note": "All 33 facilities were screened: 12 cannot reach HQ 0.1 or cancer risk 1e-06 even in the worst case (emission rate from TRI; EPA AirToxScreen global default stack; EPA SCREEN3 worst-case weather over its 54 stability and wind combinations; a person at the maximum) and were left out; 21 were fully assessed and 0 kept at the worst case with their own stacks. The community screen does not apply to workers, so the screened-out facilities' workers were still screened (12 high); the highest worker value is DAIKIN AMERICA INC (110045447469, worker band: high). 2 facilities report only a fugitive air release (no stack release): worker result only, no community result, and not among the screened or assessed facilities; the highest worker value is BASF CORP - HANNIBAL SITE (110056953765, worker band: high).",
+    "warnings": [],
+    "drivers": [
+     {
+      "pathway_key": "community_inhalation",
+      "quantity": "hq",
+      "frs_id": "110000572675",
+      "facility_name": "SHINTECH PLAQUEMINE PLANT",
+      "stack_number": 5,
+      "value": 4.954126794689899
+     },
+     {
+      "pathway_key": "community_inhalation",
+      "quantity": "cancer_risk",
+      "frs_id": "110000572675",
+      "facility_name": "SHINTECH PLAQUEMINE PLANT",
+      "stack_number": 5,
+      "value": 0.0016192917294643558
+     },
+     {
+      "pathway_key": "worker_inhalation",
+      "quantity": "oel_ratio",
+      "frs_id": "110000572675",
+      "facility_name": "SHINTECH PLAQUEMINE PLANT",
+      "stack_number": null,
+      "value": 166197.0161627803
+     },
+     {
+      "pathway_key": "worker_inhalation",
+      "quantity": "hq",
+      "frs_id": "110000572675",
+      "facility_name": "SHINTECH PLAQUEMINE PLANT",
+      "stack_number": null,
+      "value": 1454928.0766134083
+     },
+     {
+      "pathway_key": "worker_inhalation",
+      "quantity": "cancer_risk",
+      "frs_id": "110000572675",
+      "facility_name": "SHINTECH PLAQUEMINE PLANT",
+      "stack_number": null,
+      "value": 656.5829268819484
+     }
+    ]
+   }
+  }
+ ],
+ "fetch_chemical_properties": [
+  {
+   "args": {
+    "cas_number": "75-01-4"
+   },
+   "output": {
+    "preferred_name": "Vinyl chloride",
+    "molecular_weight": 62.5,
+    "vapor_pressure": 2577.0,
+    "density": 0.9103,
+    "rfd": 0.003,
+    "rfc": 0.1,
+    "sf": 1.5,
+    "iur": 8.8e-06,
+    "sources": {
+     "preferred_name": "CompTox",
+     "molecular_weight": "CompTox",
+     "vapor_pressure": "experimental",
+     "density": "experimental",
+     "rfd": "EPA IRIS: IRIS (CompTox IRIS endpoint, last significant revision 2000-08-07)",
+     "rfc": "EPA IRIS: IRIS (CompTox IRIS endpoint, last significant revision 2000-08-07)",
+     "sf": "EPA IRIS: IRIS",
+     "iur": "EPA IRIS: IRIS"
+    },
+    "toxicity_details": {
+     "rfd": {
+      "source": "EPA IRIS: IRIS (CompTox IRIS endpoint, last significant revision 2000-08-07)",
+      "exposure_route": "oral",
+      "route_reported": "oral",
+      "endpoint": "Hepatic",
+      "assessment": "non-cancer"
+     },
+     "rfc": {
+      "source": "EPA IRIS: IRIS (CompTox IRIS endpoint, last significant revision 2000-08-07)",
+      "exposure_route": "inhalation",
+      "route_reported": "inhalation",
+      "endpoint": "Hepatic",
+      "assessment": "non-cancer"
+     },
+     "sf": {
+      "source": "EPA IRIS: IRIS",
+      "exposure_route": "oral",
+      "route_reported": "oral",
+      "endpoint": "total of liver angiosarcoma, hepatocellular carcinoma, and neoplastic nodules",
+      "assessment": "cancer"
+     },
+     "iur": {
+      "source": "EPA IRIS: IRIS",
+      "exposure_route": "inhalation",
+      "route_reported": "inhalation",
+      "endpoint": "liver angiosarcomas, angiomas, hepatomas, and neoplastic nodules",
+      "assessment": "cancer"
+     }
+    },
+    "warnings": [],
+    "missing": [],
+    "occupational_limits": {
+     "oel_twa_mg_m3": 2.556237218813906,
+     "oel_source": "ACGIH TLV-TWA (PubChem)",
+     "limits": {
+      "acgih_tlv": {
+       "value": 2.556237218813906,
+       "programme": "ACGIH TLV-TWA",
+       "converted_from_ppm": true,
+       "statements": 2
+      },
+      "pac_1": {
+       "value": 639.0593047034765,
+       "programme": "PAC-1",
+       "converted_from_ppm": true,
+       "statements": 1
+      },
+      "pac_2": {
+       "value": 3067.4846625766872,
+       "programme": "PAC-2",
+       "converted_from_ppm": true,
+       "statements": 1
+      },
+      "pac_3": {
+       "value": 12269.938650306749,
+       "programme": "PAC-3",
+       "converted_from_ppm": true,
+       "statements": 1
+      }
+     },
+     "reasons": {
+      "osha_pel": "PubChem has no usable OSHA PEL-TWA statement",
+      "niosh_rel": "PubChem has no usable NIOSH REL-TWA statement",
+      "acgih_tlv_stel": "PubChem has no usable ACGIH TLV-STEL statement",
+      "niosh_idlh": "PubChem has no usable NIOSH IDLH statement"
+     },
+     "warnings": []
+    }
+   }
+  }
+ ],
+ "fetch_stack_parameters_from_nei": [
+  {
+   "args": {
+    "eis_ids": [
+     "5746611"
+    ],
+    "frs_id": "110070725501"
+   },
+   "output": {
+    "eis_ids": [
+     "5746611"
+    ],
+    "candidates": [
+     {
+      "stack_height": 0.9143999999999999,
+      "stack_diameter": 0.15239999999999998,
+      "exit_velocity": 9.143999999999998,
+      "exit_temperature": 533.15,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 1.8287999999999998,
+      "stack_diameter": 0.15239999999999998,
+      "exit_velocity": 9.143999999999998,
+      "exit_temperature": 533.15,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 3.0479999999999996,
+      "stack_diameter": 3.0175199999999998,
+      "exit_velocity": 0.06595872,
+      "exit_temperature": 1255.3722222222223,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 3.3527999999999993,
+      "stack_diameter": 0.39624,
+      "exit_velocity": 42.3672,
+      "exit_temperature": 790.9277777777778,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 4.267199999999999,
+      "stack_diameter": 0.21640799999999996,
+      "exit_velocity": 18.287999999999997,
+      "exit_temperature": 755.3722222222223,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 4.267199999999999,
+      "stack_diameter": 0.15239999999999998,
+      "exit_velocity": 30.784799999999997,
+      "exit_temperature": 785.9277777777778,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 4.571999999999999,
+      "stack_diameter": 0.15239999999999998,
+      "exit_velocity": 9.143999999999998,
+      "exit_temperature": 533.15,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 4.571999999999999,
+      "stack_diameter": 0.25298399999999993,
+      "exit_velocity": 45.71999999999999,
+      "exit_temperature": 310.9277777777778,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 4.571999999999999,
+      "stack_diameter": 0.3657599999999999,
+      "exit_velocity": 47.85359999999999,
+      "exit_temperature": 677.5944444444444,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 5.1815999999999995,
+      "stack_diameter": 0.18287999999999996,
+      "exit_velocity": 10.668,
+      "exit_temperature": 547.0388888888889,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     }
+    ],
+    "total_candidates": 36,
+    "warnings": [
+     "1 NEI stack row(s) were ignored: a value was missing or implausible",
+     "36 distinct stack combinations found (0 near-identical merged); the 10 lowest stacks are returned, 26 taller omitted"
+    ]
+   }
+  },
+  {
+   "args": {
+    "eis_ids": [
+     "4926411"
+    ],
+    "frs_id": "110000462605"
+   },
+   "output": {
+    "eis_ids": [
+     "4926411"
+    ],
+    "candidates": [
+     {
+      "stack_height": 1.5239999999999998,
+      "stack_diameter": 0.07619999999999999,
+      "exit_velocity": 91.43999999999998,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 1.8287999999999998,
+      "stack_diameter": 0.07619999999999999,
+      "exit_velocity": 0.030479999999999997,
+      "exit_temperature": 293.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 3.0479999999999996,
+      "stack_diameter": 0.15239999999999998,
+      "exit_velocity": 16.4592,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 3.0479999999999996,
+      "stack_diameter": 0.15239999999999998,
+      "exit_velocity": 36.27119999999999,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 6.705599999999999,
+      "stack_diameter": 3.6575999999999995,
+      "exit_velocity": 4.571999999999999,
+      "exit_temperature": 302.59444444444443,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 6.705599999999999,
+      "stack_diameter": 0.42671999999999993,
+      "exit_velocity": 23.774399999999996,
+      "exit_temperature": 352.59444444444443,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 9.753599999999999,
+      "stack_diameter": 3.6575999999999995,
+      "exit_velocity": 6.095999999999999,
+      "exit_temperature": 297.0388888888889,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 10.363199999999999,
+      "stack_diameter": 1.58496,
+      "exit_velocity": 3.9623999999999997,
+      "exit_temperature": 449.8166666666667,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 11.582399999999998,
+      "stack_diameter": 0.40538399999999997,
+      "exit_velocity": 3.8709599999999993,
+      "exit_temperature": 310.9277777777778,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 11.582399999999998,
+      "stack_diameter": 0.40538399999999997,
+      "exit_velocity": 9.448799999999999,
+      "exit_temperature": 310.9277777777778,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     }
+    ],
+    "total_candidates": 25,
+    "warnings": [
+     "1 NEI stack row(s) were ignored: a value was missing or implausible",
+     "25 distinct stack combinations found (0 near-identical merged); the 10 lowest stacks are returned, 15 taller omitted"
+    ]
+   }
+  },
+  {
+   "args": {
+    "eis_ids": [
+     "4981011",
+     "4778211"
+    ],
+    "frs_id": "110043782788"
+   },
+   "output": {
+    "eis_ids": [
+     "4981011",
+     "4778211"
+    ],
+    "candidates": [
+     {
+      "stack_height": 1.2191999999999998,
+      "stack_diameter": 0.06095999999999999,
+      "exit_velocity": 0.30479999999999996,
+      "exit_temperature": 297.0388888888889,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 1.5239999999999998,
+      "stack_diameter": 0.09143999999999998,
+      "exit_velocity": 91.43999999999998,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 2.4383999999999997,
+      "stack_diameter": 0.9143999999999999,
+      "exit_velocity": 0.030479999999999997,
+      "exit_temperature": 293.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 3.0479999999999996,
+      "stack_diameter": 0.9143999999999999,
+      "exit_velocity": 0.030479999999999997,
+      "exit_temperature": 297.0388888888889,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 7.924799999999999,
+      "stack_diameter": 0.24383999999999997,
+      "exit_velocity": 0.030479999999999997,
+      "exit_temperature": 358.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 8.2296,
+      "stack_diameter": 0.9143999999999999,
+      "exit_velocity": 0.030479999999999997,
+      "exit_temperature": 299.81666666666666,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 8.2296,
+      "stack_diameter": 3.6575999999999995,
+      "exit_velocity": 11.277599999999998,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 9.143999999999998,
+      "stack_diameter": 0.15239999999999998,
+      "exit_velocity": 0.030479999999999997,
+      "exit_temperature": 335.9277777777778,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 10.668,
+      "stack_diameter": 0.25298399999999993,
+      "exit_velocity": 11.277599999999998,
+      "exit_temperature": 298.7055555555556,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 12.191999999999998,
+      "stack_diameter": 0.10058399999999999,
+      "exit_velocity": 5.1815999999999995,
+      "exit_temperature": 310.9277777777778,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     }
+    ],
+    "total_candidates": 29,
+    "warnings": [
+     "29 distinct stack combinations found (3 near-identical merged); the 10 lowest stacks are returned, 19 taller omitted"
+    ]
+   }
+  },
+  {
+   "args": {
+    "eis_ids": [
+     "4621011"
+    ],
+    "frs_id": "110018402780"
+   },
+   "output": {
+    "eis_ids": [
+     "4621011"
+    ],
+    "candidates": [
+     {
+      "stack_height": 9.143999999999998,
+      "stack_diameter": 0.6095999999999999,
+      "exit_velocity": 8.009077199999998,
+      "exit_temperature": 358.7055555555556,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 12.191999999999998,
+      "stack_diameter": 0.06095999999999999,
+      "exit_velocity": 4.8490632,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 12.191999999999998,
+      "stack_diameter": 0.15239999999999998,
+      "exit_velocity": 25.861792319999996,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 12.191999999999998,
+      "stack_diameter": 0.15239999999999998,
+      "exit_velocity": 25.861792319999996,
+      "exit_temperature": 310.9277777777778,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 12.496799999999999,
+      "stack_diameter": 1.3716,
+      "exit_velocity": 11.741566559999997,
+      "exit_temperature": 396.48333333333335,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 12.496799999999999,
+      "stack_diameter": 1.2191999999999998,
+      "exit_velocity": 14.998628879999998,
+      "exit_temperature": 392.0388888888889,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 15.239999999999998,
+      "stack_diameter": 0.8229599999999999,
+      "exit_velocity": 20.398526639999996,
+      "exit_temperature": 333.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 17.678399999999996,
+      "stack_diameter": 1.03632,
+      "exit_velocity": 8.422965119999999,
+      "exit_temperature": 497.59444444444443,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 20.726399999999998,
+      "stack_diameter": 0.652272,
+      "exit_velocity": 9.580412639999999,
+      "exit_temperature": 333.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 21.0312,
+      "stack_diameter": 0.512064,
+      "exit_velocity": 25.198395119999994,
+      "exit_temperature": 338.7055555555556,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     }
+    ],
+    "total_candidates": 13,
+    "warnings": [
+     "13 distinct stack combinations found (0 near-identical merged); the 10 lowest stacks are returned, 3 taller omitted"
+    ]
+   }
+  },
+  {
+   "args": {
+    "eis_ids": [
+     "6693811"
+    ],
+    "frs_id": "110070827819"
+   },
+   "output": {
+    "eis_ids": [
+     "6693811"
+    ],
+    "candidates": [],
+    "total_candidates": 0,
+    "warnings": [
+     "the NEI table has no stack data for EIS ID 6693811",
+     "no NEI stack values were found; use fetch_stack_parameters_from_scc instead"
+    ]
+   }
+  },
+  {
+   "args": {
+    "eis_ids": [
+     "7931011"
+    ],
+    "frs_id": "110071162323"
+   },
+   "output": {
+    "eis_ids": [
+     "7931011"
+    ],
+    "candidates": [
+     {
+      "stack_height": 3.0479999999999996,
+      "stack_diameter": 0.24383999999999997,
+      "exit_velocity": 8.961119999999998,
+      "exit_temperature": 322.0388888888889,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 3.0479999999999996,
+      "stack_diameter": 0.30479999999999996,
+      "exit_velocity": 14.569439999999997,
+      "exit_temperature": 372.0388888888889,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 3.0479999999999996,
+      "stack_diameter": 0.30479999999999996,
+      "exit_velocity": 20.33016,
+      "exit_temperature": 322.0388888888889,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 3.0479999999999996,
+      "stack_diameter": 0.12710159999999998,
+      "exit_velocity": 24.383999999999997,
+      "exit_temperature": 685.9277777777778,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 3.6575999999999995,
+      "stack_diameter": 0.25298399999999993,
+      "exit_velocity": 16.498824,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 3.9623999999999997,
+      "stack_diameter": 0.15239999999999998,
+      "exit_velocity": 27.169871999999998,
+      "exit_temperature": 748.15,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 4.419599999999999,
+      "stack_diameter": 0.10149839999999999,
+      "exit_velocity": 24.383999999999997,
+      "exit_temperature": 685.9277777777778,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 4.571999999999999,
+      "stack_diameter": 0.20330159999999997,
+      "exit_velocity": 24.383999999999997,
+      "exit_temperature": 685.9277777777778,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 11.582399999999998,
+      "stack_diameter": 0.21335999999999997,
+      "exit_velocity": 14.38656,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 12.496799999999999,
+      "stack_diameter": 0.21335999999999997,
+      "exit_velocity": 17.495519999999996,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     }
+    ],
+    "total_candidates": 17,
+    "warnings": [
+     "17 distinct stack combinations found (1 near-identical merged); the 10 lowest stacks are returned, 7 taller omitted"
+    ]
+   }
+  },
+  {
+   "args": {
+    "eis_ids": [
+     "8096511"
+    ],
+    "frs_id": "110000552599"
+   },
+   "output": {
+    "eis_ids": [
+     "8096511"
+    ],
+    "candidates": [
+     {
+      "stack_height": 1.8287999999999998,
+      "stack_diameter": 0.07619999999999999,
+      "exit_velocity": 47.119032,
+      "exit_temperature": 873.1500000000001,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 4.571999999999999,
+      "stack_diameter": 0.09143999999999998,
+      "exit_velocity": 2.5145999999999997,
+      "exit_temperature": 295.37222222222226,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 4.571999999999999,
+      "stack_diameter": 0.07619999999999999,
+      "exit_velocity": 146.95322399999998,
+      "exit_temperature": 295.37222222222226,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 6.431279999999999,
+      "stack_diameter": 5.129783999999999,
+      "exit_velocity": 1.8714719999999996,
+      "exit_temperature": 335.37222222222226,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 9.753599999999999,
+      "stack_diameter": 1.0119359999999997,
+      "exit_velocity": 15.651479999999998,
+      "exit_temperature": 344.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 12.191999999999998,
+      "stack_diameter": 0.40538399999999997,
+      "exit_velocity": 17.782031999999997,
+      "exit_temperature": 310.9277777777778,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 15.880079999999998,
+      "stack_diameter": 0.5791199999999999,
+      "exit_velocity": 7.680959999999999,
+      "exit_temperature": 374.81666666666666,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 21.275039999999997,
+      "stack_diameter": 1.2953999999999999,
+      "exit_velocity": 15.907511999999997,
+      "exit_temperature": 333.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 27.431999999999995,
+      "stack_diameter": 0.48767999999999995,
+      "exit_velocity": 11.622024,
+      "exit_temperature": 310.9277777777778,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 27.431999999999995,
+      "stack_diameter": 0.07619999999999999,
+      "exit_velocity": 146.95322399999998,
+      "exit_temperature": 298.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     }
+    ],
+    "total_candidates": 12,
+    "warnings": [
+     "12 distinct stack combinations found (0 near-identical merged); the 10 lowest stacks are returned, 2 taller omitted"
+    ]
+   }
+  },
+  {
+   "args": {
+    "eis_ids": [
+     "8173911"
+    ],
+    "frs_id": "110041022274"
+   },
+   "output": {
+    "eis_ids": [
+     "8173911"
+    ],
+    "candidates": [
+     {
+      "stack_height": 15.880079999999998,
+      "stack_diameter": 0.5791199999999999,
+      "exit_velocity": 7.680959999999999,
+      "exit_temperature": 374.81666666666666,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     }
+    ],
+    "total_candidates": 1,
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "eis_ids": [
+     "8484111"
+    ],
+    "frs_id": "110012665990"
+   },
+   "output": {
+    "eis_ids": [
+     "8484111"
+    ],
+    "candidates": [
+     {
+      "stack_height": 10.9728,
+      "stack_diameter": 0.15239999999999998,
+      "exit_velocity": 9.143999999999998,
+      "exit_temperature": 295.9277777777778,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 12.191999999999998,
+      "stack_diameter": 1.0149839999999999,
+      "exit_velocity": 10.24128,
+      "exit_temperature": 505.37222222222226,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 12.191999999999998,
+      "stack_diameter": 0.9905999999999999,
+      "exit_velocity": 13.472159999999999,
+      "exit_temperature": 433.7055555555556,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 15.239999999999998,
+      "stack_diameter": 0.7315199999999998,
+      "exit_velocity": 28.376879999999993,
+      "exit_temperature": 353.7055555555556,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 15.239999999999998,
+      "stack_diameter": 0.7315199999999998,
+      "exit_velocity": 29.047439999999995,
+      "exit_temperature": 343.7055555555556,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 15.239999999999998,
+      "stack_diameter": 0.7315199999999998,
+      "exit_velocity": 29.474159999999998,
+      "exit_temperature": 355.9277777777778,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 15.239999999999998,
+      "stack_diameter": 0.7315199999999998,
+      "exit_velocity": 29.565599999999996,
+      "exit_temperature": 363.7055555555556,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 15.239999999999998,
+      "stack_diameter": 0.7315199999999998,
+      "exit_velocity": 30.601919999999996,
+      "exit_temperature": 360.9277777777778,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 22.859999999999996,
+      "stack_diameter": 1.1429999999999998,
+      "exit_velocity": 13.289279999999998,
+      "exit_temperature": 318.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 30.479999999999997,
+      "stack_diameter": 1.3716,
+      "exit_velocity": 24.841199999999997,
+      "exit_temperature": 313.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     }
+    ],
+    "total_candidates": 11,
+    "warnings": [
+     "11 distinct stack combinations found (0 near-identical merged); the 10 lowest stacks are returned, 1 taller omitted"
+    ]
+   }
+  },
+  {
+   "args": {
+    "eis_ids": [
+     "8361111"
+    ],
+    "frs_id": "110070228618"
+   },
+   "output": {
+    "eis_ids": [
+     "8361111"
+    ],
+    "candidates": [
+     {
+      "stack_height": 0.30479999999999996,
+      "stack_diameter": 0.15239999999999998,
+      "exit_velocity": 3.6880799999999994,
+      "exit_temperature": 293.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 1.8592799999999996,
+      "stack_diameter": 0.10058399999999999,
+      "exit_velocity": 136.297416,
+      "exit_temperature": 748.7055555555556,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 1.9811999999999999,
+      "stack_diameter": 0.128016,
+      "exit_velocity": 56.44286399999999,
+      "exit_temperature": 841.4833333333333,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 3.0479999999999996,
+      "stack_diameter": 0.10058399999999999,
+      "exit_velocity": 76.75778399999999,
+      "exit_temperature": 654.2611111111112,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 3.6575999999999995,
+      "stack_diameter": 0.06095999999999999,
+      "exit_velocity": 0.9692639999999999,
+      "exit_temperature": 293.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 4.876799999999999,
+      "stack_diameter": 0.06095999999999999,
+      "exit_velocity": 7.772399999999999,
+      "exit_temperature": 388.7055555555556,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 7.4066399999999994,
+      "stack_diameter": 1.2191999999999998,
+      "exit_velocity": 14.755367999999997,
+      "exit_temperature": 517.5944444444444,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 9.143999999999998,
+      "stack_diameter": 1.3716,
+      "exit_velocity": 0.030479999999999997,
+      "exit_temperature": 293.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 9.753599999999999,
+      "stack_diameter": 0.20421599999999998,
+      "exit_velocity": 0.09143999999999998,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 9.753599999999999,
+      "stack_diameter": 0.20330159999999997,
+      "exit_velocity": 1.4630399999999997,
+      "exit_temperature": 293.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     }
+    ],
+    "total_candidates": 16,
+    "warnings": [
+     "16 distinct stack combinations found (0 near-identical merged); the 10 lowest stacks are returned, 6 taller omitted"
+    ]
+   }
+  },
+  {
+   "args": {
+    "eis_ids": [
+     "8370811"
+    ],
+    "frs_id": "110000741500"
+   },
+   "output": {
+    "eis_ids": [
+     "8370811"
+    ],
+    "candidates": [
+     {
+      "stack_height": 0.9143999999999999,
+      "stack_diameter": 0.051815999999999994,
+      "exit_velocity": 0.22378415999999995,
+      "exit_temperature": 288.7055555555556,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 1.0667999999999997,
+      "stack_diameter": 0.15239999999999998,
+      "exit_velocity": 14.229709919999998,
+      "exit_temperature": 338.7055555555556,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 1.5239999999999998,
+      "stack_diameter": 0.8412479999999998,
+      "exit_velocity": 2.5462382399999997,
+      "exit_temperature": 310.9277777777778,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 1.5239999999999998,
+      "stack_diameter": 0.11582399999999998,
+      "exit_velocity": 40.29715079999999,
+      "exit_temperature": 355.37222222222226,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 1.7068799999999997,
+      "stack_diameter": 0.07619999999999999,
+      "exit_velocity": 51.72361511999999,
+      "exit_temperature": 355.37222222222226,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 1.8287999999999998,
+      "stack_diameter": 0.20421599999999998,
+      "exit_velocity": 2.8805733599999996,
+      "exit_temperature": 355.37222222222226,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 1.8287999999999998,
+      "stack_diameter": 0.280416,
+      "exit_velocity": 6.225570479999999,
+      "exit_temperature": 363.7055555555556,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 1.8287999999999998,
+      "stack_diameter": 0.07619999999999999,
+      "exit_velocity": 9.82748352,
+      "exit_temperature": 338.7055555555556,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 1.8287999999999998,
+      "stack_diameter": 0.20421599999999998,
+      "exit_velocity": 9.869942159999999,
+      "exit_temperature": 338.7055555555556,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 2.7432,
+      "stack_diameter": 0.6095999999999999,
+      "exit_velocity": 0.5980480799999999,
+      "exit_temperature": 380.37222222222226,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     }
+    ],
+    "total_candidates": 88,
+    "warnings": [
+     "3 NEI stack row(s) were ignored: a value was missing or implausible",
+     "88 distinct stack combinations found (1 near-identical merged); the 10 lowest stacks are returned, 78 taller omitted"
+    ]
+   }
+  },
+  {
+   "args": {
+    "eis_ids": [
+     "7445711"
+    ],
+    "frs_id": "110000449774"
+   },
+   "output": {
+    "eis_ids": [
+     "7445711"
+    ],
+    "candidates": [
+     {
+      "stack_height": 0.6095999999999999,
+      "stack_diameter": 0.15239999999999998,
+      "exit_velocity": 0.11277599999999999,
+      "exit_temperature": 305.37222222222226,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 0.6095999999999999,
+      "stack_diameter": 0.15239999999999998,
+      "exit_velocity": 0.26377391999999994,
+      "exit_temperature": 305.9277777777778,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 2.1335999999999995,
+      "stack_diameter": 0.06095999999999999,
+      "exit_velocity": 0.6095999999999999,
+      "exit_temperature": 298.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 2.4383999999999997,
+      "stack_diameter": 0.06095999999999999,
+      "exit_velocity": 0.6095999999999999,
+      "exit_temperature": 298.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 3.0479999999999996,
+      "stack_diameter": 1.5239999999999998,
+      "exit_velocity": 0.30479999999999996,
+      "exit_temperature": 298.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 3.6575999999999995,
+      "stack_diameter": 0.06095999999999999,
+      "exit_velocity": 0.6095999999999999,
+      "exit_temperature": 298.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 3.6575999999999995,
+      "stack_diameter": 0.06095999999999999,
+      "exit_velocity": 0.6095999999999999,
+      "exit_temperature": 310.9277777777778,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 3.9623999999999997,
+      "stack_diameter": 3.6575999999999995,
+      "exit_velocity": 0.15239999999999998,
+      "exit_temperature": 298.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 4.267199999999999,
+      "stack_diameter": 0.30479999999999996,
+      "exit_velocity": 0.030479999999999997,
+      "exit_temperature": 298.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 4.267199999999999,
+      "stack_diameter": 0.06095999999999999,
+      "exit_velocity": 0.6095999999999999,
+      "exit_temperature": 298.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     }
+    ],
+    "total_candidates": 38,
+    "warnings": [
+     "38 distinct stack combinations found (2 near-identical merged); the 10 lowest stacks are returned, 28 taller omitted"
+    ]
+   }
+  },
+  {
+   "args": {
+    "eis_ids": [
+     "7915011"
+    ],
+    "frs_id": "110000746328"
+   },
+   "output": {
+    "eis_ids": [
+     "7915011"
+    ],
+    "candidates": [
+     {
+      "stack_height": 1.5239999999999998,
+      "stack_diameter": 0.07619999999999999,
+      "exit_velocity": 1.5148559999999998,
+      "exit_temperature": 949.8166666666667,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 3.0479999999999996,
+      "stack_diameter": 0.07619999999999999,
+      "exit_velocity": 30.479999999999997,
+      "exit_temperature": 755.3722222222223,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 3.0479999999999996,
+      "stack_diameter": 0.15239999999999998,
+      "exit_velocity": 53.64479999999999,
+      "exit_temperature": 755.3722222222223,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 6.095999999999999,
+      "stack_diameter": 0.30479999999999996,
+      "exit_velocity": 0.51816,
+      "exit_temperature": 298.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 15.239999999999998,
+      "stack_diameter": 0.7010399999999999,
+      "exit_velocity": 2.01661776,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 18.287999999999997,
+      "stack_diameter": 1.3716,
+      "exit_velocity": 5.242559999999999,
+      "exit_temperature": 405.37222222222226,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 18.287999999999997,
+      "stack_diameter": 0.30479999999999996,
+      "exit_velocity": 18.166079999999997,
+      "exit_temperature": 373.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 19.507199999999997,
+      "stack_diameter": 0.15239999999999998,
+      "exit_velocity": 10.058399999999999,
+      "exit_temperature": 305.37222222222226,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 19.811999999999998,
+      "stack_diameter": 2.7432,
+      "exit_velocity": 12.009119999999998,
+      "exit_temperature": 438.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 19.811999999999998,
+      "stack_diameter": 1.8287999999999998,
+      "exit_velocity": 20.421599999999998,
+      "exit_temperature": 425.37222222222226,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     }
+    ],
+    "total_candidates": 20,
+    "warnings": [
+     "6 NEI stack row(s) were ignored: a value was missing or implausible",
+     "20 distinct stack combinations found (1 near-identical merged); the 10 lowest stacks are returned, 10 taller omitted"
+    ]
+   }
+  },
+  {
+   "args": {
+    "eis_ids": [
+     "12804811"
+    ],
+    "frs_id": "110070212279"
+   },
+   "output": {
+    "eis_ids": [
+     "12804811"
+    ],
+    "candidates": [],
+    "total_candidates": 0,
+    "warnings": [
+     "the NEI table has no stack data for EIS ID 12804811",
+     "no NEI stack values were found; use fetch_stack_parameters_from_scc instead"
+    ]
+   }
+  },
+  {
+   "args": {
+    "eis_ids": [
+     "13453711"
+    ],
+    "frs_id": "110024441184"
+   },
+   "output": {
+    "eis_ids": [
+     "13453711"
+    ],
+    "candidates": [
+     {
+      "stack_height": 3.6575999999999995,
+      "stack_diameter": 0.30479999999999996,
+      "exit_velocity": 47.24399999999999,
+      "exit_temperature": 594.2611111111112,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     }
+    ],
+    "total_candidates": 1,
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "eis_ids": [
+     "17728311",
+     "4057611"
+    ],
+    "frs_id": "110017769734"
+   },
+   "output": {
+    "eis_ids": [
+     "17728311",
+     "4057611"
+    ],
+    "candidates": [
+     {
+      "stack_height": 1.8287999999999998,
+      "stack_diameter": 0.10058399999999999,
+      "exit_velocity": 0.030479999999999997,
+      "exit_temperature": 293.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 2.1945599999999996,
+      "stack_diameter": 0.9143999999999999,
+      "exit_velocity": 0.030479999999999997,
+      "exit_temperature": 293.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 3.0479999999999996,
+      "stack_diameter": 0.30479999999999996,
+      "exit_velocity": 0.030479999999999997,
+      "exit_temperature": 554.2611111111112,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 3.0479999999999996,
+      "stack_diameter": 0.10058399999999999,
+      "exit_velocity": 0.04876799999999999,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 3.6575999999999995,
+      "stack_diameter": 0.6095999999999999,
+      "exit_velocity": 0.24383999999999997,
+      "exit_temperature": 312.0388888888889,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 4.571999999999999,
+      "stack_diameter": 0.3657599999999999,
+      "exit_velocity": 13.472159999999999,
+      "exit_temperature": 699.8166666666667,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 4.571999999999999,
+      "stack_diameter": 0.15239999999999998,
+      "exit_velocity": 30.479999999999997,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 6.095999999999999,
+      "stack_diameter": 0.9143999999999999,
+      "exit_velocity": 0.030479999999999997,
+      "exit_temperature": 298.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 6.979919999999999,
+      "stack_diameter": 0.9143999999999999,
+      "exit_velocity": 0.030479999999999997,
+      "exit_temperature": 293.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 7.924799999999999,
+      "stack_diameter": 0.6095999999999999,
+      "exit_velocity": 2.8041599999999995,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     }
+    ],
+    "total_candidates": 20,
+    "warnings": [
+     "20 distinct stack combinations found (0 near-identical merged); the 10 lowest stacks are returned, 10 taller omitted"
+    ]
+   }
+  },
+  {
+   "args": {
+    "eis_ids": [
+     "17735411"
+    ],
+    "frs_id": "110066943605"
+   },
+   "output": {
+    "eis_ids": [
+     "17735411"
+    ],
+    "candidates": [
+     {
+      "stack_height": 0.30479999999999996,
+      "stack_diameter": 0.030479999999999997,
+      "exit_velocity": 0.030479999999999997,
+      "exit_temperature": 272.0388888888889,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 0.30479999999999996,
+      "stack_diameter": 0.27431999999999995,
+      "exit_velocity": 0.030479999999999997,
+      "exit_temperature": 272.0388888888889,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 0.6095999999999999,
+      "stack_diameter": 0.10058399999999999,
+      "exit_velocity": 76.19999999999999,
+      "exit_temperature": 733.15,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 0.9143999999999999,
+      "stack_diameter": 0.25298399999999993,
+      "exit_velocity": 0.030479999999999997,
+      "exit_temperature": 358.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 1.2191999999999998,
+      "stack_diameter": 1.1887199999999998,
+      "exit_velocity": 0.030479999999999997,
+      "exit_temperature": 298.7055555555556,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 1.5239999999999998,
+      "stack_diameter": 0.9143999999999999,
+      "exit_velocity": 0.030479999999999997,
+      "exit_temperature": 323.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 1.8287999999999998,
+      "stack_diameter": 0.15239999999999998,
+      "exit_velocity": 0.030479999999999997,
+      "exit_temperature": 308.7055555555556,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 1.8287999999999998,
+      "stack_diameter": 0.04876799999999999,
+      "exit_velocity": 0.30479999999999996,
+      "exit_temperature": 394.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 2.4383999999999997,
+      "stack_diameter": 0.07619999999999999,
+      "exit_velocity": 0.030479999999999997,
+      "exit_temperature": 298.7055555555556,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 2.7432,
+      "stack_diameter": 0.04876799999999999,
+      "exit_velocity": 0.030479999999999997,
+      "exit_temperature": 298.15000000000003,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     }
+    ],
+    "total_candidates": 103,
+    "warnings": [
+     "1 NEI stack row(s) were ignored: a value was missing or implausible",
+     "103 distinct stack combinations found (1 near-identical merged); the 10 lowest stacks are returned, 93 taller omitted"
+    ]
+   }
+  },
+  {
+   "args": {
+    "eis_ids": [
+     "7227111",
+     "13610611"
+    ],
+    "frs_id": "110000572675"
+   },
+   "output": {
+    "eis_ids": [
+     "7227111",
+     "13610611"
+    ],
+    "candidates": [
+     {
+      "stack_height": 1.3411199999999999,
+      "stack_diameter": 0.07619999999999999,
+      "exit_velocity": 50.066447999999994,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 1.3716,
+      "stack_diameter": 0.051815999999999994,
+      "exit_velocity": 1.5239999999999998,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 1.58496,
+      "stack_diameter": 1.0667999999999997,
+      "exit_velocity": 41.291256,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 2.0116799999999997,
+      "stack_diameter": 0.07619999999999999,
+      "exit_velocity": 48.767999999999994,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 2.04216,
+      "stack_diameter": 1.1003279999999998,
+      "exit_velocity": 0.021336,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 2.04216,
+      "stack_diameter": 1.9994879999999997,
+      "exit_velocity": 0.021336,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 2.1031199999999997,
+      "stack_diameter": 0.10058399999999999,
+      "exit_velocity": 49.072799999999994,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 2.1335999999999995,
+      "stack_diameter": 0.15239999999999998,
+      "exit_velocity": 27.127199999999995,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 2.1335999999999995,
+      "stack_diameter": 0.07619999999999999,
+      "exit_velocity": 41.291256,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     },
+     {
+      "stack_height": 2.40792,
+      "stack_diameter": 0.10058399999999999,
+      "exit_velocity": 27.761183999999997,
+      "exit_temperature": 294.2611111111111,
+      "source": "NEI",
+      "scc": null,
+      "warnings": []
+     }
+    ],
+    "total_candidates": 60,
+    "warnings": [
+     "2 NEI stack row(s) were ignored: a value was missing or implausible",
+     "60 distinct stack combinations found (1 near-identical merged); the 10 lowest stacks are returned, 50 taller omitted"
+    ]
+   }
+  }
+ ],
+ "find_tri_category": [
+  {
+   "args": {
+    "cas_number": "75-01-4"
+   },
+   "output": {
+    "query_cas": "75-01-4",
+    "categories": [],
+    "warnings": []
+   }
+  }
+ ],
+ "find_tri_read_across_surrogate": [
+  {
+   "args": {
+    "cas_number": "75-01-4",
+    "require_toxicity_benchmarks": "False",
+    "sector_naics_prefix": null
+   },
+   "output": {
+    "query_smiles": "C=CCl",
+    "query_mw": 62.499,
+    "surrogate_tri_cas": "75-01-4",
+    "surrogate_name": "Vinyl chloride",
+    "surrogate_smiles": "C=CCl",
+    "surrogate_mw": 62.499,
+    "moldeberta_cosine_sim": 1.0,
+    "morgan_tanimoto_sim": 1.0,
+    "hybrid_read_across_score": 1.0,
+    "mw_scaling_factor": 1.0,
+    "surrogate_category": null,
+    "query_cas": "75-01-4",
+    "is_direct_tri_match": true,
+    "within_applicability_domain": true,
+    "resolution_method": "direct_tri_catalog_match",
+    "query_categories": [],
+    "warnings": []
+   }
+  }
+ ],
+ "get_meteorological_boundary": [
+  {
+   "args": {
+    "latitude": "30.209722",
+    "longitude": "-91.013889",
+    "reporting_year": null
+   },
+   "output": {
+    "wind_speed": 2.67,
+    "wind_direction": 140.0,
+    "stability_class": "F",
+    "ambient_temperature": 293.72,
+    "source": "Open-Meteo era5 reanalysis 2022",
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "latitude": "33.813611",
+    "longitude": "-88.559444",
+    "reporting_year": null
+   },
+   "output": {
+    "wind_speed": 2.61,
+    "wind_direction": 160.0,
+    "stability_class": "D",
+    "ambient_temperature": 291.21,
+    "source": "Open-Meteo era5 reanalysis 2022",
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "latitude": "39.763889",
+    "longitude": "-75.431944",
+    "reporting_year": null
+   },
+   "output": {
+    "wind_speed": 3.14,
+    "wind_direction": 200.0,
+    "stability_class": "D",
+    "ambient_temperature": 287.12,
+    "source": "Open-Meteo era5 reanalysis 2022",
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "latitude": "39.763611",
+    "longitude": "-75.423611",
+    "reporting_year": null
+   },
+   "output": {
+    "wind_speed": 3.14,
+    "wind_direction": 200.0,
+    "stability_class": "D",
+    "ambient_temperature": 287.12,
+    "source": "Open-Meteo era5 reanalysis 2022",
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "latitude": "41.130556",
+    "longitude": "-89.334444",
+    "reporting_year": null
+   },
+   "output": {
+    "wind_speed": 3.9,
+    "wind_direction": 300.0,
+    "stability_class": "D",
+    "ambient_temperature": 284.38,
+    "source": "Open-Meteo era5 reanalysis 2022",
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "latitude": "30.224167",
+    "longitude": "-93.283056",
+    "reporting_year": null
+   },
+   "output": {
+    "wind_speed": 3.13,
+    "wind_direction": 160.0,
+    "stability_class": "D",
+    "ambient_temperature": 293.71,
+    "source": "Open-Meteo era5 reanalysis 2022",
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "latitude": "29.730833",
+    "longitude": "-95.151111",
+    "reporting_year": null
+   },
+   "output": {
+    "wind_speed": 3.36,
+    "wind_direction": 160.0,
+    "stability_class": "D",
+    "ambient_temperature": 294.23,
+    "source": "Open-Meteo era5 reanalysis 2022",
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "latitude": "29.725",
+    "longitude": "-95.075",
+    "reporting_year": null
+   },
+   "output": {
+    "wind_speed": 3.39,
+    "wind_direction": 160.0,
+    "stability_class": "D",
+    "ambient_temperature": 294.16,
+    "source": "Open-Meteo era5 reanalysis 2022",
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "latitude": "30.197222",
+    "longitude": "-90.974167",
+    "reporting_year": null
+   },
+   "output": {
+    "wind_speed": 2.67,
+    "wind_direction": 140.0,
+    "stability_class": "F",
+    "ambient_temperature": 293.62,
+    "source": "Open-Meteo era5 reanalysis 2022",
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "latitude": "30.325882",
+    "longitude": "-91.261732",
+    "reporting_year": null
+   },
+   "output": {
+    "wind_speed": 2.81,
+    "wind_direction": 160.0,
+    "stability_class": "D",
+    "ambient_temperature": 293.85,
+    "source": "Open-Meteo era5 reanalysis 2022",
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "latitude": "37.045833",
+    "longitude": "-88.350556",
+    "reporting_year": null
+   },
+   "output": {
+    "wind_speed": 2.95,
+    "wind_direction": 180.0,
+    "stability_class": "D",
+    "ambient_temperature": 288.79,
+    "source": "Open-Meteo era5 reanalysis 2022",
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "latitude": "38.222222",
+    "longitude": "-85.829167",
+    "reporting_year": null
+   },
+   "output": {
+    "wind_speed": 2.8,
+    "wind_direction": 200.0,
+    "stability_class": "D",
+    "ambient_temperature": 287.44,
+    "source": "Open-Meteo era5 reanalysis 2022",
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "latitude": "30.261944",
+    "longitude": "-91.1775",
+    "reporting_year": null
+   },
+   "output": {
+    "wind_speed": 2.81,
+    "wind_direction": 160.0,
+    "stability_class": "D",
+    "ambient_temperature": 293.85,
+    "source": "Open-Meteo era5 reanalysis 2022",
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "latitude": "27.886111",
+    "longitude": "-97.236111",
+    "reporting_year": null
+   },
+   "output": {
+    "wind_speed": 4.88,
+    "wind_direction": 160.0,
+    "stability_class": "D",
+    "ambient_temperature": 295.29,
+    "source": "Open-Meteo era5 reanalysis 2022",
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "latitude": "30.252222",
+    "longitude": "-93.284444",
+    "reporting_year": null
+   },
+   "output": {
+    "wind_speed": 3.13,
+    "wind_direction": 160.0,
+    "stability_class": "D",
+    "ambient_temperature": 293.71,
+    "source": "Open-Meteo era5 reanalysis 2022",
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "latitude": "28.981692",
+    "longitude": "-95.376501",
+    "reporting_year": null
+   },
+   "output": {
+    "wind_speed": 3.73,
+    "wind_direction": 160.0,
+    "stability_class": "D",
+    "ambient_temperature": 294.89,
+    "source": "Open-Meteo era5 reanalysis 2022",
+    "warnings": []
+   }
+  },
+  {
+   "args": {
+    "latitude": "35.07059",
+    "longitude": "-77.36531",
+    "reporting_year": null
+   },
+   "output": {
+    "wind_speed": 2.98,
+    "wind_direction": 200.0,
+    "stability_class": "D",
+    "ambient_temperature": 290.6,
+    "source": "Open-Meteo era5 reanalysis 2022",
+    "warnings": []
+   }
+  }
+ ],
+ "get_population_receptors": [
+  {
+   "args": {
+    "latitude": "33.813611",
+    "longitude": "-88.559444",
+    "radius_km": null
+   },
+   "output": {
+    "total_population": 114,
+    "age_distribution": {
+     "0-4": 4.53,
+     "5-17": 14.0,
+     "18-64": 56.66,
+     "65+": 24.81
+    },
+    "source": "Census ACS 2023 5-year (DP05), 3 tracts",
+    "warnings": [],
+    "tracts": [
+     {
+      "geoid": "28095950800",
+      "residents": 2534,
+      "age_distribution": {
+       "0-4": 1.18,
+       "5-17": 11.17,
+       "18-64": 62.2,
+       "65+": 25.45
+      },
+      "distance_m": 1870.8902395452815,
+      "bearing_deg": 106.02476844066888,
+      "latitude": 33.8089648,
+      "longitude": -88.5399813,
+      "land_area_km2": 16.84693
+     },
+     {
+      "geoid": "28095950700",
+      "residents": 2122,
+      "age_distribution": {
+       "0-4": 5.42,
+       "5-17": 10.65,
+       "18-64": 53.16,
+       "65+": 30.77
+      },
+      "distance_m": 3386.848034385581,
+      "bearing_deg": 350.3133179458478,
+      "latitude": 33.8436352,
+      "longitude": -88.5656145,
+      "land_area_km2": 13.892297
+     },
+     {
+      "geoid": "28095950600",
+      "residents": 2922,
+      "age_distribution": {
+       "0-4": 6.78,
+       "5-17": 18.89,
+       "18-64": 54.41,
+       "65+": 19.92
+      },
+      "distance_m": 6013.976343659322,
+      "bearing_deg": 220.67902017706987,
+      "latitude": 33.7725872,
+      "longitude": -88.6018544,
+      "land_area_km2": 510.458589
+     }
+    ],
+    "tracts_not_listed": 0
+   }
+  },
+  {
+   "args": {
+    "latitude": "30.197222",
+    "longitude": "-90.974167",
+    "radius_km": null
+   },
+   "output": {
+    "total_population": 661,
+    "age_distribution": {
+     "0-4": 5.61,
+     "5-17": 16.91,
+     "18-64": 64.34,
+     "65+": 13.14
+    },
+    "source": "Census ACS 2023 5-year (DP05), 3 tracts",
+    "warnings": [],
+    "tracts": [
+     {
+      "geoid": "22005030303",
+      "residents": 4244,
+      "age_distribution": {
+       "0-4": 6.48,
+       "5-17": 18.52,
+       "18-64": 72.24,
+       "65+": 2.76
+      },
+      "distance_m": 3671.142939301512,
+      "bearing_deg": 358.47250259666566,
+      "latitude": 30.2302256,
+      "longitude": -90.9751856,
+      "land_area_km2": 14.762756
+     },
+     {
+      "geoid": "22005030302",
+      "residents": 5522,
+      "age_distribution": {
+       "0-4": 2.17,
+       "5-17": 18.62,
+       "18-64": 58.49,
+       "65+": 20.72
+      },
+      "distance_m": 5250.704915948507,
+      "bearing_deg": 146.13016167234443,
+      "latitude": 30.1580109,
+      "longitude": -90.9437308,
+      "land_area_km2": 114.009175
+     },
+     {
+      "geoid": "22005030600",
+      "residents": 6229,
+      "age_distribution": {
+       "0-4": 8.06,
+       "5-17": 14.29,
+       "18-64": 64.15,
+       "65+": 13.5
+      },
+      "distance_m": 7694.609920617486,
+      "bearing_deg": 103.64591851926892,
+      "latitude": 30.1808735,
+      "longitude": -90.896376,
+      "land_area_km2": 67.929612
+     }
+    ],
+    "tracts_not_listed": 0
+   }
+  },
+  {
+   "args": {
+    "latitude": "30.252222",
+    "longitude": "-93.284444",
+    "radius_km": null
+   },
+   "output": {
+    "total_population": 1129,
+    "age_distribution": {
+     "0-4": 6.67,
+     "5-17": 16.01,
+     "18-64": 56.99,
+     "65+": 20.33
+    },
+    "source": "Census ACS 2023 5-year (DP05), 2 tracts",
+    "warnings": [],
+    "tracts": [
+     {
+      "geoid": "22019002600",
+      "residents": 4532,
+      "age_distribution": {
+       "0-4": 8.8,
+       "5-17": 13.88,
+       "18-64": 55.37,
+       "65+": 21.95
+      },
+      "distance_m": 2435.6460875193543,
+      "bearing_deg": 92.2774987939687,
+      "latitude": 30.2513491,
+      "longitude": -93.2591067,
+      "land_area_km2": 6.479011
+     },
+     {
+      "geoid": "22019002702",
+      "residents": 3659,
+      "age_distribution": {
+       "0-4": 4.02,
+       "5-17": 18.64,
+       "18-64": 59.03,
+       "65+": 18.31
+      },
+      "distance_m": 4929.353478448762,
+      "bearing_deg": 283.73691146766714,
+      "latitude": 30.2627395,
+      "longitude": -93.334301,
+      "land_area_km2": 52.545602
+     }
+    ],
+    "tracts_not_listed": 0
+   }
+  },
+  {
+   "args": {
+    "latitude": "27.886111",
+    "longitude": "-97.236111",
+    "radius_km": null
+   },
+   "output": {
+    "total_population": 123,
+    "age_distribution": {
+     "0-4": 6.17,
+     "5-17": 24.17,
+     "18-64": 56.98,
+     "65+": 12.68
+    },
+    "source": "Census ACS 2023 5-year (DP05), 2 tracts",
+    "warnings": [],
+    "tracts": [
+     {
+      "geoid": "48409010301",
+      "residents": 5192,
+      "age_distribution": {
+       "0-4": 5.01,
+       "5-17": 25.94,
+       "18-64": 56.7,
+       "65+": 12.35
+      },
+      "distance_m": 3570.176607731505,
+      "bearing_deg": 62.372124739822425,
+      "latitude": 27.9009963,
+      "longitude": -97.203923,
+      "land_area_km2": 28.26803
+     },
+     {
+      "geoid": "48409010700",
+      "residents": 4954,
+      "age_distribution": {
+       "0-4": 7.39,
+       "5-17": 22.31,
+       "18-64": 57.26,
+       "65+": 13.04
+      },
+      "distance_m": 16625.963784772106,
+      "bearing_deg": 317.03353347306216,
+      "latitude": 27.9954751,
+      "longitude": -97.351525,
+      "land_area_km2": 641.2988
+     }
+    ],
+    "tracts_not_listed": 0
+   }
+  },
+  {
+   "args": {
+    "latitude": "39.763889",
+    "longitude": "-75.431944",
+    "radius_km": null
+   },
+   "output": {
+    "total_population": 294,
+    "age_distribution": {
+     "0-4": 7.83,
+     "5-17": 15.5,
+     "18-64": 58.38,
+     "65+": 18.29
+    },
+    "source": "Census ACS 2023 5-year (DP05), 1 tracts",
+    "warnings": [],
+    "tracts": [
+     {
+      "geoid": "34033020100",
+      "residents": 1826,
+      "age_distribution": {
+       "0-4": 7.83,
+       "5-17": 15.5,
+       "18-64": 58.38,
+       "65+": 18.29
+      },
+      "distance_m": 3259.4338793761262,
+      "bearing_deg": 147.3992420173919,
+      "latitude": 39.7391928,
+      "longitude": -75.4114057,
+      "land_area_km2": 50.531561
+     }
+    ],
+    "tracts_not_listed": 0
+   }
+  },
+  {
+   "args": {
+    "latitude": "30.209722",
+    "longitude": "-91.013889",
+    "radius_km": null
+   },
+   "output": {
+    "total_population": 732,
+    "age_distribution": {
+     "0-4": 6.24,
+     "5-17": 19.8,
+     "18-64": 63.17,
+     "65+": 10.79
+    },
+    "source": "Census ACS 2023 5-year (DP05), 3 tracts",
+    "warnings": [],
+    "tracts": [
+     {
+      "geoid": "22005030304",
+      "residents": 2918,
+      "age_distribution": {
+       "0-4": 13.57,
+       "5-17": 23.89,
+       "18-64": 58.84,
+       "65+": 3.7
+      },
+      "distance_m": 3479.0457296202953,
+      "bearing_deg": 2.1710859613541214,
+      "latitude": 30.2409873,
+      "longitude": -91.012517,
+      "land_area_km2": 12.19691
+     },
+     {
+      "geoid": "22005030303",
+      "residents": 4244,
+      "age_distribution": {
+       "0-4": 6.48,
+       "5-17": 18.52,
+       "18-64": 72.24,
+       "65+": 2.76
+      },
+      "distance_m": 4362.010117597935,
+      "bearing_deg": 58.47862316593445,
+      "latitude": 30.2302256,
+      "longitude": -90.9751856,
+      "land_area_km2": 14.762756
+     },
+     {
+      "geoid": "22005030302",
+      "residents": 5522,
+      "age_distribution": {
+       "0-4": 2.17,
+       "5-17": 18.62,
+       "18-64": 58.49,
+       "65+": 20.72
+      },
+      "distance_m": 8862.158850045047,
+      "bearing_deg": 130.43567887568022,
+      "latitude": 30.1580109,
+      "longitude": -90.9437308,
+      "land_area_km2": 114.009175
+     }
+    ],
+    "tracts_not_listed": 0
+   }
+  },
+  {
+   "args": {
+    "latitude": "37.045833",
+    "longitude": "-88.350556",
+    "radius_km": null
+   },
+   "output": {
+    "total_population": 433,
+    "age_distribution": {
+     "0-4": 3.25,
+     "5-17": 16.23,
+     "18-64": 59.95,
+     "65+": 20.57
+    },
+    "source": "Census ACS 2023 5-year (DP05), 2 tracts",
+    "warnings": [],
+    "tracts": [
+     {
+      "geoid": "21157950102",
+      "residents": 2375,
+      "age_distribution": {
+       "0-4": 4.67,
+       "5-17": 16.0,
+       "18-64": 59.75,
+       "65+": 19.58
+      },
+      "distance_m": 2517.77202011593,
+      "bearing_deg": 152.1790771594645,
+      "latitude": 37.0258067,
+      "longitude": -88.3373194,
+      "land_area_km2": 27.667232
+     },
+     {
+      "geoid": "21157950101",
+      "residents": 2676,
+      "age_distribution": {
+       "0-4": 1.98,
+       "5-17": 16.44,
+       "18-64": 60.13,
+       "65+": 21.45
+      },
+      "distance_m": 5725.043586417708,
+      "bearing_deg": 242.2213457781842,
+      "latitude": 37.0218237,
+      "longitude": -88.4076108,
+      "land_area_km2": 67.286017
+     }
+    ],
+    "tracts_not_listed": 0
+   }
+  },
+  {
+   "args": {
+    "latitude": "30.261944",
+    "longitude": "-91.1775",
+    "radius_km": null
+   },
+   "output": {
+    "total_population": 293,
+    "age_distribution": {
+     "0-4": 8.01,
+     "5-17": 19.28,
+     "18-64": 53.92,
+     "65+": 18.79
+    },
+    "source": "Census ACS 2023 5-year (DP05), 2 tracts",
+    "warnings": [],
+    "tracts": [
+     {
+      "geoid": "22047953102",
+      "residents": 2523,
+      "age_distribution": {
+       "0-4": 10.46,
+       "5-17": 20.85,
+       "18-64": 51.69,
+       "65+": 17.0
+      },
+      "distance_m": 1624.7298283710077,
+      "bearing_deg": 94.99898763103498,
+      "latitude": 30.2606697,
+      "longitude": -91.1606478,
+      "land_area_km2": 29.730721
+     },
+     {
+      "geoid": "22047952902",
+      "residents": 2108,
+      "age_distribution": {
+       "0-4": 5.08,
+       "5-17": 17.41,
+       "18-64": 56.59,
+       "65+": 20.92
+      },
+      "distance_m": 9414.00428572771,
+      "bearing_deg": 186.96344835830033,
+      "latitude": 30.1779059,
+      "longitude": -91.1893733,
+      "land_area_km2": 98.974042
+     }
+    ],
+    "tracts_not_listed": 0
+   }
+  },
+  {
+   "args": {
+    "latitude": "30.224167",
+    "longitude": "-93.283056",
+    "radius_km": null
+   },
+   "output": {
+    "total_population": 207,
+    "age_distribution": {
+     "0-4": 5.53,
+     "5-17": 22.14,
+     "18-64": 55.25,
+     "65+": 17.08
+    },
+    "source": "Census ACS 2023 5-year (DP05), 2 tracts",
+    "warnings": [],
+    "tracts": [
+     {
+      "geoid": "22019002702",
+      "residents": 3659,
+      "age_distribution": {
+       "0-4": 4.02,
+       "5-17": 18.64,
+       "18-64": 59.03,
+       "65+": 18.31
+      },
+      "distance_m": 6529.043504195907,
+      "bearing_deg": 311.07844802689766,
+      "latitude": 30.2627395,
+      "longitude": -93.334301,
+      "land_area_km2": 52.545602
+     },
+     {
+      "geoid": "22019003200",
+      "residents": 2476,
+      "age_distribution": {
+       "0-4": 7.75,
+       "5-17": 27.3,
+       "18-64": 49.68,
+       "65+": 15.27
+      },
+      "distance_m": 16519.26734097927,
+      "bearing_deg": 221.03288655315936,
+      "latitude": 30.1120542,
+      "longitude": -93.3958005,
+      "land_area_km2": 188.829947
+     }
+    ],
+    "tracts_not_listed": 0
+   }
+  },
+  {
+   "args": {
+    "latitude": "35.07059",
+    "longitude": "-77.36531",
+    "radius_km": null
+   },
+   "output": {
+    "total_population": 53,
+    "age_distribution": {
+     "0-4": 4.19,
+     "5-17": 11.08,
+     "18-64": 59.58,
+     "65+": 25.15
+    },
+    "source": "Census ACS 2023 5-year (DP05), 1 tracts",
+    "warnings": [],
+    "tracts": [
+     {
+      "geoid": "37103920200",
+      "residents": 2553,
+      "age_distribution": {
+       "0-4": 4.19,
+       "5-17": 11.08,
+       "18-64": 59.58,
+       "65+": 25.15
+      },
+      "distance_m": 4341.285976295607,
+      "bearing_deg": 168.9785077879836,
+      "latitude": 35.0322677,
+      "longitude": -77.3561946,
+      "land_area_km2": 388.443762
+     }
+    ],
+    "tracts_not_listed": 0
+   }
+  },
+  {
+   "args": {
+    "latitude": "28.981692",
+    "longitude": "-95.376501",
+    "radius_km": null
+   },
+   "output": {
+    "total_population": 226,
+    "age_distribution": {
+     "0-4": 2.89,
+     "5-17": 21.94,
+     "18-64": 56.54,
+     "65+": 18.63
+    },
+    "source": "Census ACS 2023 5-year (DP05), 3 tracts",
+    "warnings": [],
+    "tracts": [
+     {
+      "geoid": "48039664300",
+      "residents": 6021,
+      "age_distribution": {
+       "0-4": 2.99,
+       "5-17": 29.55,
+       "18-64": 56.56,
+       "65+": 10.9
+      },
+      "distance_m": 2037.8971714472273,
+      "bearing_deg": 127.6703318481698,
+      "latitude": 28.9704909,
+      "longitude": -95.3599194,
+      "land_area_km2": 8.131726
+     },
+     {
+      "geoid": "48039664200",
+      "residents": 2048,
+      "age_distribution": {
+       "0-4": 2.0,
+       "5-17": 10.64,
+       "18-64": 57.67,
+       "65+": 29.69
+      },
+      "distance_m": 3692.2024892177287,
+      "bearing_deg": 39.2316283332896,
+      "latitude": 29.0074101,
+      "longitude": -95.3524882,
+      "land_area_km2": 117.133324
+     },
+     {
+      "geoid": "48039664501",
+      "residents": 4794,
+      "age_distribution": {
+       "0-4": 3.15,
+       "5-17": 17.21,
+       "18-64": 56.03,
+       "65+": 23.61
+      },
+      "distance_m": 12893.82093782298,
+      "bearing_deg": 238.79666278483143,
+      "latitude": 28.92157,
+      "longitude": -95.489815,
+      "land_area_km2": 336.796192
+     }
+    ],
+    "tracts_not_listed": 0
+   }
+  },
+  {
+   "args": {
+    "latitude": "38.222222",
+    "longitude": "-85.829167",
+    "radius_km": null
+   },
+   "output": {
+    "total_population": 6713,
+    "age_distribution": {
+     "0-4": 6.77,
+     "5-17": 22.78,
+     "18-64": 52.67,
+     "65+": 17.78
+    },
+    "source": "Census ACS 2023 5-year (DP05), 5 tracts",
+    "warnings": [],
+    "tracts": [
+     {
+      "geoid": "21111001400",
+      "residents": 2566,
+      "age_distribution": {
+       "0-4": 6.0,
+       "5-17": 26.62,
+       "18-64": 63.33,
+       "65+": 4.05
+      },
+      "distance_m": 1216.2460264609765,
+      "bearing_deg": 54.162507888340905,
+      "latitude": 38.2286255,
+      "longitude": -85.8178791,
+      "land_area_km2": 1.332579
+     },
+     {
+      "geoid": "21111012701",
+      "residents": 4208,
+      "age_distribution": {
+       "0-4": 13.95,
+       "5-17": 24.22,
+       "18-64": 48.02,
+       "65+": 13.81
+      },
+      "distance_m": 1501.8380590075406,
+      "bearing_deg": 234.0793839764412,
+      "latitude": 38.2142975,
+      "longitude": -85.8430881,
+      "land_area_km2": 9.679584
+     },
+     {
+      "geoid": "21111001200",
+      "residents": 3097,
+      "age_distribution": {
+       "0-4": 3.16,
+       "5-17": 33.29,
+       "18-64": 52.54,
+       "65+": 11.01
+      },
+      "distance_m": 1559.1845268442105,
+      "bearing_deg": 14.75629494382694,
+      "latitude": 38.2357815,
+      "longitude": -85.82462,
+      "land_area_km2": 2.895038
+     },
+     {
+      "geoid": "21111012606",
+      "residents": 3723,
+      "age_distribution": {
+       "0-4": 6.9,
+       "5-17": 19.15,
+       "18-64": 47.22,
+       "65+": 26.73
+      },
+      "distance_m": 2202.180978454958,
+      "bearing_deg": 169.92088642902365,
+      "latitude": 38.2027229,
+      "longitude": -85.8247564,
+      "land_area_km2": 2.478589
+     },
+     {
+      "geoid": "21111012801",
+      "residents": 2632,
+      "age_distribution": {
+       "0-4": 0.08,
+       "5-17": 9.5,
+       "18-64": 57.59,
+       "65+": 32.83
+      },
+      "distance_m": 2532.992571936141,
+      "bearing_deg": 114.52558042182795,
+      "latitude": 38.2127632,
+      "longitude": -85.8027906,
+      "land_area_km2": 3.273665
+     }
+    ],
+    "tracts_not_listed": 0
+   }
+  },
+  {
+   "args": {
+    "latitude": "29.730833",
+    "longitude": "-95.151111",
+    "radius_km": null
+   },
+   "output": {
+    "total_population": 404,
+    "age_distribution": {
+     "0-4": 7.66,
+     "5-17": 25.3,
+     "18-64": 59.07,
+     "65+": 7.97
+    },
+    "source": "Census ACS 2023 5-year (DP05), 3 tracts",
+    "warnings": [],
+    "tracts": [
+     {
+      "geoid": "48201252500",
+      "residents": 4777,
+      "age_distribution": {
+       "0-4": 7.66,
+       "5-17": 25.31,
+       "18-64": 59.05,
+       "65+": 7.98
+      },
+      "distance_m": 4507.0147347912325,
+      "bearing_deg": 29.48681584177777,
+      "latitude": 29.7661133,
+      "longitude": -95.1281275,
+      "land_area_km2": 30.308611
+     },
+     {
+      "geoid": "48201343601",
+      "residents": 1,
+      "age_distribution": {
+       "0-4": 0.0,
+       "5-17": 0.0,
+       "18-64": 100.0,
+       "65+": 0.0
+      },
+      "distance_m": 7923.117364970759,
+      "bearing_deg": 102.41916612098726,
+      "latitude": 29.7154848,
+      "longitude": -95.0709877,
+      "land_area_km2": 48.835294
+     }
+    ],
+    "tracts_not_listed": 0
+   }
+  },
+  {
+   "args": {
+    "latitude": "29.725",
+    "longitude": "-95.075",
+    "radius_km": null
+   },
+   "output": {
+    "total_population": 0,
+    "age_distribution": {
+     "0-4": 0.0,
+     "5-17": 0.0,
+     "18-64": 100.0,
+     "65+": 0.0
+    },
+    "source": "Census ACS 2023 5-year (DP05), 1 tracts",
+    "warnings": [],
+    "tracts": [
+     {
+      "geoid": "48201343601",
+      "residents": 1,
+      "age_distribution": {
+       "0-4": 0.0,
+       "5-17": 0.0,
+       "18-64": 100.0,
+       "65+": 0.0
+      },
+      "distance_m": 1126.7569530582393,
+      "bearing_deg": 159.88605476752272,
+      "latitude": 29.7154848,
+      "longitude": -95.0709877,
+      "land_area_km2": 48.835294
+     }
+    ],
+    "tracts_not_listed": 0
+   }
+  },
+  {
+   "args": {
+    "latitude": "41.130556",
+    "longitude": "-89.334444",
+    "radius_km": null
+   },
+   "output": {
+    "total_population": 85,
+    "age_distribution": {
+     "0-4": 5.27,
+     "5-17": 16.02,
+     "18-64": 55.99,
+     "65+": 22.72
+    },
+    "source": "Census ACS 2023 5-year (DP05), 3 tracts",
+    "warnings": [],
+    "tracts": [
+     {
+      "geoid": "17123961200",
+      "residents": 2508,
+      "age_distribution": {
+       "0-4": 8.89,
+       "5-17": 16.43,
+       "18-64": 54.78,
+       "65+": 19.9
+      },
+      "distance_m": 2539.413083669648,
+      "bearing_deg": 231.65722080717958,
+      "latitude": 41.116386,
+      "longitude": -89.3582193,
+      "land_area_km2": 12.263848
+     },
+     {
+      "geoid": "17155954600",
+      "residents": 2719,
+      "age_distribution": {
+       "0-4": 2.68,
+       "5-17": 15.45,
+       "18-64": 56.79,
+       "65+": 25.08
+      },
+      "distance_m": 5450.582470654193,
+      "bearing_deg": 17.5195233749395,
+      "latitude": 41.1772988,
+      "longitude": -89.3148393,
+      "land_area_km2": 292.43794
+     },
+     {
+      "geoid": "17123961300",
+      "residents": 1951,
+      "age_distribution": {
+       "0-4": 4.2,
+       "5-17": 16.3,
+       "18-64": 56.43,
+       "65+": 23.07
+      },
+      "distance_m": 16456.667551302613,
+      "bearing_deg": 244.92123766005415,
+      "latitude": 41.0676882,
+      "longitude": -89.5122392,
+      "land_area_km2": 381.674809
+     }
+    ],
+    "tracts_not_listed": 0
+   }
+  },
+  {
+   "args": {
+    "latitude": "30.325882",
+    "longitude": "-91.261732",
+    "radius_km": null
+   },
+   "output": {
+    "total_population": 235,
+    "age_distribution": {
+     "0-4": 7.18,
+     "5-17": 17.47,
+     "18-64": 61.09,
+     "65+": 14.26
+    },
+    "source": "Census ACS 2023 5-year (DP05), 4 tracts",
+    "warnings": [],
+    "tracts": [
+     {
+      "geoid": "22121020401",
+      "residents": 4340,
+      "age_distribution": {
+       "0-4": 8.73,
+       "5-17": 18.96,
+       "18-64": 54.78,
+       "65+": 17.53
+      },
+      "distance_m": 1588.1268569449535,
+      "bearing_deg": 31.71520976056401,
+      "latitude": 30.3380313,
+      "longitude": -91.2530325,
+      "land_area_km2": 35.243716
+     },
+     {
+      "geoid": "22047952702",
+      "residents": 3034,
+      "age_distribution": {
+       "0-4": 5.44,
+       "5-17": 14.86,
+       "18-64": 54.06,
+       "65+": 25.64
+      },
+      "distance_m": 3812.503258727614,
+      "bearing_deg": 98.56801073353371,
+      "latitude": 30.320768,
+      "longitude": -91.2224555,
+      "land_area_km2": 17.684638
+     },
+     {
+      "geoid": "22121020402",
+      "residents": 8905,
+      "age_distribution": {
+       "0-4": 8.27,
+       "5-17": 16.44,
+       "18-64": 66.79,
+       "65+": 8.5
+      },
+      "distance_m": 6524.301355882226,
+      "bearing_deg": 348.54283256884975,
+      "latitude": 30.3833865,
+      "longitude": -91.2752423,
+      "land_area_km2": 83.818021
+     },
+     {
+      "geoid": "22047952701",
+      "residents": 2550,
+      "age_distribution": {
+       "0-4": 2.82,
+       "5-17": 21.61,
+       "18-64": 60.32,
+       "65+": 15.25
+      },
+      "distance_m": 16751.961359454148,
+      "bearing_deg": 266.8703197421973,
+      "latitude": 30.3175414,
+      "longitude": -91.4359929,
+      "land_area_km2": 514.874465
+     }
+    ],
+    "tracts_not_listed": 0
+   }
+  },
+  {
+   "args": {
+    "latitude": "39.763611",
+    "longitude": "-75.423611",
+    "radius_km": null
+   },
+   "output": {
+    "total_population": 595,
+    "age_distribution": {
+     "0-4": 5.71,
+     "5-17": 20.92,
+     "18-64": 57.74,
+     "65+": 15.63
+    },
+    "source": "Census ACS 2023 5-year (DP05), 2 tracts",
+    "warnings": [],
+    "tracts": [
+     {
+      "geoid": "34033020100",
+      "residents": 1826,
+      "age_distribution": {
+       "0-4": 7.83,
+       "5-17": 15.5,
+       "18-64": 58.38,
+       "65+": 18.29
+      },
+      "distance_m": 2908.773463366674,
+      "bearing_deg": 158.97465674446664,
+      "latitude": 39.7391928,
+      "longitude": -75.4114057,
+      "land_area_km2": 50.531561
+     },
+     {
+      "geoid": "34015502400",
+      "residents": 6023,
+      "age_distribution": {
+       "0-4": 5.06,
+       "5-17": 22.56,
+       "18-64": 57.55,
+       "65+": 14.83
+      },
+      "distance_m": 6649.760493520334,
+      "bearing_deg": 61.551520869495576,
+      "latitude": 39.792079,
+      "longitude": -75.355179,
+      "land_area_km2": 56.796
+     }
+    ],
+    "tracts_not_listed": 0
+   }
+  }
+ ],
+ "query_emissions_inventory": [
+  {
+   "args": {
+    "cas_number": "75-01-4",
+    "city": null,
+    "state": null
+   },
+   "output": {
+    "total_found": 33,
+    "matching": 33,
+    "shown": 25,
+    "facilities": [
+     {
+      "frs_id": "110000552599",
+      "facility_name": "WESTLAKE VINYLS INC. - PVC PLANT",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324223133505",
+      "naics_code": "325211",
+      "naics_title": "Plastics Material and Resin Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [
+       "8096511"
+      ],
+      "eis_note": null,
+      "total_release": 39216.0,
+      "unit": "Pounds",
+      "emission_rate": 0.564056265281583,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325211)",
+      "fugitive_release_kg_per_year": 1757.2168413800002,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "As a reactant",
+        "tri_section": "3.2a",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Processing as a reactant",
+        "mapping_strength": "Direct"
+       }
+      ],
+      "lifecycle_stages": [
+       "Processing"
+      ],
+      "conditions_note": null,
+      "latitude": 37.045833,
+      "longitude": -88.350556,
+      "address": "230 JOHNSON RILEY RD",
+      "city": "CALVERT CITY",
+      "county": "MARSHALL",
+      "state": "KY",
+      "zip_code": "42029"
+     },
+     {
+      "frs_id": "110000746328",
+      "facility_name": "WESTLAKE VINYLS CO",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324222688311",
+      "naics_code": "325211",
+      "naics_title": "Plastics Material and Resin Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [
+       "7915011"
+      ],
+      "eis_note": null,
+      "total_release": 19990.0,
+      "unit": "Pounds",
+      "emission_rate": 0.2875225607654744,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325211)",
+      "fugitive_release_kg_per_year": 2154.5637575000005,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Produce the chemical",
+        "tri_section": "3.1a",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "For on-site use/processing",
+        "tri_section": "3.1c",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Partial"
+       },
+       {
+        "tri_activity": "For sale/distribution",
+        "tri_section": "3.1d",
+        "lifecycle_stage": "Distribution in commerce",
+        "cou_category": "Distribution in commerce",
+        "mapping_strength": "Partial"
+       },
+       {
+        "tri_activity": "As a byproduct",
+        "tri_section": "3.1e",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Partial"
+       },
+       {
+        "tri_activity": "As an impurity",
+        "tri_section": "3.1f",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing or Importing",
+        "mapping_strength": "None (CDR exempt)"
+       },
+       {
+        "tri_activity": "As a reactant",
+        "tri_section": "3.2a",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Processing as a reactant",
+        "mapping_strength": "Direct"
+       }
+      ],
+      "lifecycle_stages": [
+       "Manufacturing",
+       "Distribution in commerce",
+       "Processing"
+      ],
+      "conditions_note": null,
+      "latitude": 30.209722,
+      "longitude": -91.013889,
+      "address": "36045 HWY 30",
+      "city": "GEISMAR",
+      "county": "ASCENSION PARISH",
+      "state": "LA",
+      "zip_code": "70734"
+     },
+     {
+      "frs_id": "110018402780",
+      "facility_name": "MEXICHEM SPECIALTY RESINS INC",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324222678551",
+      "naics_code": "325211",
+      "naics_title": "Plastics Material and Resin Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [
+       "4621011"
+      ],
+      "eis_note": null,
+      "total_release": 17458.76,
+      "unit": "Pounds",
+      "emission_rate": 0.2511149266127981,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325211)",
+      "fugitive_release_kg_per_year": 986.5634047500001,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "As a reactant",
+        "tri_section": "3.2a",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Processing as a reactant",
+        "mapping_strength": "Direct"
+       }
+      ],
+      "lifecycle_stages": [
+       "Processing"
+      ],
+      "conditions_note": null,
+      "latitude": 41.130556,
+      "longitude": -89.334444,
+      "address": "1546 COUNTY RD 1450N",
+      "city": "HENRY",
+      "county": "MARSHALL",
+      "state": "IL",
+      "zip_code": "61537"
+     },
+     {
+      "frs_id": "110041022274",
+      "facility_name": "MEXICHEM SPECIALTY RESINS INC",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324222431645",
+      "naics_code": "325211",
+      "naics_title": "Plastics Material and Resin Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [
+       "8173911"
+      ],
+      "eis_note": null,
+      "total_release": 14106.0,
+      "unit": "Pounds",
+      "emission_rate": 0.20289110766172,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325211)",
+      "fugitive_release_kg_per_year": 1588.4804797400002,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "As a reactant",
+        "tri_section": "3.2a",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Processing as a reactant",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "Processed, recycling",
+        "tri_section": "3.2f",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Recycling",
+        "mapping_strength": "Partial"
+       }
+      ],
+      "lifecycle_stages": [
+       "Processing"
+      ],
+      "conditions_note": null,
+      "latitude": 39.763889,
+      "longitude": -75.431944,
+      "address": "76 PORCUPINE RD - PO BOX 420",
+      "city": "PEDRICKTOWN",
+      "county": "SALEM",
+      "state": "NJ",
+      "zip_code": "08067"
+     },
+     {
+      "frs_id": "110018925957",
+      "facility_name": "FORMOSA PLASTICS CORP TEXAS",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324222889913",
+      "naics_code": "325211",
+      "naics_title": "Plastics Material and Resin Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [],
+      "eis_note": "FRS ID 110018925957 has no EIS registration, and no other FRS record of the same site was found",
+      "total_release": 13173.0,
+      "unit": "Pounds",
+      "emission_rate": 0.18947147038337142,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325211)",
+      "fugitive_release_kg_per_year": 4224.759334180001,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Produce the chemical",
+        "tri_section": "3.1a",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "For on-site use/processing",
+        "tri_section": "3.1c",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Partial"
+       },
+       {
+        "tri_activity": "For sale/distribution",
+        "tri_section": "3.1d",
+        "lifecycle_stage": "Distribution in commerce",
+        "cou_category": "Distribution in commerce",
+        "mapping_strength": "Partial"
+       },
+       {
+        "tri_activity": "As a reactant",
+        "tri_section": "3.2a",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Processing as a reactant",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "As a process impurity",
+        "tri_section": "3.2e",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Not a COU category (process impurity)",
+        "mapping_strength": "None (CDR exempt)"
+       }
+      ],
+      "lifecycle_stages": [
+       "Manufacturing",
+       "Distribution in commerce",
+       "Processing"
+      ],
+      "conditions_note": null,
+      "latitude": 28.683333,
+      "longitude": -96.541667,
+      "address": "201 FORMOSA DR",
+      "city": "POINT COMFORT",
+      "county": "CALHOUN",
+      "state": "TX",
+      "zip_code": "77978"
+     },
+     {
+      "frs_id": "110000743839",
+      "facility_name": "SHINTECH INC",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324222962603",
+      "naics_code": "325211",
+      "naics_title": "Plastics Material and Resin Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [],
+      "eis_note": "FRS ID 110000743839 has no EIS registration, and no other FRS record of the same site was found",
+      "total_release": 11483.0,
+      "unit": "Pounds",
+      "emission_rate": 0.1651636600935439,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325211)",
+      "fugitive_release_kg_per_year": 5141.469513950001,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "As a reactant",
+        "tri_section": "3.2a",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Processing as a reactant",
+        "mapping_strength": "Direct"
+       }
+      ],
+      "lifecycle_stages": [
+       "Processing"
+      ],
+      "conditions_note": null,
+      "latitude": 28.998611,
+      "longitude": -95.3575,
+      "address": "5618 HWY 332 E",
+      "city": "FREEPORT",
+      "county": "BRAZORIA",
+      "state": "TX",
+      "zip_code": "77541"
+     },
+     {
+      "frs_id": "110071162323",
+      "facility_name": "SHINTECH LOUISIANA LLC - ADDIS PLANT A",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324223096518",
+      "naics_code": "325211",
+      "naics_title": "Plastics Material and Resin Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [
+       "7931011"
+      ],
+      "eis_note": null,
+      "total_release": 9025.33,
+      "unit": "Pounds",
+      "emission_rate": 0.1298142067710585,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325211)",
+      "fugitive_release_kg_per_year": 3467.9586085298006,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "As a reactant",
+        "tri_section": "3.2a",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Processing as a reactant",
+        "mapping_strength": "Direct"
+       }
+      ],
+      "lifecycle_stages": [
+       "Processing"
+      ],
+      "conditions_note": null,
+      "latitude": 30.325882,
+      "longitude": -91.261732,
+      "address": "9750 LOUISIANA HWY 1 S",
+      "city": "ADDIS",
+      "county": "WEST BATON ROUGE PARISH",
+      "state": "LA",
+      "zip_code": "70710"
+     },
+     {
+      "frs_id": "110000572675",
+      "facility_name": "SHINTECH PLAQUEMINE PLANT",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324223167560",
+      "naics_code": "325211",
+      "naics_title": "Plastics Material and Resin Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [
+       "7227111",
+       "13610611"
+      ],
+      "eis_note": null,
+      "total_release": 8721.17,
+      "unit": "Pounds",
+      "emission_rate": 0.12543937625167748,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325211)",
+      "fugitive_release_kg_per_year": 3991.091224774501,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Produce the chemical",
+        "tri_section": "3.1a",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "For on-site use/processing",
+        "tri_section": "3.1c",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Partial"
+       },
+       {
+        "tri_activity": "For sale/distribution",
+        "tri_section": "3.1d",
+        "lifecycle_stage": "Distribution in commerce",
+        "cou_category": "Distribution in commerce",
+        "mapping_strength": "Partial"
+       },
+       {
+        "tri_activity": "As a reactant",
+        "tri_section": "3.2a",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Processing as a reactant",
+        "mapping_strength": "Direct"
+       }
+      ],
+      "lifecycle_stages": [
+       "Manufacturing",
+       "Distribution in commerce",
+       "Processing"
+      ],
+      "conditions_note": null,
+      "latitude": 30.261944,
+      "longitude": -91.1775,
+      "address": "26270 HWY 405",
+      "city": "PLAQUEMINE",
+      "county": "IBERVILLE PARISH",
+      "state": "LA",
+      "zip_code": "70764"
+     },
+     {
+      "frs_id": "110000613747",
+      "facility_name": "WESTLAKE CHEMICALS & VINYLS LLC",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324223107727",
+      "naics_code": "325211",
+      "naics_title": "Plastics Material and Resin Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [],
+      "eis_note": "FRS ID 110000613747 has no EIS registration, and no other FRS record of the same site was found",
+      "total_release": 8386.0,
+      "unit": "Pounds",
+      "emission_rate": 0.12061851898845766,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325211)",
+      "fugitive_release_kg_per_year": 4064.187635200001,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Produce the chemical",
+        "tri_section": "3.1a",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "For on-site use/processing",
+        "tri_section": "3.1c",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Partial"
+       },
+       {
+        "tri_activity": "For sale/distribution",
+        "tri_section": "3.1d",
+        "lifecycle_stage": "Distribution in commerce",
+        "cou_category": "Distribution in commerce",
+        "mapping_strength": "Partial"
+       },
+       {
+        "tri_activity": "As a reactant",
+        "tri_section": "3.2a",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Processing as a reactant",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Industrial use",
+        "cou_category": "Industrial function category and chemical sector",
+        "mapping_strength": "Direct (group)"
+       },
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Commercial use",
+        "cou_category": "Product category",
+        "mapping_strength": "Partial"
+       }
+      ],
+      "lifecycle_stages": [
+       "Manufacturing",
+       "Distribution in commerce",
+       "Processing",
+       "Industrial use",
+       "Commercial use"
+      ],
+      "conditions_note": null,
+      "latitude": 30.269444,
+      "longitude": -91.18,
+      "address": "26100 HWY 405 S",
+      "city": "PLAQUEMINE",
+      "county": "IBERVILLE PARISH",
+      "state": "LA",
+      "zip_code": "70764"
+     },
+     {
+      "frs_id": "110000597444",
+      "facility_name": "FORMOSA PLASTICS CORP LOUISIANA",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324223140308",
+      "naics_code": "325211",
+      "naics_title": "Plastics Material and Resin Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [],
+      "eis_note": "FRS ID 110000597444 has no EIS registration, and no other FRS record of the same site was found",
+      "total_release": 5357.0,
+      "unit": "Pounds",
+      "emission_rate": 0.07705144362284375,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325211)",
+      "fugitive_release_kg_per_year": 6448.722724290001,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Produce the chemical",
+        "tri_section": "3.1a",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "For on-site use/processing",
+        "tri_section": "3.1c",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Partial"
+       },
+       {
+        "tri_activity": "For sale/distribution",
+        "tri_section": "3.1d",
+        "lifecycle_stage": "Distribution in commerce",
+        "cou_category": "Distribution in commerce",
+        "mapping_strength": "Partial"
+       },
+       {
+        "tri_activity": "As a reactant",
+        "tri_section": "3.2a",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Processing as a reactant",
+        "mapping_strength": "Direct"
+       }
+      ],
+      "lifecycle_stages": [
+       "Manufacturing",
+       "Distribution in commerce",
+       "Processing"
+      ],
+      "conditions_note": null,
+      "latitude": 30.5,
+      "longitude": -91.188889,
+      "address": "GULF STATES RD",
+      "city": "BATON ROUGE",
+      "county": "EAST BATON ROUGE PARISH",
+      "state": "LA",
+      "zip_code": "70805"
+     },
+     {
+      "frs_id": "110012665990",
+      "facility_name": "WESTLAKE CHEMICALS & VINYLS LLC",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324222601635",
+      "naics_code": "325211",
+      "naics_title": "Plastics Material and Resin Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [
+       "8484111"
+      ],
+      "eis_note": null,
+      "total_release": 4549.0,
+      "unit": "Pounds",
+      "emission_rate": 0.06542972130676053,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325211)",
+      "fugitive_release_kg_per_year": 1798.4937470500004,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "As a reactant",
+        "tri_section": "3.2a",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Processing as a reactant",
+        "mapping_strength": "Direct"
+       }
+      ],
+      "lifecycle_stages": [
+       "Processing"
+      ],
+      "conditions_note": null,
+      "latitude": 33.813611,
+      "longitude": -88.559444,
+      "address": "715 HWY 25 S",
+      "city": "ABERDEEN",
+      "county": "MONROE",
+      "state": "MS",
+      "zip_code": "39730"
+     },
+     {
+      "frs_id": "110000462605",
+      "facility_name": "OXY VINYLS LP PASADENA PVC PLANT",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324222861003",
+      "naics_code": "325211",
+      "naics_title": "Plastics Material and Resin Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [
+       "4926411"
+      ],
+      "eis_note": null,
+      "total_release": 3291.0,
+      "unit": "Pounds",
+      "emission_rate": 0.04733550512652208,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325211)",
+      "fugitive_release_kg_per_year": 4497.821940920001,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "As a reactant",
+        "tri_section": "3.2a",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Processing as a reactant",
+        "mapping_strength": "Direct"
+       }
+      ],
+      "lifecycle_stages": [
+       "Processing"
+      ],
+      "conditions_note": null,
+      "latitude": 29.730833,
+      "longitude": -95.151111,
+      "address": "4403 PASADENA FWY",
+      "city": "PASADENA",
+      "county": "HARRIS",
+      "state": "TX",
+      "zip_code": "77503"
+     },
+     {
+      "frs_id": "110070212279",
+      "facility_name": "OXY VINYLS LP",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324222723013",
+      "naics_code": "325211",
+      "naics_title": "Plastics Material and Resin Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [
+       "12804811"
+      ],
+      "eis_note": null,
+      "total_release": 2705.0,
+      "unit": "Pounds",
+      "emission_rate": 0.03890687978342213,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325211)",
+      "fugitive_release_kg_per_year": 892.6697841600002,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "As a reactant",
+        "tri_section": "3.2a",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Processing as a reactant",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Industrial use",
+        "cou_category": "Industrial function category and chemical sector",
+        "mapping_strength": "Direct (group)"
+       },
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Commercial use",
+        "cou_category": "Product category",
+        "mapping_strength": "Partial"
+       }
+      ],
+      "lifecycle_stages": [
+       "Processing",
+       "Industrial use",
+       "Commercial use"
+      ],
+      "conditions_note": null,
+      "latitude": 39.763611,
+      "longitude": -75.423611,
+      "address": "RT 130 & PORCUPINE RD",
+      "city": "PEDRICKTOWN",
+      "county": "SALEM",
+      "state": "NJ",
+      "zip_code": "08067"
+     },
+     {
+      "frs_id": "110070725501",
+      "facility_name": "OCCIDENTAL CHEMICAL CORP",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324223152606",
+      "naics_code": "325199",
+      "naics_title": "All Other Basic Organic Chemical Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [
+       "5746611"
+      ],
+      "eis_note": null,
+      "total_release": 1980.0,
+      "unit": "Pounds",
+      "emission_rate": 0.02847897300228311,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325199)",
+      "fugitive_release_kg_per_year": 3641.439546360001,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Produce the chemical",
+        "tri_section": "3.1a",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "For sale/distribution",
+        "tri_section": "3.1d",
+        "lifecycle_stage": "Distribution in commerce",
+        "cou_category": "Distribution in commerce",
+        "mapping_strength": "Partial"
+       },
+       {
+        "tri_activity": "Repackaging",
+        "tri_section": "3.2d",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Repackaging",
+        "mapping_strength": "Direct"
+       }
+      ],
+      "lifecycle_stages": [
+       "Manufacturing",
+       "Distribution in commerce",
+       "Processing"
+      ],
+      "conditions_note": null,
+      "latitude": 27.886111,
+      "longitude": -97.236111,
+      "address": "4133 HWY 361",
+      "city": "GREGORY",
+      "county": "SAN PATRICIO",
+      "state": "TX",
+      "zip_code": "78359"
+     },
+     {
+      "frs_id": "110027373072",
+      "facility_name": "WESTLAKE VINYLS INC",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324223224092",
+      "naics_code": "325199",
+      "naics_title": "All Other Basic Organic Chemical Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [],
+      "eis_note": "FRS ID 110027373072 has no EIS registration, and no other FRS record of the same site was found",
+      "total_release": 1479.04,
+      "unit": "Pounds",
+      "emission_rate": 0.021273505166311518,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325199)",
+      "fugitive_release_kg_per_year": 2306.8075005668006,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Produce the chemical",
+        "tri_section": "3.1a",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "For sale/distribution",
+        "tri_section": "3.1d",
+        "lifecycle_stage": "Distribution in commerce",
+        "cou_category": "Distribution in commerce",
+        "mapping_strength": "Partial"
+       },
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Industrial use",
+        "cou_category": "Industrial function category and chemical sector",
+        "mapping_strength": "Direct (group)"
+       },
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Commercial use",
+        "cou_category": "Product category",
+        "mapping_strength": "Partial"
+       }
+      ],
+      "lifecycle_stages": [
+       "Manufacturing",
+       "Distribution in commerce",
+       "Industrial use",
+       "Commercial use"
+      ],
+      "conditions_note": null,
+      "latitude": 37.051111,
+      "longitude": -88.334167,
+      "address": "2468 IND US TRIAL PKWY",
+      "city": "CALVERT CITY",
+      "county": "MARSHALL",
+      "state": "KY",
+      "zip_code": "42029"
+     },
+     {
+      "frs_id": "110017769734",
+      "facility_name": "OXY VINYLS LP LA PORTE VCM PLANT",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324223019720",
+      "naics_code": "325199",
+      "naics_title": "All Other Basic Organic Chemical Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [
+       "17728311",
+       "4057611"
+      ],
+      "eis_note": null,
+      "total_release": 1191.68,
+      "unit": "Pounds",
+      "emission_rate": 0.01714031441785896,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325199)",
+      "fugitive_release_kg_per_year": 1672.7715498571004,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Produce the chemical",
+        "tri_section": "3.1a",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "For on-site use/processing",
+        "tri_section": "3.1c",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Partial"
+       },
+       {
+        "tri_activity": "For sale/distribution",
+        "tri_section": "3.1d",
+        "lifecycle_stage": "Distribution in commerce",
+        "cou_category": "Distribution in commerce",
+        "mapping_strength": "Partial"
+       },
+       {
+        "tri_activity": "Repackaging",
+        "tri_section": "3.2d",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Repackaging",
+        "mapping_strength": "Direct"
+       }
+      ],
+      "lifecycle_stages": [
+       "Manufacturing",
+       "Distribution in commerce",
+       "Processing"
+      ],
+      "conditions_note": null,
+      "latitude": 29.725,
+      "longitude": -95.075,
+      "address": "2400 MILLER CUTOFF RD",
+      "city": "LA PORTE",
+      "county": "HARRIS",
+      "state": "TX",
+      "zip_code": "77571"
+     },
+     {
+      "frs_id": "110000449774",
+      "facility_name": "OCCIDENTAL CHEMICAL HOLDING CORP - GEISMAR PLANT",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324222969709",
+      "naics_code": "325199",
+      "naics_title": "All Other Basic Organic Chemical Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [
+       "7445711"
+      ],
+      "eis_note": null,
+      "total_release": 1125.0,
+      "unit": "Pounds",
+      "emission_rate": 0.016181234660388132,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325199)",
+      "fugitive_release_kg_per_year": 211.37404442000005,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Produce the chemical",
+        "tri_section": "3.1a",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "As a byproduct",
+        "tri_section": "3.1e",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Partial"
+       },
+       {
+        "tri_activity": "As a reactant",
+        "tri_section": "3.2a",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Processing as a reactant",
+        "mapping_strength": "Direct"
+       }
+      ],
+      "lifecycle_stages": [
+       "Manufacturing",
+       "Processing"
+      ],
+      "conditions_note": null,
+      "latitude": 30.197222,
+      "longitude": -90.974167,
+      "address": "8318 ASHLAND RD",
+      "city": "GEISMAR",
+      "county": "ASCENSION PARISH",
+      "state": "LA",
+      "zip_code": "70734"
+     },
+     {
+      "frs_id": "110070675765",
+      "facility_name": "CORTEVA FREEPORT OPERATIONS",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324223092192",
+      "naics_code": "325199",
+      "naics_title": "All Other Basic Organic Chemical Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [],
+      "eis_note": "FRS ID 110070675765 has no EIS registration, and no other FRS record of the same site was found",
+      "total_release": 539.0,
+      "unit": "Pounds",
+      "emission_rate": 0.00775260931728818,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325199)",
+      "fugitive_release_kg_per_year": 824.1773362900002,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Industrial use",
+        "cou_category": "Industrial function category and chemical sector",
+        "mapping_strength": "Direct (group)"
+       },
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Commercial use",
+        "cou_category": "Product category",
+        "mapping_strength": "Partial"
+       }
+      ],
+      "lifecycle_stages": [
+       "Industrial use",
+       "Commercial use"
+      ],
+      "conditions_note": null,
+      "latitude": 28.95587,
+      "longitude": -95.33697,
+      "address": "698 MIDWAY RD",
+      "city": "FREEPORT",
+      "county": "BRAZORIA",
+      "state": "TX",
+      "zip_code": "77541"
+     },
+     {
+      "frs_id": "110070228618",
+      "facility_name": "WESTLAKE CHEMICALS & VINYLS LLC",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324222810057",
+      "naics_code": "325110",
+      "naics_title": "Petrochemical Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [
+       "8361111"
+      ],
+      "eis_note": null,
+      "total_release": 200.98,
+      "unit": "Pounds",
+      "emission_rate": 0.0028907595929287167,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325110)",
+      "fugitive_release_kg_per_year": 3823.1078264687008,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Produce the chemical",
+        "tri_section": "3.1a",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "For sale/distribution",
+        "tri_section": "3.1d",
+        "lifecycle_stage": "Distribution in commerce",
+        "cou_category": "Distribution in commerce",
+        "mapping_strength": "Partial"
+       }
+      ],
+      "lifecycle_stages": [
+       "Manufacturing",
+       "Distribution in commerce"
+      ],
+      "conditions_note": null,
+      "latitude": 30.252222,
+      "longitude": -93.284444,
+      "address": "1600 VCM PLANT RD",
+      "city": "WESTLAKE",
+      "county": "CALCASIEU PARISH",
+      "state": "LA",
+      "zip_code": "70669"
+     },
+     {
+      "frs_id": "110024441184",
+      "facility_name": "ROWMARK CUSTOM LAMINATIONS",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324222697017",
+      "naics_code": "326113",
+      "naics_title": "Unlaminated Plastics Film and Sheet (except Packaging) Manufacturing",
+      "naics_subsector": "326",
+      "naics_subsector_title": "Plastics and Rubber Products Manufacturing",
+      "eis_ids": [
+       "13453711"
+      ],
+      "eis_note": null,
+      "total_release": 102.0,
+      "unit": "Pounds",
+      "emission_rate": 0.0026848863436495863,
+      "operating_hours_per_year": 4786.714285714285,
+      "operating_hours_source": "Census QPC 2026Q2, NAICS 3261: 91.8 plant hours/week",
+      "fugitive_release_kg_per_year": null,
+      "fugitive_reporting_year": null,
+      "conditions_of_use": [
+       {
+        "tri_activity": "As a formulation component",
+        "tri_section": "3.2b",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Processing - incorporation into formulation, mixture, or reaction product",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "As a manufacturing aid",
+        "tri_section": "3.3b",
+        "lifecycle_stage": "Industrial use",
+        "cou_category": "Industrial function category and chemical sector",
+        "mapping_strength": "Direct (group)"
+       }
+      ],
+      "lifecycle_stages": [
+       "Processing",
+       "Industrial use"
+      ],
+      "conditions_note": null,
+      "latitude": 35.07059,
+      "longitude": -77.36531,
+      "address": "182 INDUSTRIAL PARK DR",
+      "city": "TRENTON",
+      "county": "JONES",
+      "state": "NC",
+      "zip_code": "28585"
+     },
+     {
+      "frs_id": "110066943605",
+      "facility_name": "FREEPORT_OLIN BC",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324222872590",
+      "naics_code": "325199",
+      "naics_title": "All Other Basic Organic Chemical Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [
+       "17735411"
+      ],
+      "eis_note": null,
+      "total_release": 142.0,
+      "unit": "Pounds",
+      "emission_rate": 0.002042431397133435,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325199)",
+      "fugitive_release_kg_per_year": 1949.9935986300004,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Produce the chemical",
+        "tri_section": "3.1a",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "For sale/distribution",
+        "tri_section": "3.1d",
+        "lifecycle_stage": "Distribution in commerce",
+        "cou_category": "Distribution in commerce",
+        "mapping_strength": "Partial"
+       },
+       {
+        "tri_activity": "As a byproduct",
+        "tri_section": "3.1e",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Partial"
+       },
+       {
+        "tri_activity": "As a reactant",
+        "tri_section": "3.2a",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Processing as a reactant",
+        "mapping_strength": "Direct"
+       }
+      ],
+      "lifecycle_stages": [
+       "Manufacturing",
+       "Distribution in commerce",
+       "Processing"
+      ],
+      "conditions_note": null,
+      "latitude": 28.981692,
+      "longitude": -95.376501,
+      "address": "2301 N BRAZOSPORT BLVD",
+      "city": "FREEPORT",
+      "county": "BRAZORIA",
+      "state": "TX",
+      "zip_code": "77541"
+     },
+     {
+      "frs_id": "110000494894",
+      "facility_name": "WESTLAKE US 2 LLC",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324222735767",
+      "naics_code": "325180",
+      "naics_title": "Other Basic Inorganic Chemical Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [],
+      "eis_note": "FRS ID 110000494894 has no EIS registration, and no other FRS record of the same site was found",
+      "total_release": 140.0,
+      "unit": "Pounds",
+      "emission_rate": 0.0020136647577371895,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325180)",
+      "fugitive_release_kg_per_year": 1587.5732950000004,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Produce the chemical",
+        "tri_section": "3.1a",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "For sale/distribution",
+        "tri_section": "3.1d",
+        "lifecycle_stage": "Distribution in commerce",
+        "cou_category": "Distribution in commerce",
+        "mapping_strength": "Partial"
+       },
+       {
+        "tri_activity": "As a byproduct",
+        "tri_section": "3.1e",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Partial"
+       },
+       {
+        "tri_activity": "As a reactant",
+        "tri_section": "3.2a",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Processing as a reactant",
+        "mapping_strength": "Direct"
+       }
+      ],
+      "lifecycle_stages": [
+       "Manufacturing",
+       "Distribution in commerce",
+       "Processing"
+      ],
+      "conditions_note": null,
+      "latitude": 30.224167,
+      "longitude": -93.283056,
+      "address": "1300 PPG DR",
+      "city": "WESTLAKE",
+      "county": "CALCASIEU PARISH",
+      "state": "LA",
+      "zip_code": "70669"
+     },
+     {
+      "frs_id": "110043782788",
+      "facility_name": "OXY VINYLS LP DEER PARK CAUSTIC",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324222816668",
+      "naics_code": "325211",
+      "naics_title": "Plastics Material and Resin Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [
+       "4981011",
+       "4778211"
+      ],
+      "eis_note": null,
+      "total_release": 136.0,
+      "unit": "Pounds",
+      "emission_rate": 0.0019561314789446984,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325211)",
+      "fugitive_release_kg_per_year": 3513.9800903900004,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "As a reactant",
+        "tri_section": "3.2a",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Processing as a reactant",
+        "mapping_strength": "Direct"
+       }
+      ],
+      "lifecycle_stages": [
+       "Processing"
+      ],
+      "conditions_note": null,
+      "latitude": 29.728333,
+      "longitude": -95.110556,
+      "address": "1000 TIDAL RD",
+      "city": "DEER PARK",
+      "county": "HARRIS",
+      "state": "TX",
+      "zip_code": "77536"
+     },
+     {
+      "frs_id": "110000741500",
+      "facility_name": "LUBRIZOL ADVANCED MATERIALS INC",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324223148709",
+      "naics_code": "325211",
+      "naics_title": "Plastics Material and Resin Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [
+       "8370811"
+      ],
+      "eis_note": null,
+      "total_release": 105.0,
+      "unit": "Pounds",
+      "emission_rate": 0.0015102485683028922,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325211)",
+      "fugitive_release_kg_per_year": 265.35153645,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "As a reactant",
+        "tri_section": "3.2a",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Processing as a reactant",
+        "mapping_strength": "Direct"
+       }
+      ],
+      "lifecycle_stages": [
+       "Processing"
+      ],
+      "conditions_note": null,
+      "latitude": 38.222222,
+      "longitude": -85.829167,
+      "address": "4200 BELLS LN",
+      "city": "LOUISVILLE",
+      "county": "JEFFERSON",
+      "state": "KY",
+      "zip_code": "40211"
+     },
+     {
+      "frs_id": "110070827819",
+      "facility_name": "OXY VINYLS LP DEER PARK-VCM PLANT",
+      "environmental_medium": "AIR STACK",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324222922181",
+      "naics_code": "325199",
+      "naics_title": "All Other Basic Organic Chemical Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "eis_ids": [
+       "6693811"
+      ],
+      "eis_note": null,
+      "total_release": 58.0,
+      "unit": "Pounds",
+      "emission_rate": 0.0008342325424911213,
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325199)",
+      "fugitive_release_kg_per_year": 1393.4357606400004,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Produce the chemical",
+        "tri_section": "3.1a",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "For sale/distribution",
+        "tri_section": "3.1d",
+        "lifecycle_stage": "Distribution in commerce",
+        "cou_category": "Distribution in commerce",
+        "mapping_strength": "Partial"
+       }
+      ],
+      "lifecycle_stages": [
+       "Manufacturing",
+       "Distribution in commerce"
+      ],
+      "conditions_note": null,
+      "latitude": 29.7175,
+      "longitude": -95.123333,
+      "address": "5900 HWY 225 GATE 8A",
+      "city": "DEER PARK",
+      "county": "HARRIS",
+      "state": "TX",
+      "zip_code": "77536"
+     }
+    ],
+    "note": "Only the 25 facilities with the highest emission rates of the 33 that match are listed; the others are not shown and the list must not be treated as complete. Give `state` or `city` to see the largest in one place.",
+    "worker_only": [
+     {
+      "frs_id": "110056953765",
+      "facility_name": "BASF CORP - HANNIBAL SITE",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324222978506",
+      "naics_code": "325320",
+      "naics_title": "Pesticide and Other Agricultural Chemical Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325320)",
+      "fugitive_release_kg_per_year": 127.91304834000002,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Produce the chemical",
+        "tri_section": "3.1a",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Direct"
+       },
+       {
+        "tri_activity": "As a byproduct",
+        "tri_section": "3.1e",
+        "lifecycle_stage": "Manufacturing",
+        "cou_category": "Domestic manufacturing",
+        "mapping_strength": "Partial"
+       },
+       {
+        "tri_activity": "As a process impurity",
+        "tri_section": "3.2e",
+        "lifecycle_stage": "Processing",
+        "cou_category": "Not a COU category (process impurity)",
+        "mapping_strength": "None (CDR exempt)"
+       }
+      ],
+      "lifecycle_stages": [
+       "Manufacturing",
+       "Processing"
+      ],
+      "conditions_note": null,
+      "latitude": 39.836111,
+      "longitude": -91.429167,
+      "address": "3150 HWY JJ",
+      "city": "PALMYRA",
+      "county": "MARION",
+      "state": "MO",
+      "zip_code": "63461"
+     },
+     {
+      "frs_id": "110070208769",
+      "facility_name": "LACC LLC US/LOTTE CHEMICAL LOUISIANA LLC",
+      "reporting_year": 2024,
+      "doc_ctrl_num": "1324223147354",
+      "naics_code": "325199",
+      "naics_title": "All Other Basic Organic Chemical Manufacturing",
+      "naics_subsector": "325",
+      "naics_subsector_title": "Chemical Manufacturing",
+      "operating_hours_per_year": 8760.0,
+      "operating_hours_source": "default 8760 h/yr (no QPC match for 325199)",
+      "fugitive_release_kg_per_year": 0.4535923700000001,
+      "fugitive_reporting_year": 2024,
+      "conditions_of_use": [
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Industrial use",
+        "cou_category": "Industrial function category and chemical sector",
+        "mapping_strength": "Direct (group)"
+       },
+       {
+        "tri_activity": "Ancillary or other use",
+        "tri_section": "3.3c",
+        "lifecycle_stage": "Commercial use",
+        "cou_category": "Product category",
+        "mapping_strength": "Partial"
+       }
+      ],
+      "lifecycle_stages": [
+       "Industrial use",
+       "Commercial use"
+      ],
+      "conditions_note": null,
+      "latitude": 30.214192,
+      "longitude": -93.30859,
+      "address": "2200 BAYOU D'INDE",
+      "city": "WESTLAKE",
+      "county": "CALCASIEU PARISH",
+      "state": "LA",
+      "zip_code": "70669"
+     }
+    ],
+    "worker_only_left_out": 0
+   }
+  }
+ ]
+}

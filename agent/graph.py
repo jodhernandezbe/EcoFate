@@ -21,7 +21,7 @@ from agent.guardrails import ScopeGuard, build_scope_node, route_after_scope
 from agent.missing import ask_for_values, route_after_tools
 from agent.state import AgentState
 from prompts.registry import load_prompt
-from tools.registry import get_all_tools
+from tools.registry import JOB_TOOL_NAMES, get_all_tools
 
 DEFAULT_SYSTEM_PROMPT = "agent_system"
 
@@ -60,6 +60,15 @@ def _add_exit(
     else:
         graph.add_edge("model", "finish")
     graph.add_conditional_edges("finish", route_after_completion, {"model": "model", END: END})
+
+
+def turn_tools(has_jobs: bool) -> list[BaseTool]:
+    """The tools of one turn: every registered tool, but the job-status tool only once the
+    conversation has a background job. Measured (docs/load-test.md): offering it in every turn
+    made the model state a CAS number recalled from a chemical's name; a turn with nothing to
+    check gets exactly the tools it had before background jobs existed."""
+    tools = get_all_tools()
+    return tools if has_jobs else [tool for tool in tools if tool.name not in JOB_TOOL_NAMES]
 
 
 def build_agent(

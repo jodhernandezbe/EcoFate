@@ -27,6 +27,7 @@ from api.services.projectors.exposure import (
     project_meteorology,
     project_population,
 )
+from api.services.projectors.jobs import project_job_status
 from api.services.projectors.ledger import Ledger, ToolExchange
 
 Projector = Callable[[ToolExchange, Ledger], None]
@@ -45,5 +46,6 @@ PROJECTORS: Mapping[str, Projector] = MappingProxyType(
         "get_population_receptors": project_population,
         "calculate_exposure_metrics": project_exposure,
         "assess_facilities": project_assessment,
+        "check_job_status": project_job_status,
     },
 )

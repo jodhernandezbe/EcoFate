@@ -29,8 +29,9 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   `run_assessment_job`). It validates its untrusted input (`InvalidJobInputError`) and asks the
   injected `StopCheck` between tiers (default never stops); it never imports `app`.
 - `tools/jobs/` is how a heavy tool runs in the background: `heavy_submitter(tool, preflight)` (the
-  registry wraps each `[worker].heavy_tools` entry: same name, schema and docstring plus a "runs in the
-  background" paragraph; a call settles `preflight` (invalid input, missing values: the tool's own
+  registry wraps each `[worker].heavy_tools` entry: same name, schema and docstring, unchanged: a description
+  saying the call "does not run the work" made the model assess facilities one by one, so the
+  guidance on a running job is the `note` of its queued answer; a call settles `preflight` (invalid input, missing values: the tool's own
   result, no job) and otherwise queues a job through the `JobPort` the program provides for the turn),
   `check_job_status` (quick tool, registered only when a tool is heavy) and `port.py` (`JobPort`,
   the context variable and `job_scope`). The job's user and thread come only from the run's config

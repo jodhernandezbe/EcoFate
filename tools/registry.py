@@ -20,6 +20,7 @@ from tools.exposure import TOOLS as EXPOSURE_TOOLS
 from tools.informatics import TOOLS as INFORMATICS_TOOLS
 from tools.jobs import TOOLS as JOB_TOOLS
 from tools.jobs import heavy_submitter
+from tools.jobs.port import is_queued_answer
 from tools.jobs.submit import Preflight
 from tools.schemas import JobRunner
 
@@ -82,6 +83,17 @@ ALL_TOOLS: list[BaseTool] = registry.all()
 def get_all_tools() -> list[BaseTool]:
     """Return every registered tool, ready to pass to ``model.bind_tools``."""
     return registry.all()
+
+
+# The tools that only matter once a conversation has a background job (``agent.graph.turn_tools``).
+JOB_TOOL_NAMES: frozenset[str] = frozenset(tool.name for tool in JOB_TOOLS)
+
+
+def is_queued_job(tool_name: str | None, content: object) -> bool:
+    """Whether a tool result is a heavy tool's queued-job answer: only a ``[worker].heavy_tools``
+    tool can queue one, so no other tool's output (external data) can pass for it."""
+    heavy = get_worker_settings().heavy_tools
+    return tool_name is not None and tool_name in heavy and is_queued_answer(content)
 
 
 # The heavy tools as a background job runs them (tool name -> runner of its stored input).

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from collections.abc import Sequence
 from typing import Any, cast
+from uuid import UUID, uuid4
 
 import openai
 from langchain_core.language_models import BaseChatModel
@@ -16,9 +18,12 @@ from langgraph.errors import GraphRecursionError
 from agent.graph import build_agent
 from agent.state import AgentState
 from app.run import Agent, completion_guard, run_config
+from app.turns.follow_up import follow_up_messages
 from config.agent import AgentSettings
-from evals.cassette import UNRECORDED_KEY
+from evals.cassette import UNRECORDED_KEY, Cassette
+from evals.jobs import MemoryJobPort, ended_job
 from evals.record import RunRecord, ToolCall
+from tools.jobs.port import provided_port, scope_config
 from tools.schemas import ConfirmationRequest
 
 # Failures that end a run early but still produce a record (the scenario then fails).
@@ -111,6 +116,70 @@ def _follow_up_turn(
     return {"messages": messages, "answers_note": _declined_note(declined)}, config
 
 
+async def _arun_turn(
+    agent: Agent,
+    inputs: dict[str, Any],
+    config: RunnableConfig,
+) -> tuple[dict[str, Any], str | None]:
+    """The async twin of ``_run_turn`` (job tools start their jobs from async code)."""
+    last: dict[str, Any] = dict(inputs)
+    try:
+        stream = agent.astream(cast(AgentState, inputs), config=config, stream_mode="values")
+        async for state in stream:
+            last = dict(state)
+    except EXPECTED_ERRORS as exc:
+        return last, f"{type(exc).__name__}: {exc}"
+    return last, None
+
+
+def _scoped(settings: AgentSettings, owner: UUID, automatic: bool) -> RunnableConfig:
+    """The run configuration of a turn of the evaluation thread, as the program scopes it."""
+    config = run_config(settings)
+    config["configurable"] = scope_config(owner, "eval-thread", automatic)
+    return config
+
+
+async def _explain_jobs(
+    agent: Agent,
+    messages: list[AnyMessage],
+    port: MemoryJobPort,
+    cassette: Cassette,
+    config: RunnableConfig,
+) -> tuple[list[AnyMessage], str | None]:
+    """One automatic follow-up turn per queued job, each given the job's recorded end."""
+    error: str | None = None
+    for submitted in port.jobs:
+        inputs: dict[str, Any] = {
+            "messages": [*messages, *follow_up_messages(ended_job(submitted, cassette))],
+        }
+        state, error = await _arun_turn(agent, inputs, config)
+        messages = list(state.get("messages", inputs["messages"]))
+        if error is not None:
+            break
+    return messages, error
+
+
+async def _background_run(
+    agent: Agent,
+    query: str,
+    settings: AgentSettings,
+    cassette: Cassette,
+) -> tuple[list[AnyMessage], str, str | None]:
+    """Both turns of a background scenario: the first queues the job, the next ones explain it.
+    Returns the messages, the first turn's final reply (when a job was queued) and any error."""
+    port, owner = MemoryJobPort(), uuid4()
+    with provided_port(port):
+        first = {"messages": [HumanMessage(content=query)]}
+        state, error = await _arun_turn(agent, first, _scoped(settings, owner, False))
+        messages: list[AnyMessage] = list(state.get("messages", []))
+        if error is not None or not port.jobs:
+            return messages, "", error
+        interim = final_report(messages)
+        follow = _scoped(settings, owner, True)
+        messages, error = await _explain_jobs(agent, messages, port, cassette, follow)
+    return messages, interim, error
+
+
 def run_scenario(
     model: BaseChatModel,
     tools: Sequence[BaseTool],
@@ -118,6 +187,8 @@ def run_scenario(
     settings: AgentSettings,
     *,
     follow_up: str | None = None,
+    background: bool = False,
+    cassette: Cassette | None = None,
 ) -> RunRecord:
     """Run the agent on ``scenario`` (id, query) with the program's step limit.
 
@@ -125,9 +196,19 @@ def run_scenario(
     sent as the user's next message (the open entries then count as proceed without) and the
     record covers both turns. The model is built by the caller with ``app.chat_model`` from the
     same ``[agent]`` settings the program uses. Expected failures go into the record.
+
+    With ``background`` the first turn runs async with a memory job system provided, so a heavy
+    tool queues a job; each queued job is then ended from ``cassette`` (an empty one when None,
+    which fails the job) and explained by an automatic follow-up turn. The record covers every
+    turn and keeps the first turn's final reply as ``interim``.
     """
     scenario_id, query = scenario
     agent = build_agent(model, tools, completion_guard=completion_guard())
+    if background:
+        ran = asyncio.run(_background_run(agent, query, settings, cassette or Cassette()))
+        messages, interim, error = ran
+        calls = extract_calls(messages)
+        return RunRecord(scenario_id, query, calls, final_report(messages), error, interim)
     first = {"messages": [HumanMessage(content=query)]}
     state, error = _run_turn(agent, first, run_config(settings))
     if follow_up is not None and error is None and state.get("pending"):

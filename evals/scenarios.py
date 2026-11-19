@@ -30,6 +30,11 @@ class Scenario:
     # The user's next message when the first turn ends by asking for missing values (the open
     # entries then count as proceed without); None ends the scenario at the ask.
     follow_up: str | None = None
+    # The assessment runs as a background job: the first turn queues it, a second turn explains
+    # its finished result (see ``evals/jobs.py``).
+    background: bool = False
+    # Replay the cassette of another scenario instead of ``<id>.json`` (nothing is copied).
+    cassette_id: str | None = None
 
 
 _NOT_WRITTEN = "checks and cassette not written yet"
@@ -87,6 +92,36 @@ FULL_ASSESSMENT = Scenario(
     ),
 )
 
+# Vinyl chloride (75-01-4): 33 TRI facilities, the size at which the batch assessment is the
+# natural route (with two facilities the agent often assesses them by hand, and no job starts).
+# Turn 1 must queue the assessment and state no result; the follow-up explains the job's result,
+# which is this cassette's recording of the same batch call. Its cassette: `uv run python -m
+# evals record assessment-queued-then-explained` (recorded with no job system: the call runs).
+BACKGROUND_CAS = "75-01-4"
+
+BACKGROUND_ASSESSMENT = Scenario(
+    id="assessment-queued-then-explained",
+    query=(
+        f"Assess the inhalation exposure and health risk from air releases of CAS {BACKGROUND_CAS}."
+    ),
+    checks=(
+        c.completed(),
+        c.no_unrecorded(),
+        c.submitted_as_job(),
+        c.interim_states_no_results(),
+        c.every_facility_covered(),
+    ),
+    # Not checked here: every assessed facility in the report. With 33 facilities the agent lists
+    # the highest 21 in the synchronous run too (the same 15 left out on main), so that gap is
+    # the report's, not the job's; this scenario measures the queued-then-explained flow.
+    background=True,
+    # The batch call the job runs (the recording run may have taken the per-facility route).
+    extra_calls=(
+        ExtraCall(c.ASSESSMENT, {"cas_number": BACKGROUND_CAS}),
+        ExtraCall("find_tri_read_across_surrogate", {"cas_number": BACKGROUND_CAS}),
+    ),
+)
+
 # 2-Chlorophenol is not a discrete TRI chemical; TRI reports it under the chlorophenols
 # category (N084). The agent must find that category before seeking an analogue, say so, and say
 # the releases cover the whole category. Its cassette: `uv run python -m evals record
@@ -133,6 +168,7 @@ MISSING_BENCHMARK = Scenario(
             "find_tri_read_across_surrogate",
             {"cas_number": ACROLEIN_CAS, "require_toxicity_benchmarks": True},
         ),
+        ExtraCall("find_tri_read_across_surrogate", {"cas_number": ACROLEIN_CAS}),
     ),
 )
 
@@ -140,6 +176,7 @@ CATALOGUE: tuple[Scenario, ...] = (
     CHEMICAL_NAME_ONLY,
     MISSING_BENCHMARK,
     FULL_ASSESSMENT,
+    BACKGROUND_ASSESSMENT,
     CATEGORY_MEMBER,
     Scenario("nei-empty-process-fallback", "", blocked=_NOT_WRITTEN),
     Scenario("unknown-industry-global-default", "", blocked=_NOT_WRITTEN),

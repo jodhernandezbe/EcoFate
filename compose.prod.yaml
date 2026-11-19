@@ -53,8 +53,9 @@ services:
     environment:
       <<: *production
     # [worker.chat].concurrency = 4 in production; each child loads PyTorch and the read-across model.
-    # 12g with the tool-worker's 4g leaves the 24 GB VM about 3 GB for the system and page cache.
-    mem_limit: 12g
+    # 10g with the tool-worker's 6g (and api 3g, db 2g, redis 0.5g) leaves the 24 GB VM about 2.5 GB
+    # for the system and page cache.
+    mem_limit: 10g
     logging: *logging
 
   tool-worker:
@@ -64,8 +65,8 @@ services:
       - /opt/ecofate/.env.prod
     environment:
       <<: *production
-    # [worker.tools].concurrency = 1: one child loads PyTorch and the read-across model.
-    mem_limit: 4g
+    # [worker.tools].concurrency = 2 in production: each child loads PyTorch and the read-across model.
+    mem_limit: 6g
     logging: *logging
 
   cloudflared:
