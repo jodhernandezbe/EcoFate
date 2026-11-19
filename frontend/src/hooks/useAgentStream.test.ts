@@ -38,6 +38,7 @@ function snapshot(running: ThreadSnapshot["running_turn"]): ThreadSnapshot {
     confirmation: null,
     interrupted: null,
     running_turn: running,
+    jobs: [],
   };
 }
 

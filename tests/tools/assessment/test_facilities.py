@@ -857,3 +857,32 @@ def test_the_job_runner_validates_its_input_and_runs_the_same_assessment() -> No
     assert content["assessed"] == 3 and len(artifact["assessed"]) == 3  # type: ignore[arg-type]
     with pytest.raises(InvalidJobInputError):
         facilities.run_assessment_job({"arguments": {"cas_number": 5}}, lambda: False)
+
+
+def test_the_job_preflight_gives_the_same_missing_result_as_the_tool(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _lookup_missing(monkeypatch, "iur", "oel_twa")
+    early = facilities.check_before_job({"cas_number": "50-00-0"}, {})
+    assert early is not None
+    view, artifact = early
+    assert [e["quantity"] for e in view.get("missing", [])] == ["iur", "oel_twa"]
+    assert view["assessed"] == 0 and artifact["assessed"] == []
+    assert early[0] == _run()[0]  # exactly what the synchronous tool answers
+
+
+def test_the_job_preflight_lets_a_job_start_when_nothing_is_missing() -> None:
+    assert facilities.check_before_job({"cas_number": "50-00-0"}, {}) is None
+
+
+def test_the_job_preflight_accepts_a_given_benchmark_that_fills_the_gap(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _lookup_missing(monkeypatch, "iur")
+    arguments = {"cas_number": "50-00-0", "toxicity": Toxicity(rfc=2.0, iur=1e-6)}
+    assert facilities.check_before_job(arguments, {}) is None
+
+
+def test_the_job_preflight_answers_an_invalid_cas_number_without_a_job() -> None:
+    early = facilities.check_before_job({"cas_number": "not a cas"}, {})
+    assert early is not None and "not a valid CAS" in early[0]["warnings"][0]

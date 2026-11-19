@@ -26,12 +26,14 @@ from api.schemas.chat import ChatRequest, StreamEvent, ThreadId, ThreadSnapshot
 from api.schemas.quota import QuotaExhausted
 from api.services.agent_runner import AgentRuntime, relay_turn, resume_steps
 from api.services.confirmation import ConfirmationError, plan_turn
+from api.services.jobs import Cancellation, cancel_job, cancel_open_jobs
 from api.services.key_setup import KeyServices, turn_key_loader
 from api.services.quota import QuotaService
 from api.services.report.builder import MEDIA_TYPE
 from api.services.report.service import ReportUnavailable, thread_report
 from api.services.snapshots import SnapshotOptions, thread_snapshot
 from api.services.sse import encode_event, with_heartbeat
+from api.services.thread_events import thread_frames
 from api.services.threads import ThreadStore
 from api.services.turn_lifecycle import BUSY, TurnRefused, resume_turn_record, start_turn
 from api.services.turn_queue import (
@@ -43,14 +45,19 @@ from api.services.turn_queue import (
     submit,
 )
 from app.turns.bus import turn_stream
+from app.turns.thread_bus import ENTRY_ID_PATTERN
 from config.ui import UiSettings
+from storage.job_model import JOB_ID_PATTERN
 from storage.keys import ThreadKey
 from storage.turn_model import OPEN_STATUSES, TURN_ID_PATTERN, PlannedInput, Turn
 
 router = APIRouter(prefix="/api/v1/chat", tags=["chat"], dependencies=[Depends(current_user)])
 UNKNOWN = "That run is no longer available."
 FINISHED = "That turn has already finished."
+JOB_UNKNOWN = "That job is not available."
+JOB_FINISHED = "That job has already ended."
 TurnId = Annotated[str, Path(pattern=TURN_ID_PATTERN)]
+JobId = Annotated[str, Path(pattern=JOB_ID_PATTERN)]
 LastEventId = Annotated[int, Field(ge=0)]
 SSE_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
 REPORT_RESPONSES: dict[int | str, dict[str, object]] = {
@@ -215,6 +222,44 @@ async def cancel_turn(
     return Response(status_code=202)
 
 
+@router.post("/jobs/{job_id}/cancel", status_code=202)
+async def cancel_job_route(
+    job_id: JobId,
+    user: CurrentUser,
+    threads: Annotated[ThreadStore, Depends(get_threads)],
+    queue: Annotated[TurnQueue, Depends(get_turn_queue)],
+) -> Response:
+    """Ask a queued or running background job of one of the user's threads to stop (202): a job
+    nobody has started ends at once, a running one stops after its current step. 409 for a job
+    that has ended, 404 for an unknown job or another user's."""
+    ttl = queue.background.event_ttl_seconds
+    result = await cancel_job(threads.jobs, queue.thread_bus, ttl, user.id, job_id)
+    if result is Cancellation.UNKNOWN:
+        raise HTTPException(status_code=404, detail=JOB_UNKNOWN)
+    if result is Cancellation.FINISHED:
+        raise HTTPException(status_code=409, detail=JOB_FINISHED)
+    return Response(status_code=202)
+
+
+@router.get("/threads/{thread_id}/events")
+async def thread_events(
+    thread_id: ThreadId,
+    user: CurrentUser,
+    threads: Annotated[ThreadStore, Depends(get_threads)],
+    queue: Annotated[TurnQueue, Depends(get_turn_queue)],
+    last_event_id: Annotated[str | None, Header(pattern=ENTRY_ID_PATTERN)] = None,
+) -> StreamingResponse:
+    """The thread's event stream (job and turn lifecycle, ids and statuses only), after the
+    ``Last-Event-ID`` (from the first when absent); it stays open until the client leaves.
+    404 for an unknown thread or another user's."""
+    key = ThreadKey(user.id, thread_id)
+    if not await threads.holds(key):
+        raise HTTPException(status_code=404, detail=UNKNOWN)
+    frames = thread_frames(queue.thread_bus, key, last_event_id, queue.timing.block_seconds)
+    keepalive = with_heartbeat(frames, get_settings().sse_heartbeat_seconds)
+    return StreamingResponse(keepalive, media_type="text/event-stream", headers=SSE_HEADERS)
+
+
 async def _snapshot(
     threads: ThreadStore,
     key: ThreadKey,
@@ -290,11 +335,16 @@ async def reset_thread(
     thread_id: ThreadId,
     user: CurrentUser,
     threads: Annotated[ThreadStore, Depends(get_threads)],
+    queue: Annotated[TurnQueue, Depends(get_turn_queue)],
 ) -> Response:
-    """Forget a thread's history (new assessment)."""
+    """Forget a thread's history (new assessment); its queued and running jobs are cancelled."""
     key = ThreadKey(user.id, thread_id)
     if not await threads.holds(key):  # unknown and another user's look the same
         raise HTTPException(status_code=404, detail=UNKNOWN)
+    if await threads.running(key):
+        raise HTTPException(status_code=409, detail=BUSY)
+    ttl = queue.background.event_ttl_seconds
+    await cancel_open_jobs(threads.jobs, queue.thread_bus, ttl, key)  # no job outlives its thread
     if not await threads.reset(key):
         raise HTTPException(status_code=409, detail=BUSY)
     return Response(status_code=204)

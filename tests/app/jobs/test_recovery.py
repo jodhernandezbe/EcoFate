@@ -81,3 +81,33 @@ async def test_a_lost_task_cannot_interrupt_another_users_job() -> None:
     )
     stored = await store.get(OWNER, job.id)
     assert stored is not None and stored.status is JobStatus.RUNNING
+
+
+async def test_a_queued_job_whose_task_message_was_lost_stops_holding_the_cap() -> None:
+    clock = Clock()
+    store, heard = InMemoryJobStore(clock), []
+    old = await store.create(KEY, "heavy", {}, 1)
+    assert old is not None
+    assert await store.create(KEY, "heavy", {}, 1) is None  # the cap is held by the lost job
+    clock.now += timedelta(hours=2)
+    fresh = await store.create(KEY, "heavy", {}, 9)  # a recent one, still waiting its turn
+
+    async def hear(ended: Job) -> None:
+        heard.append(ended)
+
+    swept = await sweep_stale_jobs(store, timedelta(minutes=5), hear, timedelta(hours=1))
+    assert swept == 1
+    stored = await store.get(OWNER, old.id)
+    assert stored is not None and stored.status is JobStatus.INTERRUPTED
+    assert stored.failure_reason == JobFailure.NOT_STARTED and heard == [stored]
+    assert fresh is not None and (await store.get(OWNER, fresh.id)) == fresh
+    assert await store.create(KEY, "heavy", {}, 2) is not None  # the cap is free again
+
+
+async def test_queued_jobs_are_left_alone_without_an_unclaimed_age() -> None:
+    clock = Clock()
+    store = InMemoryJobStore(clock)
+    queued = await store.create(KEY, "heavy", {}, 9)
+    clock.now += timedelta(days=1)
+    assert await sweep_stale_jobs(store, timedelta(minutes=5)) == 0
+    assert queued is not None and (await store.get(OWNER, queued.id)) == queued

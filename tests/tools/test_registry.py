@@ -59,3 +59,50 @@ def test_every_job_runner_is_a_registered_tool() -> None:
 
     names = {tool.name for tool in get_all_tools()}
     assert set(get_job_runners()) <= names and "assess_facilities" in get_job_runners()
+
+
+def _heavy_registry(monkeypatch: pytest.MonkeyPatch) -> list[str]:
+    from dataclasses import replace
+
+    import tools.registry as module
+    from config.worker import get_worker_settings
+
+    heavy = replace(get_worker_settings(), heavy_tools=("assess_facilities",))
+    monkeypatch.setattr(module, "get_worker_settings", lambda: heavy)
+    return [tool.name for tool in module._build_default_registry().all()]  # pyright: ignore[reportPrivateUsage]
+
+
+def test_a_heavy_tool_keeps_its_name_schema_and_docstring_as_a_submitter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from dataclasses import replace
+
+    import tools.registry as module
+    from config.worker import get_worker_settings
+
+    heavy = replace(get_worker_settings(), heavy_tools=("assess_facilities",))
+    monkeypatch.setattr(module, "get_worker_settings", lambda: heavy)
+    built = module._build_default_registry()  # pyright: ignore[reportPrivateUsage]
+    original = get_all_tools()
+    plain = next(t for t in original if t.name == "assess_facilities")
+    submitter = built.get("assess_facilities")
+    assert submitter is not plain
+    assert submitter.args_schema is plain.args_schema
+    assert submitter.description.startswith(plain.description)
+    assert "Runs in the background" in submitter.description
+    assert "never state" in submitter.description
+
+
+def test_check_job_status_exists_only_with_a_heavy_tool(monkeypatch: pytest.MonkeyPatch) -> None:
+    assert "check_job_status" not in {t.name for t in get_all_tools()}
+    names = _heavy_registry(monkeypatch)
+    assert names.count("check_job_status") == 1
+    assert names.count("assess_facilities") == 1 and len(names) == len(get_all_tools()) + 1
+
+
+def test_a_heavy_tool_without_a_preflight_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    import tools.registry as module
+
+    monkeypatch.setattr(module, "PREFLIGHTS", {})
+    with pytest.raises(ValueError, match="assess_facilities"):
+        _heavy_registry(monkeypatch)

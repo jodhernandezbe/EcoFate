@@ -9,6 +9,9 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   `resources.py` opens a child's services; `recovery.py` interrupts turns whose worker is gone.
   Running, recording and publishing a turn is `app.turns.job.run_background_turn`, so the API's
   in-process mode (`[worker].eager`, tests) runs exactly the same code. Never put turn logic here.
+- Follow-ups: the worker child builds the job gateway, `FollowUps` and the thread bus
+  (`worker/resources.py`); the recovery sweeps (`worker/recovery.py`) build the same lifecycle so an
+  interrupted job is explained like any other. A turn's finisher starts a waiting follow-up.
 - Imports: `app`, `agent`, `config`, `storage` and `tools.credentials` only; never `api`, and
   nothing imports `worker` (`tests/test_layering.py`). Anything both the API and the worker need
   (event bus, codec, enqueuer, turn settings) lives in `app`.

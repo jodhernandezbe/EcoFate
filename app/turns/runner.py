@@ -17,10 +17,17 @@ from contextlib import AbstractContextManager, aclosing, contextmanager, nullcon
 from dataclasses import dataclass, field
 from types import MappingProxyType
 from typing import cast
+from uuid import UUID
 
 from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, ToolMessage
+from langchain_core.messages import (
+    AIMessage,
+    AIMessageChunk,
+    AnyMessage,
+    HumanMessage,
+    ToolMessage,
+)
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.graph.state import CompiledStateGraph
@@ -60,6 +67,7 @@ from app.turns.keys import TurnKeys, provided
 from app.usage_meter import CallUsage, UsageRecorder
 from config.telemetry import TelemetrySettings
 from config.ui import ModelPrice
+from tools.jobs.port import JobPort, provided_port, scope_config
 from tools.schemas import ConfirmationRequest
 
 logger = logging.getLogger("app.turns")
@@ -83,6 +91,10 @@ class TurnRequest:
             records none. Never an email.
         checkpoint_id: The checkpointer's key for the thread when it is not ``thread_id`` (the
             web program scopes it to the owner); None uses ``thread_id``.
+        injected: The messages that open an automatic follow-up turn (the notice, the job's tool
+            call and its result) instead of ``message``; empty for a user's turn.
+        automatic: The system started this turn (a job's follow-up): the scope check, which is
+            for what a user types, is skipped.
     """
 
     thread_id: str
@@ -93,6 +105,8 @@ class TurnRequest:
     segment: TurnSegment | None = None
     user_id: str | None = None
     checkpoint_id: str | None = None
+    injected: tuple[AnyMessage, ...] = ()
+    automatic: bool = False
 
     @property
     def checkpoint(self) -> str:
@@ -134,6 +148,8 @@ class TurnServices:
         checkpointer: Keeps the thread's history.
         user_values: Returns the values the user supplied and the entries they declined.
         record_usage: Stores the turn's model calls and returns every call of the thread so far.
+        jobs: The background job system the heavy tools queue their jobs in for this turn; None
+            (the command line, evaluations) runs them in the turn.
     """
 
     load_keys: Callable[[], Awaitable[TurnKeys]]
@@ -141,6 +157,7 @@ class TurnServices:
     checkpointer: BaseCheckpointSaver[str]
     user_values: Callable[[], Awaitable[UserValues]]
     record_usage: Callable[[Sequence[CallUsage]], Awaitable[Sequence[CallUsage]]]
+    jobs: JobPort | None = None
 
 
 async def execute_turn(
@@ -163,7 +180,7 @@ async def execute_turn(
         # ``aclosing`` closes each stage at once, in this context, when the caller stops early.
         with _captured(outcome):
             keys = await services.load_keys()
-            with provided(keys), _captured(outcome):  # the tools see the keys, the logs never do
+            with _given_to_tools(keys, services), _captured(outcome):  # keys: never logged
                 model = services.build_model(keys.openai)
                 agent_run = _agent_events(request, model, services, settings, recorder)
                 async with aclosing(agent_run) as events:
@@ -175,6 +192,13 @@ async def execute_turn(
         async with aclosing(_closing_events(services, settings, recorder, span)) as closing:
             async for event in closing:
                 yield event
+
+
+@contextmanager
+def _given_to_tools(keys: TurnKeys, services: TurnServices) -> Generator[None]:
+    """What the tools may use for this turn only: the keys and the job system."""
+    with provided(keys), provided_port(services.jobs):
+        yield
 
 
 def _turn_span(request: TurnRequest, settings: TurnSettings) -> AbstractContextManager[SessionSpan]:
@@ -247,7 +271,7 @@ async def _agent_events(
     settings: TurnSettings,
     recorder: UsageRecorder,
 ) -> AsyncGenerator[TurnEvent]:
-    agent = _build(model, services, settings)
+    agent = _build(model, services, settings, automatic=request.automatic)
     config = await _run_config(request, services, settings, recorder)
     yield AgentStarted()
     # A resume sends no input: the run continues from the last checkpoint with a fresh step
@@ -265,7 +289,8 @@ async def _new_message(agent: Agent, config: RunnableConfig, request: TurnReques
     closing = not_run_results(cast(AgentState, state.values).get("messages", []))
     if closing:
         await agent.aupdate_state(config, {"messages": closing}, as_node="tools")
-    return {"messages": [HumanMessage(content=request.message)], "answers_note": request.note}
+    opening: list[AnyMessage] = list(request.injected) or [HumanMessage(content=request.message)]
+    return {"messages": opening, "answers_note": request.note}
 
 
 async def pending_steps(
@@ -292,12 +317,19 @@ async def pending_steps(
     return tuple(task.name for task in snapshot.tasks if task.result is not None)
 
 
-def _build(model: BaseChatModel, services: TurnServices, settings: TurnSettings) -> Agent:
-    """The agent of one turn: the model, the thread history and the configured checks."""
+def _build(
+    model: BaseChatModel,
+    services: TurnServices,
+    settings: TurnSettings,
+    *,
+    automatic: bool = False,
+) -> Agent:
+    """The agent of one turn: the model, the thread history and the configured checks (an
+    automatic turn is not a user's message, so it skips the scope check)."""
     return build_agent(
         model,
         checkpointer=services.checkpointer,
-        scope_guard=settings.scope_guard,
+        scope_guard=None if automatic else settings.scope_guard,
         completion_guard=settings.completion_guard,
         system_prompt=settings.system_prompt,
     )
@@ -322,9 +354,21 @@ async def _run_config(
         "configurable": {
             "thread_id": request.checkpoint,
             "user_values": {"supplied": dict(supplied), "declined": sorted(declined)},
+            **_job_scope(request),
         },
         "callbacks": _callbacks(settings, recorder),
     }
+
+
+def _job_scope(request: TurnRequest) -> dict[str, str]:
+    """Who the job tools act for: the authenticated user and thread this turn belongs to (never
+    anything the model supplies); none for a run without a user."""
+    if request.user_id is None:
+        return {}
+    try:
+        return scope_config(UUID(request.user_id), request.thread_id)
+    except ValueError:
+        return {}
 
 
 # --- the graph's stream as turn events ----------------------------------------------------------

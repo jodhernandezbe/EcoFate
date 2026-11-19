@@ -8,6 +8,7 @@ reason; it never replaces a real result for the same facility.
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable, Mapping
 from typing import cast
 
@@ -190,8 +191,25 @@ def _each[T](model: type[T], raws: list[object], ledger: Ledger, file: Callable[
             file(item)
 
 
+_JOB_NOTICES = frozenset({"queued", "limit_reached", "unavailable"})
+
+
+def _is_job_notice(exchange: ToolExchange) -> bool:
+    """Whether the call only started (or refused to start) a background job: no facility is
+    expected until the job's own result arrives."""
+    if exchange.artifact is not None:
+        return False
+    try:
+        body: object = json.loads(exchange.content)
+    except ValueError:
+        return False
+    return isinstance(body, dict) and cast(dict[str, object], body).get("status") in _JOB_NOTICES
+
+
 def project_assessment(exchange: ToolExchange, ledger: Ledger) -> None:
     """Every facility of the call, from the complete artifact (the model's text is a summary)."""
+    if _is_job_notice(exchange):
+        return
     parts = _parts(exchange.artifact)
     if parts is None:
         ledger.skip(exchange, "it carried no facility details")

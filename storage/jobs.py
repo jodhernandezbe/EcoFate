@@ -159,6 +159,23 @@ class PostgresJobStore:
         stale = _RUNNING & (beat < func.now() - older_than)
         return await self._change(stale, _ended(JobStatus.INTERRUPTED, reason))
 
+    async def cancel_queued(self, owner_id: UUID, job_id: str, reason: str) -> Job | None:
+        """End the owner's unclaimed job as ``cancelled`` at once; None when it is not queued."""
+        values = _ended(JobStatus.CANCELLED, reason) | {"cancel_requested": True}
+        return next(iter(await self._change(_mine(owner_id, job_id) & _QUEUED, values)), None)
+
+    async def interrupt_unclaimed(self, older_than: timedelta, reason: str) -> list[Job]:
+        """Interrupt the queued jobs of every user older than ``older_than`` (recovery only)."""
+        old = _QUEUED & (jobs.c.queued_at < func.now() - older_than)
+        return await self._change(old, _ended(JobStatus.INTERRUPTED, reason))
+
+    async def queue_position(self, owner_id: UUID, job_id: str) -> int:
+        """How many queued jobs (of any user) were recorded before the owner's queued job."""
+        mine = select(jobs.c.queued_at).where(_mine(owner_id, job_id), _QUEUED).scalar_subquery()
+        query = select(func.count()).select_from(jobs).where(_QUEUED, jobs.c.queued_at < mine)
+        async with self._sessions() as session:
+            return int((await session.execute(query)).scalar_one())
+
     async def for_thread(self, key: ThreadKey) -> list[Job]:
         """The owner's jobs of one thread, oldest first."""
         query = (

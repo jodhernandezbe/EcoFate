@@ -118,6 +118,36 @@ class InMemoryJobStore:
         stale = [j for j in stale if (j.heartbeat_at or j.started_at or j.queued_at) < limit]
         return [await self.interrupt(j.owner_id, j.id, reason) for j in stale]  # type: ignore[misc]
 
+    async def cancel_queued(self, owner_id: UUID, job_id: str, reason: str) -> Job | None:
+        job = self._mine(owner_id, job_id)
+        if job is None or job.status is not JobStatus.QUEUED:
+            return None
+        return self._set(
+            job,
+            status=JobStatus.CANCELLED,
+            ended_at=self._clock(),
+            cancel_requested=True,
+            failure_reason=reason,
+        )
+
+    async def interrupt_unclaimed(self, older_than: timedelta, reason: str) -> list[Job]:
+        limit = self._clock() - older_than
+        old = [
+            j for j in self._jobs.values() if j.status is JobStatus.QUEUED and j.queued_at < limit
+        ]
+        return [await self.interrupt(j.owner_id, j.id, reason) for j in old]  # type: ignore[misc]
+
+    async def queue_position(self, owner_id: UUID, job_id: str) -> int:
+        job = self._mine(owner_id, job_id)
+        if job is None or job.status is not JobStatus.QUEUED:
+            return 0
+        ids = list(self._jobs)
+        return sum(1 for i in ids[: ids.index(job_id)] if self._jobs[i].status is JobStatus.QUEUED)
+
+    def forget(self, key: ThreadKey) -> None:
+        """Delete the thread's jobs (its thread was deleted; the table cascades)."""
+        self._jobs = {k: j for k, j in self._jobs.items() if j.key != key}
+
     async def for_thread(self, key: ThreadKey) -> list[Job]:
         found = [j for j in self._jobs.values() if j.key == key]
         return [copy.deepcopy(j) for j in found]

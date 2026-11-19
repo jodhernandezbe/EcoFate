@@ -19,6 +19,8 @@ from collections.abc import AsyncGenerator, Sequence
 from contextlib import aclosing
 from dataclasses import dataclass
 
+from langchain_core.messages import AnyMessage
+
 from app.task_queue import TurnJob
 from app.telemetry import TurnSegment
 from app.turns.codec import WorkerStarted
@@ -32,6 +34,7 @@ from app.turns.events import (
     TurnEvent,
 )
 from app.turns.failures import FailureReason, StopRequestedError, new_correlation_id
+from app.turns.follow_up import follow_up_messages, notice
 from app.turns.recording import (
     BackgroundServices,
     BackgroundSettings,
@@ -41,6 +44,7 @@ from app.turns.recording import (
     record,
 )
 from app.turns.runner import TurnRequest, TurnServices, execute_turn
+from app.turns.thread_bus import EventKind, publish_quietly, turn_record
 from app.usage_meter import CallUsage
 from storage.errors import DATABASE_ERRORS
 from storage.turn_model import Turn, TurnTransitionError
@@ -60,6 +64,7 @@ async def run_background_turn(job: TurnJob, services: BackgroundServices) -> Non
         logger.info("Turn %s is not queued; nothing to run", job.turn_id)
         return
     run = TurnRun(turn, services, queue_wait_seconds=_waited(queued, turn))
+    await _thread_event(run, "turn.started", turn.status.value)
     try:
         await run.publish(WorkerStarted())
         await _run_supervised(run)
@@ -156,10 +161,33 @@ async def _turn_request(run: TurnRun) -> TurnRequest:
     common = _RequestScope(segment, str(turn.owner_id), turn.key.checkpoint_id)
     if turn.resume_count > 0:
         return common.request(turn.thread_id, await _last_question(run), "", resume=True)
+    if turn.job_id is not None:
+        return await _follow_up_request(run, common)
     if turn.planned is None:
         raise ValueError("a new turn has no recorded input")
     planned = turn.planned
     return common.request(turn.thread_id, planned.question, planned.message, note=planned.note)
+
+
+async def _follow_up_request(run: TurnRun, common: _RequestScope) -> TurnRequest:
+    """The request of an automatic follow-up: the job's notice and its result as a tool result
+    (stored with the thread's tool messages so the workspace fills from the job's artifact).
+
+    Raises:
+        ValueError: The turn has no job store, or its job is gone (the turn then fails).
+    """
+    turn, store = run.turn, run.services.job_store
+    job = (
+        None
+        if store is None or turn.job_id is None
+        else await store.get(turn.owner_id, turn.job_id)
+    )
+    if job is None:
+        raise ValueError("the follow-up's job is not available")
+    messages = follow_up_messages(job)
+    await run.services.threads.add_tool_messages(run.key, messages[1:])
+    text = notice(job)
+    return common.request(turn.thread_id, text, text, injected=tuple(messages), automatic=True)
 
 
 @dataclass(frozen=True)
@@ -178,6 +206,8 @@ class _RequestScope:
         *,
         note: str = "",
         resume: bool = False,
+        injected: tuple[AnyMessage, ...] = (),
+        automatic: bool = False,
     ) -> TurnRequest:
         return TurnRequest(
             thread_id,
@@ -188,6 +218,8 @@ class _RequestScope:
             segment=self.segment,
             user_id=self.user_id,
             checkpoint_id=self.checkpoint_id,
+            injected=injected,
+            automatic=automatic,
         )
 
 
@@ -212,6 +244,7 @@ def _turn_services(run: TurnRun) -> TurnServices:
         checkpointer=threads.checkpointer,
         user_values=lambda: threads.answers(key),
         record_usage=record_usage,
+        jobs=services.jobs,
     )
 
 
@@ -293,3 +326,23 @@ async def _finish(run: TurnRun) -> None:
         await run.publish(TurnDone())
     except Exception as error:
         logger.warning("Could not end the stream of turn %s: %s", turn.id, type(error).__name__)
+    await _thread_event(run, "turn.ended", target.value)
+    await _start_waiting_follow_up(run)
+
+
+async def _thread_event(run: TurnRun, kind: EventKind, status: str) -> None:
+    """Tell the thread's readers that the turn started or ended (its id and status only)."""
+    services = run.services
+    record = turn_record(kind, run.turn, status)
+    await publish_quietly(services.thread_bus, run.key, record, services.settings.event_ttl_seconds)
+
+
+async def _start_waiting_follow_up(run: TurnRun) -> None:
+    """The one place a waiting follow-up is started after a turn: now that the thread is free."""
+    follow_ups = run.services.follow_ups
+    if follow_ups is None:
+        return
+    try:
+        await follow_ups.release_next(run.key)
+    except Exception as error:
+        logger.warning("Follow-up of thread not started: %s", type(error).__name__)

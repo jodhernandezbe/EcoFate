@@ -173,3 +173,29 @@ async def test_an_undecodable_row_is_absent(bench: Bench) -> None:
             {"id": job.id},
         )
     assert await bench.store.get(bench.alice, job.id) is None
+
+
+async def test_a_queued_job_is_cancelled_at_once_and_only_by_its_owner(bench: Bench) -> None:
+    job = await bench.store.create(bench.key(), "assess_facilities", {}, CAP)
+    assert job is not None
+    assert await bench.store.cancel_queued(bench.bob, job.id, "cancelled") is None
+    ended = await bench.store.cancel_queued(bench.alice, job.id, "cancelled")
+    assert ended is not None and ended.status is JobStatus.CANCELLED
+    assert await bench.store.claim(bench.alice, job.id) is None
+    running = await _running(bench)
+    assert await bench.store.cancel_queued(bench.alice, running, "cancelled") is None
+
+
+async def test_the_unclaimed_sweep_and_the_queue_position(bench: Bench) -> None:
+    first = await bench.store.create(bench.key(), "assess_facilities", {}, CAP)
+    other = await bench.store.create(bench.key(bench.bob), "assess_facilities", {}, CAP)
+    assert first is not None and other is not None
+    assert await bench.store.queue_position(bench.alice, first.id) == 0
+    assert await bench.store.queue_position(bench.bob, other.id) == 1
+    assert await bench.store.queue_position(bench.alice, other.id) == 0  # not found
+    assert await bench.store.interrupt_unclaimed(timedelta(hours=1), "not_started") == []
+    async with bench.db.engine.begin() as connection:
+        await connection.execute(text("UPDATE jobs SET queued_at = now() - interval '2 hours'"))
+    swept = await bench.store.interrupt_unclaimed(timedelta(hours=1), "not_started")
+    assert {j.id for j in swept} == {first.id, other.id}
+    assert all(j.status is JobStatus.INTERRUPTED for j in swept)

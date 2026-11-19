@@ -41,7 +41,7 @@ never put secrets in code or images (detect-secrets guards `.secrets.baseline`).
 - `tests/`   pytest suite mirroring the package layout (`tests/tools/emissions/test_stack.py` tests `tools/emissions/stack.py`). Every test directory needs an `__init__.py`.
 
 Dependency direction: `agent` -> `tools` -> `models`; `agent` -> `prompts`;
-`agent`/`tools`/`models` -> `commons`; `agent`/`tools` -> `config`; `app` -> `agent`/`config`/`commons`/`prompts`/`storage` (checkpointer, user key vault, turn queue)/`tools.credentials`/`tools.schemas`; `worker` -> `app`/`agent`/`config`/`storage`/`tools.credentials`; `evals` -> `app`/`agent`/`tools`/`config`/`prompts`. `api` -> `app`/`agent`/`config`/`prompts`/`commons`/`storage`/`tools.schemas`/`tools.user_values`; `storage` -> `config`/`commons` (+ types from `app.usage_meter`, `tools.schemas`); `frontend` -> `api` (HTTP only).
+`agent`/`tools`/`models` -> `commons`; `agent`/`tools` -> `config`; `app` -> `agent`/`config`/`commons`/`prompts`/`storage` (checkpointer, user key vault, turn queue)/`tools.credentials`/`tools.schemas`/`tools.jobs.port`; `worker` -> `app`/`agent`/`config`/`storage`/`tools.credentials`; `evals` -> `app`/`agent`/`tools`/`config`/`prompts`. `api` -> `app`/`agent`/`config`/`prompts`/`commons`/`storage`/`tools.schemas`/`tools.user_values`; `storage` -> `config`/`commons` (+ types from `app.usage_meter`, `tools.schemas`); `frontend` -> `api` (HTTP only).
 `commons` and `config` import nothing from the project; nothing imports `evals`, `api` or `worker`.
 
 ## Folder-specific rules

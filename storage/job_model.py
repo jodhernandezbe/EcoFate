@@ -165,6 +165,21 @@ class JobStore(Protocol):
         ``older_than`` (recovery only); the jobs interrupted."""
         ...
 
+    async def cancel_queued(self, owner_id: UUID, job_id: str, reason: str) -> Job | None:
+        """End the owner's job that no worker has claimed yet as ``cancelled`` (so it frees its
+        place at once); None when it is not queued (a running job is asked to stop instead)."""
+        ...
+
+    async def interrupt_unclaimed(self, older_than: timedelta, reason: str) -> list[Job]:
+        """Interrupt the queued jobs of every user recorded longer ago than ``older_than``
+        (their task message was lost; recovery only); the jobs interrupted."""
+        ...
+
+    async def queue_position(self, owner_id: UUID, job_id: str) -> int:
+        """How many queued jobs (of any user) were recorded before the owner's queued job; a
+        count only. Zero for a job that is not queued."""
+        ...
+
     async def for_thread(self, key: ThreadKey) -> list[Job]:
         """The owner's jobs of one thread, oldest first."""
         ...

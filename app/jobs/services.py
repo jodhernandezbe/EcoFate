@@ -1,9 +1,10 @@
 """What a job runner is given: the job store, the tool runners, the operator's keys, timing, and
 the callback that follows a job's end.
 
-``on_job_ended`` is the one seam where the follow-up turn of a finished job plugs in (task 2.5): it
-receives the ended job (a copy, with its result or reason) once the final status is stored; the
-default does nothing. A failure of the callback is logged and never changes the job.
+``on_job_ended`` is the one seam where the follow-up turn of a finished job plugs in (and the thread
+event ``job.ended``): it receives the ended job (a copy, with its result or reason) once the final
+status is stored; the default does nothing. ``on_job_started`` receives the claimed job. A failure
+of a callback is logged and never changes the job.
 """
 
 from __future__ import annotations
@@ -57,7 +58,9 @@ class JobServices:
         runners: Each heavy tool's runner by tool name (``agent.jobs.job_runners``).
         operator: The operator's service keys; a job never needs the user's model key.
         settings: Heartbeat and limits.
-        on_job_ended: The seam for what follows a job's end (default: nothing).
+        on_job_ended: The seam for what follows a job's end: the thread event and the follow-up
+            turn (default: nothing).
+        on_job_started: The seam called once a worker has claimed the job (default: nothing).
     """
 
     store: JobStore
@@ -65,3 +68,4 @@ class JobServices:
     operator: OperatorKeys
     settings: JobSettings
     on_job_ended: JobEnded = no_follow_up
+    on_job_started: JobEnded = no_follow_up

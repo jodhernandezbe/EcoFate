@@ -1875,6 +1875,79 @@
       "title": "InitialView",
       "type": "object"
     },
+    "JobInfo": {
+      "additionalProperties": false,
+      "description": "A background job of the thread as the interface shows it: its status and times, never its\ninput or result (the follow-up message explains the result).",
+      "properties": {
+        "ended_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "job_id": {
+          "type": "string"
+        },
+        "position": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Jobs queued ahead of it (of any user); present only while it is queued."
+        },
+        "queued_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "status": {
+          "enum": [
+            "queued",
+            "running",
+            "succeeded",
+            "failed",
+            "cancelled",
+            "interrupted"
+          ],
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "job_id",
+        "tool",
+        "status",
+        "queued_at",
+        "started_at",
+        "ended_at",
+        "position"
+      ],
+      "title": "JobInfo",
+      "type": "object"
+    },
     "KeyStatusResponse": {
       "additionalProperties": false,
       "description": "Whether a key is stored; never the key or any part of it.",
@@ -4335,6 +4408,79 @@
       ],
       "title": "StreamEventSchema"
     },
+    "ThreadEvent": {
+      "additionalProperties": false,
+      "description": "One event of a thread's stream (``GET /api/v1/chat/threads/{id}/events``): a job or turn of\nthe thread changed. Ids and a status only; a job's result is never carried.\n\nThe SSE event id is the entry's position in the stream (``{number}-{number}``, strictly\nincreasing); send the last one received as Last-Event-ID to reattach without a gap or repeat.",
+      "properties": {
+        "automatic": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "job_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "kind": {
+          "enum": [
+            "job.queued",
+            "job.running",
+            "job.ended",
+            "turn.started",
+            "turn.ended"
+          ],
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "tool": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "turn_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "kind",
+        "job_id",
+        "tool",
+        "turn_id",
+        "automatic",
+        "status"
+      ],
+      "title": "ThreadEvent",
+      "type": "object"
+    },
     "ThreadMessage": {
       "additionalProperties": false,
       "description": "One user or assistant message of a thread (text only, no tool calls or results).",
@@ -4383,6 +4529,12 @@
           ],
           "default": null
         },
+        "jobs": {
+          "items": {
+            "$ref": "#/$defs/JobInfo"
+          },
+          "type": "array"
+        },
         "messages": {
           "items": {
             "$ref": "#/$defs/ThreadMessage"
@@ -4417,7 +4569,8 @@
         "usage",
         "confirmation",
         "interrupted",
-        "running_turn"
+        "running_turn",
+        "jobs"
       ],
       "title": "ThreadSnapshot",
       "type": "object"
@@ -5525,6 +5678,9 @@
     "StreamEventSchema": {
       "$ref": "#/$defs/StreamEventSchema"
     },
+    "ThreadEvent": {
+      "$ref": "#/$defs/ThreadEvent"
+    },
     "ThreadSnapshot": {
       "$ref": "#/$defs/ThreadSnapshot"
     },
@@ -5560,6 +5716,7 @@
     "SignInResponse",
     "SignUpRequest",
     "StreamEventSchema",
+    "ThreadEvent",
     "ThreadSnapshot",
     "TokenRequest",
     "UsageTotals",

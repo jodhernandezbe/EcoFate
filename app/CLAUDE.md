@@ -58,9 +58,27 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   limit (`[worker.tools]`) and the hard-limit backstop, and stores the result (`result.py`: strict
   JSON, redacted) or a fixed `JobFailure` code, never exception text. `keys.py` provides the
   operator's Census/CompTox keys only: a job never reads the user's model key and has no vault.
-  `recovery.py` is the stale sweep and the lost-task interrupt. `JobServices.on_job_ended` is the
-  seam where the follow-up turn plugs in (default `no_follow_up`). `task_queue.ToolJob` is the
+  `recovery.py` is the stale sweep (running jobs with a stale heartbeat, and queued jobs older than
+  `[worker].visibility_timeout_seconds`: a lost task message must not hold the cap) and the
+  lost-task interrupt. `JobServices.on_job_started`/`on_job_ended` are the seams (default no-op),
+  wired in production to `lifecycle.JobLifecycle` (the `job.running`/`job.ended` thread events, then
+  `FollowUps.job_ended`), for the runner and the recovery paths alike. `gateway.JobGateway` is the
+  `tools.jobs.port.JobPort` the heavy tools use during a turn (`TurnServices.jobs`): it records the job
+  under the owner's cap, publishes `job.queued`, enqueues by ids only (a queue that is down leaves the
+  job `interrupted`, never queued), and reports status (no result). `task_queue.ToolJob` is the
   ids-only message; `CeleryToolJobEnqueuer` sends it to the tools queue.
+- Follow-up turns and the thread stream: `turns/follow_up.py` records, when a job ends (not when the
+  user cancelled it), one `waiting` turn per job (`turns.job_id`, unique: at most once) whose input is
+  the fixed notice "Background job {id} ({tool}) ended: {status}"; `FollowUps.release_next` takes the
+  thread's lease, moves the oldest waiting turn to `queued` and enqueues it on the chat queue. It is
+  called in exactly two places: right after recording, and by `turns/job._finish` once a turn has
+  released the thread. The run gets the job's result as a tool call and result (`follow_up_messages`,
+  untrusted tool output, stored with the thread's tool messages so the workspace fills from the job's
+  artifact), skips the scope check (`TurnRequest.automatic`) and is never counted (`counted=False`).
+  `turns/thread_bus.py` is the per-thread stream (`thread:{owner}:{thread}:events`, entries numbered by
+  the stream, ids and statuses only): `job.queued|running|ended`, `turn.started|ended`.
+  `TurnRequest` carries the job scope in the run config (`tools.jobs.port.scope_config`), never in
+  tool arguments.
 - `redaction.py` is the one log-redaction filter (`protect_secrets` per turn, `protect_for_process`
   for the life of the process, `redact`, `install_redaction`); it holds no HTTP knowledge. Front
   ends only configure their loggers. `telemetry.scrubbing_options(settings, protected)` hides the same

@@ -875,3 +875,36 @@ JobRunner = Callable[[Mapping[str, object], StopCheck], JobResult]
 
 class InvalidJobInputError(ValueError):
     """A job's stored arguments do not fit its tool (the message never carries the arguments)."""
+
+
+class SubmittedJob(TypedDict):
+    """A background job just recorded and queued: what the tool call answers at once."""
+
+    job_id: str
+    status: Literal["queued"]
+    position: int
+
+
+class JobNotice(TypedDict):
+    """A heavy tool call that started no job (limit reached, queue unavailable)."""
+
+    status: Literal["limit_reached", "unavailable"]
+    message: str
+
+
+class JobStatusEntry(TypedDict):
+    """One background job as ``check_job_status`` reports it (no result content)."""
+
+    job_id: str
+    tool: str
+    status: str
+    position: NotRequired[int]
+    elapsed_seconds: float
+    outcome: NotRequired[str]
+
+
+class JobStatusResult(TypedDict):
+    """The jobs of the current thread that ``check_job_status`` found, newest last."""
+
+    jobs: list[JobStatusEntry]
+    note: str

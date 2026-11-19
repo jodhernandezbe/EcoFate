@@ -186,3 +186,47 @@ def test_an_outcome_that_does_not_fit_its_status_is_refused(outcome: object) -> 
     assert callable(outcome)
     with pytest.raises(ValueError, match="job|result|reason|artifact"):
         outcome()
+
+
+async def test_a_queued_job_can_be_cancelled_at_once_and_frees_the_cap() -> None:
+    store = InMemoryJobStore()
+    job = await _queued(store)
+    await _queued(store)
+    ended = await store.cancel_queued(ALICE, job.id, "cancelled")
+    assert ended is not None and ended.status is JobStatus.CANCELLED
+    assert ended.failure_reason == "cancelled" and ended.ended_at is not None
+    assert await store.claim(ALICE, job.id) is None  # a late delivery runs nothing
+    assert await store.create(THREAD, "assess_facilities", {}, CAP) is not None
+
+
+async def test_only_a_queued_job_of_the_owner_is_cancelled_at_once() -> None:
+    store = InMemoryJobStore()
+    queued, running = await _queued(store), await _running(store)
+    assert await store.cancel_queued(BOB, queued.id, "cancelled") is None
+    assert await store.cancel_queued(ALICE, running.id, "cancelled") is None
+    assert (await store.get(ALICE, running.id)) == running
+    assert (await store.get(ALICE, queued.id)) == queued
+
+
+async def test_the_unclaimed_sweep_interrupts_only_old_queued_jobs() -> None:
+    clock = Clock()
+    store = InMemoryJobStore(clock)
+    old, running = await _queued(store), await _running(store, ThreadKey(BOB, "b"))
+    clock.now += timedelta(hours=2)
+    fresh = await _queued(store, ThreadKey(BOB, "b2"))
+    swept = await store.interrupt_unclaimed(timedelta(hours=1), "not_started")
+    assert [j.id for j in swept] == [old.id] and swept[0].status is JobStatus.INTERRUPTED
+    assert (await store.get(BOB, running.id)) == running
+    assert (await store.get(BOB, fresh.id)) == fresh
+
+
+async def test_the_queue_position_counts_the_queued_jobs_before_it_of_any_user() -> None:
+    store = InMemoryJobStore()
+    first = await _queued(store)
+    other = await _queued(store, ThreadKey(BOB, "b"))
+    second = await _queued(store)
+    await store.claim(ALICE, first.id)
+    assert await store.queue_position(BOB, other.id) == 0
+    assert await store.queue_position(ALICE, second.id) == 1
+    assert await store.queue_position(ALICE, first.id) == 0  # running: not queued
+    assert await store.queue_position(BOB, second.id) == 0  # another user's job: not found

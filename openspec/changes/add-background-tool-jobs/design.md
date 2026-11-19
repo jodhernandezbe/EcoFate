@@ -51,7 +51,7 @@ operator keys; the user's OpenAI key is decrypted per turn by the worker; the AP
    supervisor pattern: heartbeat, soft limit checked between the assessment's tiers, hard limit as
    a backstop, cancel flag checked between tiers, `task_reject_on_worker_lost=False`, a sweep that
    marks stale jobs `interrupted`. A job needs operator keys only; it never decrypts the user's key.
-6. **Follow-up turn.** When a job ends, the runner records a follow-up turn for the thread whose
+6. **Follow-up turn.** When a job ends (succeeded, failed or interrupted; a job the user cancelled gets none), the runner records a follow-up turn for the thread whose
    input is a fixed system message, "Background job {id} for {tool} ended: {status}", plus the
    job's `result_content` attached as a tool-result-like message. If the thread is leased by a
    running turn, the follow-up is recorded `waiting` and the turn finisher enqueues it when it
@@ -59,7 +59,7 @@ operator keys; the user's OpenAI key is decrypted per turn by the worker; the AP
    other (checkpointed, resumable, cancellable) but flagged `automatic`, which the quota skips.
 7. **Workspace from the job's artifact.** The follow-up turn publishes the job's artifact through
    the existing workspace update path, so the overview and map fill exactly as today.
-8. **Thread-level stream.** A Redis Stream per thread (`thread:{id}`), capped and with a TTL like
+8. **Thread-level stream.** A Redis Stream per thread (`thread:{owner_id}:{thread_id}:events`, so two users' threads with the same id never share one), capped and with a TTL like
    the turn streams, carries `job.queued/running/ended` and `turn.started/ended` (with the turn id);
    the page subscribes once per thread (`GET /api/v1/chat/threads/{id}/events`, `Last-Event-ID`) and
    attaches to a turn's stream when told a turn started. The turn streams are unchanged.

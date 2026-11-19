@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from app.jobs.failures import JobFailure
 from app.jobs.keys import provided_operator
 from app.jobs.result import storable
-from app.jobs.services import JobServices, JobSettings
+from app.jobs.services import JobEnded, JobServices, JobSettings
 from app.task_queue import ToolJob
 from app.turns.failures import new_correlation_id
 from commons.stop import StoppedError
@@ -54,6 +54,7 @@ async def run_background_job(task: ToolJob, services: JobServices) -> None:
         logger.info("Job %s is not queued; nothing to run", task.job_id)
         return
     run = JobRun(job, services)
+    await _notify(services.on_job_started, job)
     try:
         await _run_supervised(run)
     except Exception:
@@ -172,7 +173,12 @@ async def _finish(run: JobRun) -> None:
     if ended is None:
         logger.warning("Job %s was no longer running at its end", job.id)
         return
+    await _notify(services.on_job_ended, ended)
+
+
+async def _notify(callback: JobEnded, job: Job) -> None:
+    """Call a seam; its failure is logged (class only) and never changes the job."""
     try:
-        await services.on_job_ended(ended)
+        await callback(job)
     except Exception as error:
-        logger.warning("Follow-up of job %s failed: %s", job.id, type(error).__name__)
+        logger.warning("Callback of job %s failed: %s", job.id, type(error).__name__)

@@ -28,4 +28,12 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   (`JobRunner`: stored input, `StopCheck` -> `(content, artifact)`; `tools/assessment/facilities.py`
   `run_assessment_job`). It validates its untrusted input (`InvalidJobInputError`) and asks the
   injected `StopCheck` between tiers (default never stops); it never imports `app`.
+- `tools/jobs/` is how a heavy tool runs in the background: `heavy_submitter(tool, preflight)` (the
+  registry wraps each `[worker].heavy_tools` entry: same name, schema and docstring plus a "runs in the
+  background" paragraph; a call settles `preflight` (invalid input, missing values: the tool's own
+  result, no job) and otherwise queues a job through the `JobPort` the program provides for the turn),
+  `check_job_status` (quick tool, registered only when a tool is heavy) and `port.py` (`JobPort`,
+  the context variable and `job_scope`). The job's user and thread come only from the run's config
+  (`job_owner_id`/`job_thread_id`, set by the turn runner from the authenticated session), never from
+  tool arguments; with no port (command line, evaluations) the tool runs itself as before.
 - A tool whose result is too large for the model returns `(content, artifact)` with `response_format="content_and_artifact"`: the model reads a ranked, capped `content` that says what was left out, and the program (the web workspace) reads the complete `artifact`. Never rely on the model to sort or filter a long list.

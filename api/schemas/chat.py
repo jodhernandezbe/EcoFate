@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Annotated, Literal
 
 from pydantic import Field, RootModel, StrictFloat, StrictInt, model_validator
@@ -171,6 +172,26 @@ class RunningTurn(ContractModel):
     question: str | None  # what the user asked; None when it was not recorded
 
 
+JobState = Literal["queued", "running", "succeeded", "failed", "cancelled", "interrupted"]
+
+
+class JobInfo(ContractModel):
+    """A background job of the thread as the interface shows it: its status and times, never its
+    input or result (the follow-up message explains the result)."""
+
+    job_id: str
+    tool: str
+    status: JobState
+    queued_at: datetime
+    started_at: datetime | None
+    ended_at: datetime | None
+    position: int | None = Field(
+        default=None,
+        ge=0,
+        description="Jobs queued ahead of it (of any user); present only while it is queued.",
+    )
+
+
 class ThreadSnapshot(ContractModel):
     """A held thread as of its last finished turn (``GET /api/v1/chat/threads/{id}``)."""
 
@@ -183,6 +204,8 @@ class ThreadSnapshot(ContractModel):
     # A queued or running turn; ``messages`` then stop before its question, and its events
     # (read from the turn's stream) show the rest.
     running_turn: RunningTurn | None = None
+    # The thread's background jobs, oldest first (open ones can be cancelled).
+    jobs: list[JobInfo] = Field(default_factory=list[JobInfo])
 
 
 class Usage(_Event):
@@ -228,6 +251,22 @@ class ConfirmationRequested(_Event):
     type: Literal["confirmation_request"] = "confirmation_request"
     request_id: str
     entries: list[MissingValue]
+
+
+class ThreadEvent(ContractModel):
+    """One event of a thread's stream (``GET /api/v1/chat/threads/{id}/events``): a job or turn of
+    the thread changed. Ids and a status only; a job's result is never carried.
+
+    The SSE event id is the entry's position in the stream (``{number}-{number}``, strictly
+    increasing); send the last one received as Last-Event-ID to reattach without a gap or repeat.
+    """
+
+    kind: Literal["job.queued", "job.running", "job.ended", "turn.started", "turn.ended"]
+    job_id: str | None = None
+    tool: str | None = None
+    turn_id: str | None = None
+    automatic: bool | None = None  # turn events: the system started the turn (a job's follow-up)
+    status: str
 
 
 StreamEvent = Annotated[

@@ -10,11 +10,11 @@
 - [x] 2.1 `storage/`: `jobs` table and Alembic migration; a job store with owner-scoped reads, atomic per-user cap, status transitions, heartbeat; PostgreSQL tests (`postgres` marker) and in-memory store tests.
 - [x] 2.2 `app/jobs/`: the job runner (queued → running → ended, heartbeat, soft limit between assessment tiers, cancel flag, hard limit backstop, failure reasons without secrets) and the stale sweep; in-process runner for eager mode; tests with the memory bus.
 - [x] 2.3 `worker/tasks.py`: `ecofate.run_job(job_id, owner_id)` validating its ids; operator keys only; `task_failure` marks the job `interrupted`.
-- [ ] 2.4 `tools/`: the heavy-tool submitter (same name, schema and docstring) that runs the missing-value check, records and enqueues the job and answers `{job_id, status, position}`; over-cap message; `check_job_status` tool (owner and thread from config); registry, registry test and tool tests.
-- [ ] 2.5 `app/turns/`: follow-up turns (recorded when a job ends, `waiting` while the thread is leased, enqueued once by the turn finisher, flagged `automatic`), workspace filled from the job's artifact; tests for idle thread, busy thread, at-most-once.
-- [ ] 2.6 Quota: automatic follow-ups not counted; tests.
-- [ ] 2.7 Thread-level stream: `thread:{id}` Redis Stream, `GET /api/v1/chat/threads/{id}/events` with `Last-Event-ID`; job and turn lifecycle events; tests for reconnect and tenancy (foreign thread 404).
-- [ ] 2.8 API: cancel a job (`POST /api/v1/chat/jobs/{id}/cancel`), job status in the workspace response; `Clear workspace` cancels the thread's jobs.
+- [x] 2.4 `tools/`: the heavy-tool submitter (same name, schema and docstring) that runs the missing-value check, records and enqueues the job and answers `{job_id, status, position}`; over-cap message; `check_job_status` tool (owner and thread from config); registry, registry test and tool tests.
+- [x] 2.5 `app/turns/`: follow-up turns (recorded when a job ends, `waiting` while the thread is leased, enqueued once by the turn finisher, flagged `automatic`), workspace filled from the job's artifact; tests for idle thread, busy thread, at-most-once.
+- [x] 2.6 Quota: automatic follow-ups not counted; tests.
+- [x] 2.7 Thread-level stream: `thread:{id}` Redis Stream, `GET /api/v1/chat/threads/{id}/events` with `Last-Event-ID`; job and turn lifecycle events; tests for reconnect and tenancy (foreign thread 404).
+- [x] 2.8 API: cancel a job (`POST /api/v1/chat/jobs/{id}/cancel`), job status in the workspace response; `Clear workspace` cancels the thread's jobs.
 - [ ] 2.9 Frontend: subscribe to the thread stream; a job status line under the chat header ("Assessment queued (2 ahead)", "Assessment running, 1 min 20 s", Cancel), sending allowed while a job runs; the follow-up answer appears as a normal message; DESIGN.md-compliant; `/ui-check`.
 - [ ] 2.10 Prompt and docstrings: how to talk about a queued or running job; never state its results before the follow-up.
 

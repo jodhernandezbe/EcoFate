@@ -40,6 +40,7 @@ export interface ApiContract {
   SignInResponse: SignInResponse;
   SignUpRequest: SignUpRequest;
   StreamEventSchema: StreamEventSchema;
+  ThreadEvent: ThreadEvent;
   ThreadSnapshot: ThreadSnapshot;
   TokenRequest: TokenRequest;
   UsageTotals: UsageTotals;
@@ -1612,6 +1613,24 @@ export interface TurnFinished {
   type: "turn_finished";
 }
 /**
+ * One event of a thread's stream (``GET /api/v1/chat/threads/{id}/events``): a job or turn of
+ * the thread changed. Ids and a status only; a job's result is never carried.
+ *
+ * The SSE event id is the entry's position in the stream (``{number}-{number}``, strictly
+ * increasing); send the last one received as Last-Event-ID to reattach without a gap or repeat.
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "ThreadEvent".
+ */
+export interface ThreadEvent {
+  automatic: boolean | null;
+  job_id: string | null;
+  kind: "job.queued" | "job.running" | "job.ended" | "turn.started" | "turn.ended";
+  status: string;
+  tool: string | null;
+  turn_id: string | null;
+}
+/**
  * A held thread as of its last finished turn (``GET /api/v1/chat/threads/{id}``).
  *
  * This interface was referenced by `ApiContract`'s JSON-Schema
@@ -1620,6 +1639,7 @@ export interface TurnFinished {
 export interface ThreadSnapshot {
   confirmation: ConfirmationPrompt | null;
   interrupted: TurnInterruption | null;
+  jobs: JobInfo[];
   messages: ThreadMessage[];
   running_turn: RunningTurn | null;
   thread_id: string;
@@ -1654,6 +1674,25 @@ export interface TurnInterruption {
     | "cancelled"
     | "time_limit";
   resumable: boolean;
+}
+/**
+ * A background job of the thread as the interface shows it: its status and times, never its
+ * input or result (the follow-up message explains the result).
+ *
+ * This interface was referenced by `ApiContract`'s JSON-Schema
+ * via the `definition` "JobInfo".
+ */
+export interface JobInfo {
+  ended_at: string | null;
+  job_id: string;
+  /**
+   * Jobs queued ahead of it (of any user); present only while it is queued.
+   */
+  position: number | null;
+  queued_at: string;
+  started_at: string | null;
+  status: "queued" | "running" | "succeeded" | "failed" | "cancelled" | "interrupted";
+  tool: string;
 }
 /**
  * One user or assistant message of a thread (text only, no tool calls or results).

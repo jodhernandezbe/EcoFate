@@ -37,6 +37,12 @@ Project-wide guidance is in the root `CLAUDE.md`; these rules apply to work in `
   recorded); `claim` moves queued to running once; `finish` only from running; `interrupt` and
   `interrupt_stale` (the one cross-user call) never re-run anything. Task messages carry the job
   id and owner only; the input is read from here. Its in-memory twin is `tests/fakes_jobs.py`.
+- Follow-up turns: `turns.job_id` (unique where not null) makes a job's follow-up at most once;
+  `waiting` is a status that holds nothing (not open, not the thread's `latest`). `begin_follow_up`
+  records it, `next_waiting`/`activate` start it once (`activate` fails while the thread has an open
+  turn). `ThreadLeases` is the lease plus turn records alone, for processes with no checkpointer.
+  Jobs also have `cancel_queued` (an unclaimed job ends `cancelled` at once), `interrupt_unclaimed`
+  (queued longer than the visibility timeout) and `queue_position` (a count).
 - Daily quota: `daily_turn_usage(user_id, day, turns)`; counting is one atomic upsert guarded by
   `WHERE turns < limit`, the day is the database's UTC date, a refund is guarded by
   `turns.quota_refunded`, and old rows go in the idle-retention purge.

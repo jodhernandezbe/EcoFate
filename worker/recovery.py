@@ -11,23 +11,32 @@ across forks); the logic itself takes its stores.
 from __future__ import annotations
 
 import logging
-from collections.abc import Awaitable, Callable, Mapping, Sequence
+from collections.abc import AsyncGenerator, Awaitable, Callable, Mapping, Sequence
+from contextlib import asynccontextmanager
 from datetime import timedelta
 from typing import Protocol
 from uuid import UUID
 
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from app.jobs.failures import JobFailure
+from app.jobs.lifecycle import JobLifecycle
 from app.jobs.recovery import interrupt_lost_job, sweep_stale_jobs
-from app.task_queue import ToolJob, TurnJob
+from app.process_secrets import process_secret_values
+from app.task_queue import CeleryEnqueuer, ToolJob, TurnJob, build_celery, redis_url
+from app.turns.bus import RedisStreamBus
 from app.turns.failures import FailureReason
+from app.turns.follow_up import FollowUps
+from app.turns.recording import BackgroundSettings
+from app.turns.thread_bus import RedisThreadBus
+from config.agent import get_agent_settings
 from config.database import get_database_settings
 from config.worker import get_worker_settings
 from storage.engine import create_engine, database_url
 from storage.jobs import PostgresJobStore
 from storage.keys import ThreadKey
-from storage.threads import release_lease
+from storage.threads import ThreadLeases, release_lease
 from storage.turn_model import Turn
 from storage.turns import TurnRepository
 
@@ -156,12 +165,60 @@ def _job_store(engine: AsyncEngine) -> PostgresJobStore:
     return PostgresJobStore(async_sessionmaker(engine, expire_on_commit=False))
 
 
+def _follow_ups(
+    environ: Mapping[str, str],
+    engine: AsyncEngine,
+    client: Redis,
+    url: str,
+) -> FollowUps:
+    """The follow-up service of this process: leases and turns over ``engine``, the chat queue."""
+    worker, agent = get_worker_settings(), get_agent_settings()
+    leases = ThreadLeases(_sessions(engine), get_database_settings())
+    queued_ttl = BackgroundSettings.from_config(worker, agent.max_resumes_per_turn)
+    secrets = process_secret_values(environ)
+    enqueuer = CeleryEnqueuer(build_celery(worker, url), worker, secrets)
+    bus = RedisStreamBus(client, worker.event_stream_max_length)
+    return FollowUps(leases, bus, enqueuer, queued_ttl.running_ttl_seconds)
+
+
+def _sessions(engine: AsyncEngine) -> async_sessionmaker[AsyncSession]:
+    return async_sessionmaker(engine, expire_on_commit=False)
+
+
+@asynccontextmanager
+async def _lifecycle(
+    environ: Mapping[str, str],
+    engine: AsyncEngine,
+) -> AsyncGenerator[JobLifecycle]:
+    """What a swept or lost job tells the readers and starts: its thread event and follow-up
+    turn, over a short-lived Redis client and Celery sender (closed on exit)."""
+    worker = get_worker_settings()
+    url = redis_url(environ, worker)
+    timeout = worker.broker_timeout_seconds
+    client = Redis.from_url(url, decode_responses=True, socket_timeout=timeout)
+    try:
+        thread_bus = RedisThreadBus(client, worker.event_stream_max_length)
+        follow_ups = _follow_ups(environ, engine, client, url)
+        yield JobLifecycle(thread_bus, worker.event_ttl_seconds, follow_ups)
+    finally:
+        await client.aclose()
+
+
 async def sweep_stale_jobs_env(environ: Mapping[str, str]) -> int:
-    """``sweep_stale_jobs`` against the database the environment names."""
+    """``sweep_stale_jobs`` against the database the environment names: running jobs with a
+    stale heartbeat, and queued jobs older than the visibility timeout (a lost task message)."""
     engine = _engine(environ)
     try:
-        stale_after = timedelta(seconds=get_worker_settings().stale_after_seconds)
-        return await sweep_stale_jobs(_job_store(engine), stale_after)
+        worker = get_worker_settings()
+        stale_after = timedelta(seconds=worker.stale_after_seconds)
+        unclaimed = timedelta(seconds=worker.visibility_timeout_seconds)
+        async with _lifecycle(environ, engine) as lifecycle:
+            return await sweep_stale_jobs(
+                _job_store(engine),
+                stale_after,
+                lifecycle.ended,
+                unclaimed_after=unclaimed,
+            )
     finally:
         await engine.dispose()
 
@@ -175,6 +232,12 @@ async def interrupt_lost_job_env(
     lost child's or the hard limit's, the same codes a turn uses)."""
     engine = _engine(environ)
     try:
-        return await interrupt_lost_job(_job_store(engine), job, JobFailure(reason.value))
+        async with _lifecycle(environ, engine) as lifecycle:
+            return await interrupt_lost_job(
+                _job_store(engine),
+                job,
+                JobFailure(reason.value),
+                lifecycle.ended,
+            )
     finally:
         await engine.dispose()

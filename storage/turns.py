@@ -39,6 +39,7 @@ Sessions = async_sessionmaker[AsyncSession]
 _OPEN = turns.c.status.in_([status.value for status in OPEN_STATUSES])
 _RUNNING = turns.c.status == TurnStatus.RUNNING.value
 _QUEUED = turns.c.status == TurnStatus.QUEUED.value
+_WAITING = turns.c.status == TurnStatus.WAITING.value
 
 
 def _decoded(row: RowMapping | None) -> Turn | None:
@@ -111,6 +112,54 @@ class TurnRepository:
         async with self._sessions.begin() as session:
             await session.execute(new_thread)
             return _decoded((await session.execute(_begin(key, planned))).mappings().first())
+
+    async def begin_follow_up(
+        self,
+        key: ThreadKey,
+        job_id: str,
+        planned: PlannedInput,
+    ) -> Turn | None:
+        """Record the automatic follow-up turn of a job as ``waiting``; None (nothing recorded)
+        when the job already has one (the unique index on ``job_id``: at most once per job)."""
+        statement = (
+            pg_insert(turns)
+            .values(
+                id=uuid.uuid4().hex,
+                user_id=key.owner_id,
+                thread_id=key.thread_id,
+                status=TurnStatus.WAITING.value,
+                planned_input=codec.planned_to_json(planned),
+                job_id=job_id,
+            )
+            .on_conflict_do_nothing(
+                index_elements=[turns.c.job_id],
+                index_where=turns.c.job_id.is_not(None),
+            )
+            .returning(*turns.c)
+        )
+        async with self._sessions.begin() as session:
+            return _decoded((await session.execute(statement)).mappings().first())
+
+    async def next_waiting(self, key: ThreadKey) -> Turn | None:
+        """The thread's oldest waiting follow-up; None when there is none."""
+        query = select(turns).where(_of(key), _WAITING).order_by(turns.c.created_at, turns.c.id)
+        async with self._sessions() as session:
+            return _decoded((await session.execute(query.limit(1))).mappings().first())
+
+    async def activate(self, owner_id: UUID, turn_id: str) -> Turn | None:
+        """Move the owner's waiting follow-up to queued, once (a second call finds nothing);
+        None also when the thread already has an open turn."""
+        statement = (
+            update(turns)
+            .where(_mine(owner_id, turn_id), _WAITING)
+            .values(**_changes(TurnStatus.QUEUED, None))
+            .returning(*turns.c)
+        )
+        try:
+            async with self._sessions.begin() as session:
+                return _decoded((await session.execute(statement)).mappings().first())
+        except IntegrityError:  # another turn of the thread became open first
+            return None
 
     async def resume(self, owner_id: UUID, turn_id: str, max_resumes: int) -> Turn | None:
         """Queue an interrupted turn of the owner again (for a worker) and count the resume.
@@ -208,7 +257,7 @@ class TurnRepository:
         """The thread's most recent turn; None when it has none (or it does not decode)."""
         query = (
             select(turns)
-            .where(_of(key))
+            .where(_of(key), ~_WAITING)  # a follow-up that has not started is not the latest
             .order_by(turns.c.created_at.desc(), turns.c.id.desc())
             .limit(1)
         )

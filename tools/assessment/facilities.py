@@ -7,6 +7,7 @@ import logging
 import threading
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, replace
+from typing import cast
 
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
@@ -644,6 +645,40 @@ def _asking(
     return view, _artifact(f)
 
 
+def _benchmarks(
+    cas: str,
+    given: Toxicity | None,
+    config: RunnableConfig | None,
+) -> tuple[Toxicity, str, list[str], ChemicalProperties | None]:
+    """The benchmarks the assessment would use (given, the chemical's own, or an in-domain
+    analogue's), the warnings about them and the chemical's properties."""
+    tox, source, warnings, found = _toxicity(cas, given, config)
+    tox, source, warnings = _analogue_toxicity(cas, tox, source, warnings)
+    return tox, source, warnings, found
+
+
+def check_before_job(
+    arguments: Mapping[str, object],
+    config: RunnableConfig | None,
+) -> Outcome | None:
+    """What a background assessment must settle before a job is queued: the result of a CAS
+    number that is not valid, or of values the chemical's lookup lists as missing (the very
+    results ``assess_facilities`` gives today, nothing assessed). None when a job may start.
+
+    Args:
+        arguments: The tool call's validated arguments.
+        config: The run's configuration, which carries the user's answers to missing values.
+    """
+    cas_number = str(arguments.get("cas_number", ""))
+    cas = format_cas(cas_number)
+    if cas is None:
+        return _invalid_cas(cas_number)
+    given = cast(Toxicity | None, arguments.get("toxicity"))
+    tox, source, warnings, found = _benchmarks(cas, given, config)
+    missing = _still_missing(found, tox)
+    return _asking(cas, (tox, source), warnings, missing) if missing else None
+
+
 def _prepared(steps: Steps, inventory: _Inventory) -> Steps:
     """The steps with the inventory's industry titles prefetched and one SCC search per title."""
     steps.prefetch(sorted({r["naics_title"] for r in inventory.records if r["naics_title"]}))
@@ -664,8 +699,7 @@ def _assess(
     if cas is None:
         return _invalid_cas(cas_number)
     inventory = _inventory(cas, place)
-    tox, source, warnings, found = _toxicity(cas, toxicity, config)
-    tox, source, warnings = _analogue_toxicity(cas, tox, source, warnings)
+    tox, source, warnings, found = _benchmarks(cas, toxicity, config)
     missing = _still_missing(found, tox)
     if missing:
         return _asking(cas, (tox, source), warnings, missing)

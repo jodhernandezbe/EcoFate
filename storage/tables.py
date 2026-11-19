@@ -183,6 +183,9 @@ turns = Table(
     # A new turn's input (question, message, note, counted), read by the worker: task messages
     # carry ids only.
     Column("planned_input", JSONB, nullable=True),
+    # The background job this automatic follow-up turn explains (None for a user's turn); the
+    # unique index below is what makes a follow-up run at most once per job.
+    Column("job_id", Text, nullable=True),
     CheckConstraint(f"status IN ({_in(tuple(TurnStatus))})", name="status_known"),
     CheckConstraint("resume_count >= 0", name="resume_count_not_negative"),
     CheckConstraint(
@@ -199,6 +202,7 @@ turns = Table(
         postgresql_where=text(f"status IN ({_OPEN_VALUES})"),
     ),
     Index("ix_turns_user_id_thread_id_created_at", "user_id", "thread_id", "created_at"),
+    Index("uq_turns_job_id", "job_id", unique=True, postgresql_where=text("job_id IS NOT NULL")),
 )
 
 _JOB_OPEN_VALUES = _in(tuple(str(status) for status in job_model.OPEN_STATUSES))

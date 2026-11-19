@@ -60,6 +60,7 @@ from app.telemetry import flush_telemetry
 from app.turns import FailureReason
 from app.turns.bus import MemoryBus, RedisStreamBus, TurnEventBus
 from app.turns.recording import BackgroundSettings
+from app.turns.thread_bus import RedisThreadBus, ThreadEventBus
 from config.agent import get_agent_settings
 from config.auth import get_auth_settings
 from config.database import DatabaseSettings, get_database_settings
@@ -125,15 +126,21 @@ def _relay_timing(settings: WorkerSettings) -> RelayTiming:
     )
 
 
-def queue_setup(bus: TurnEventBus, enqueuer: TurnEnqueuer | None) -> QueueSetup:
+def queue_setup(
+    bus: TurnEventBus,
+    enqueuer: TurnEnqueuer | None,
+    thread_bus: ThreadEventBus | None = None,
+) -> QueueSetup:
     """The queue over ``bus`` and ``enqueuer`` (None: turns run in this process), timed as
-    ``[worker]`` and ``[agent]`` say."""
+    ``[worker]`` and ``[agent]`` say; ``thread_bus`` carries the thread-level events (in
+    memory by default)."""
     settings = get_worker_settings()
     background = BackgroundSettings.from_config(
         settings,
         get_agent_settings().max_resumes_per_turn,
     )
-    return QueueSetup(bus, enqueuer, _relay_timing(settings), background)
+    setup = QueueSetup(bus, enqueuer, _relay_timing(settings), background)
+    return setup if thread_bus is None else replace(setup, thread_bus=thread_bus)
 
 
 def _redis_client(url: str, settings: WorkerSettings) -> Redis:
@@ -176,7 +183,8 @@ def _redis_queue(
 ) -> QueueSetup:
     """The queue over Redis streams and Celery, with a health check that pings ``client``."""
     enqueuer = CeleryEnqueuer(build_celery(settings, url), settings, process_secret_values(environ))
-    setup = queue_setup(RedisStreamBus(client, settings.event_stream_max_length), enqueuer)
+    length = settings.event_stream_max_length
+    setup = queue_setup(RedisStreamBus(client, length), enqueuer, RedisThreadBus(client, length))
     check = redis_health_check(lambda: client.ping(), settings.broker_timeout_seconds)
     return replace(setup, health_check=check)
 
