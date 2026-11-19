@@ -32,5 +32,5 @@
 
 ## 5. Release
 
-- [ ] 5.1 All checks (`uv run pre-commit run --all-files`), security audit, version bump.
+- [x] 5.1 All checks (`uv run pre-commit run --all-files`), security audit, version bump.
 - [ ] 5.2 Deploy stage 1, then stage 2 with `heavy_tools = []` in production; enable `assess_facilities` after 3.2 passes and verify one assessment at https://ecofate.org (job queued, a question answered meanwhile, the follow-up explains the result).
